@@ -261,12 +261,12 @@ function Dashboard() {
               <div className="h-[260px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={monthlyRevenue}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.28 0.014 265)" />
-                    <XAxis dataKey="month" stroke="oklch(0.68 0.02 265)" fontSize={11} tickLine={false} axisLine={false} />
-                    <YAxis stroke="oklch(0.68 0.02 265)" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `${v / 1000}k`} />
-                    <Tooltip contentStyle={{ background: "oklch(0.21 0.014 265)", border: "1px solid oklch(0.28 0.014 265)", borderRadius: 8, fontSize: 12 }} formatter={(v: unknown) => formatBRL(Number(v))} />
-                    <Line type="monotone" dataKey="meta" stroke="oklch(0.55 0.02 265)" strokeDasharray="4 4" strokeWidth={2} dot={false} />
-                    <Line type="monotone" dataKey="receita" stroke="oklch(0.72 0.18 265)" strokeWidth={2.5} dot={{ r: 3, fill: "oklch(0.72 0.18 265)" }} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.22 0.010 155)" />
+                    <XAxis dataKey="month" stroke="oklch(0.68 0.02 155)" fontSize={11} tickLine={false} axisLine={false} />
+                    <YAxis stroke="oklch(0.68 0.02 155)" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `${v / 1000}k`} />
+                    <Tooltip contentStyle={{ background: "oklch(0.14 0.008 155)", border: "1px solid oklch(0.22 0.010 155)", borderRadius: 8, fontSize: 12 }} formatter={(v: unknown) => formatBRL(Number(v))} />
+                    <Line type="monotone" dataKey="meta" stroke="oklch(0.55 0.02 155)" strokeDasharray="4 4" strokeWidth={2} dot={false} />
+                    <Line type="monotone" dataKey="receita" stroke="oklch(0.72 0.19 155)" strokeWidth={2.5} dot={{ r: 3, fill: "oklch(0.72 0.19 155)" }} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
@@ -279,10 +279,10 @@ function Dashboard() {
                 <PieChart>
                   <Pie data={leadOrigins} dataKey="value" nameKey="origin" innerRadius={55} outerRadius={90} paddingAngle={2}>
                     {leadOrigins.map((_, i) => (
-                      <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} stroke="oklch(0.19 0.013 265)" strokeWidth={2} />
+                      <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} stroke="oklch(0.12 0.006 155)" strokeWidth={2} />
                     ))}
                   </Pie>
-                  <Tooltip contentStyle={{ background: "oklch(0.21 0.014 265)", border: "1px solid oklch(0.28 0.014 265)", borderRadius: 8, fontSize: 12 }} />
+                  <Tooltip contentStyle={{ background: "oklch(0.14 0.008 155)", border: "1px solid oklch(0.22 0.010 155)", borderRadius: 8, fontSize: 12 }} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
@@ -304,11 +304,11 @@ function Dashboard() {
               <div className="h-[220px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={conversionByStage} layout="vertical" margin={{ left: 12 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.28 0.014 265)" horizontal={false} />
-                    <XAxis type="number" stroke="oklch(0.68 0.02 265)" fontSize={11} tickLine={false} axisLine={false} />
-                    <YAxis dataKey="stage" type="category" stroke="oklch(0.68 0.02 265)" fontSize={11} tickLine={false} axisLine={false} width={130} />
-                    <Tooltip contentStyle={{ background: "oklch(0.21 0.014 265)", border: "1px solid oklch(0.28 0.014 265)", borderRadius: 8, fontSize: 12 }} />
-                    <Bar dataKey="count" fill="oklch(0.72 0.18 265)" radius={[0, 4, 4, 0]} barSize={16} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.22 0.010 155)" horizontal={false} />
+                    <XAxis type="number" stroke="oklch(0.68 0.02 155)" fontSize={11} tickLine={false} axisLine={false} />
+                    <YAxis dataKey="stage" type="category" stroke="oklch(0.68 0.02 155)" fontSize={11} tickLine={false} axisLine={false} width={130} />
+                    <Tooltip contentStyle={{ background: "oklch(0.14 0.008 155)", border: "1px solid oklch(0.22 0.010 155)", borderRadius: 8, fontSize: 12 }} />
+                    <Bar dataKey="count" fill="oklch(0.72 0.19 155)" radius={[0, 4, 4, 0]} barSize={16} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
