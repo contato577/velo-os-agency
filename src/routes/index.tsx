@@ -254,6 +254,11 @@ function Dashboard() {
           ))}
         </div>
 
+        {/* Projeção comercial */}
+        <div className="mt-6">
+          <ProjectionCard />
+        </div>
+
         {/* Charts */}
         <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
           <div className="lg:col-span-2">
