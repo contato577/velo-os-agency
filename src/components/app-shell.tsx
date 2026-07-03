@@ -20,10 +20,11 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { notifications } from "@/lib/mock-data";
+import veloceLogo from "@/assets/veloce-logo.jpg.asset.json";
 
 const nav = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/comercial", label: "Comercial", icon: Briefcase, badge: 18 },
+  { to: "/comercial", label: "CRM Comercial", icon: Briefcase, badge: 18 },
   { to: "/clientes", label: "Clientes", icon: Users },
   { to: "/projetos", label: "Projetos", icon: FolderKanban },
   { to: "/tarefas", label: "Tarefas do dia", icon: CheckSquare, badge: 4 },
@@ -60,10 +61,8 @@ export function AppShell({
         )}
       >
         <div className="flex h-14 items-center gap-2 border-b px-3">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/15 text-primary">
-            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <path d="M4 4 L12 20 L20 4" />
-            </svg>
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-md bg-black ring-1 ring-primary/30">
+            <img src={veloceLogo.url} alt="Veloce Performance" className="h-8 w-8 object-cover" />
           </div>
           {!collapsed && (
             <div className="flex min-w-0 flex-1 flex-col leading-tight">
