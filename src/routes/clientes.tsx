@@ -1,5 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { Plus, Search, Filter, MoreHorizontal, Calendar, ChevronRight } from "lucide-react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { Plus, Search, Filter, Calendar, ChevronRight, BarChart3 } from "lucide-react";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { clients, formatBRL } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
@@ -95,7 +95,13 @@ function Clientes() {
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+                    <Link
+                      to="/clientes/$clientId/performance"
+                      params={{ clientId: c.id }}
+                      className="inline-flex items-center gap-1 rounded-md border bg-surface px-2 py-1 text-[11px] font-medium text-muted-foreground opacity-0 transition-all group-hover:opacity-100 hover:bg-primary/10 hover:text-primary"
+                    >
+                      <BarChart3 className="h-3 w-3" /> Performance <ChevronRight className="h-3 w-3" />
+                    </Link>
                   </td>
                 </tr>
               ))}
