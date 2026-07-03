@@ -1,5 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { Plus, Search, Filter, MoreHorizontal, Calendar, ChevronRight } from "lucide-react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { Plus, Search, Filter, Calendar, ChevronRight, BarChart3 } from "lucide-react";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { clients, formatBRL } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
