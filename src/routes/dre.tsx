@@ -119,11 +119,11 @@ function DRE() {
           <div className="h-[280px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={monthlyRevenue}>
-                <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.28 0.014 265)" />
-                <XAxis dataKey="month" stroke="oklch(0.68 0.02 265)" fontSize={11} tickLine={false} axisLine={false} />
-                <YAxis stroke="oklch(0.68 0.02 265)" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `${v / 1000}k`} />
-                <Tooltip contentStyle={{ background: "oklch(0.21 0.014 265)", border: "1px solid oklch(0.28 0.014 265)", borderRadius: 8, fontSize: 12 }} formatter={(v: unknown) => formatBRL(Number(v))} />
-                <Bar dataKey="receita" fill="oklch(0.72 0.18 265)" radius={[6, 6, 0, 0]} />
+                <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.22 0.010 155)" />
+                <XAxis dataKey="month" stroke="oklch(0.68 0.02 155)" fontSize={11} tickLine={false} axisLine={false} />
+                <YAxis stroke="oklch(0.68 0.02 155)" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `${v / 1000}k`} />
+                <Tooltip contentStyle={{ background: "oklch(0.14 0.008 155)", border: "1px solid oklch(0.22 0.010 155)", borderRadius: 8, fontSize: 12 }} formatter={(v: unknown) => formatBRL(Number(v))} />
+                <Bar dataKey="receita" fill="oklch(0.72 0.19 155)" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>

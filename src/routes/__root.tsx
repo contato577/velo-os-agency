@@ -82,7 +82,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           "Núcleo operacional da Veloce Performance: CRM, projetos, financeiro, DRE e automações em um só lugar.",
       },
       { name: "author", content: "Veloce Performance" },
-      { name: "theme-color", content: "#1e1b3a" },
+      { name: "theme-color", content: "#000000" },
       { property: "og:title", content: "Veloce Performance OS" },
       {
         property: "og:description",
@@ -93,7 +93,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     ],
     links: [
       { rel: "stylesheet", href: appCss },
-      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      { rel: "icon", type: "image/jpeg", href: "/__l5e/assets-v1/9ac6f0eb-7e12-43d9-842c-163d7d4b872d/veloce-logo.jpg" },
     ],
   }),
   shellComponent: RootShell,
