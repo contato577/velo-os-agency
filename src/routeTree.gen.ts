@@ -17,6 +17,7 @@ import { Route as DreRouteImport } from './routes/dre'
 import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
 import { Route as ComercialRouteImport } from './routes/comercial'
 import { Route as ClientesRouteImport } from './routes/clientes'
+import { Route as CentralIaRouteImport } from './routes/central-ia'
 import { Route as AutomacoesRouteImport } from './routes/automacoes'
 import { Route as AgendaRouteImport } from './routes/agenda'
 import { Route as IndexRouteImport } from './routes/index'
@@ -61,6 +62,11 @@ const ClientesRoute = ClientesRouteImport.update({
   path: '/clientes',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CentralIaRoute = CentralIaRouteImport.update({
+  id: '/central-ia',
+  path: '/central-ia',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AutomacoesRoute = AutomacoesRouteImport.update({
   id: '/automacoes',
   path: '/automacoes',
@@ -81,6 +87,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/agenda': typeof AgendaRoute
   '/automacoes': typeof AutomacoesRoute
+  '/central-ia': typeof CentralIaRoute
   '/clientes': typeof ClientesRoute
   '/comercial': typeof ComercialRoute
   '/configuracoes': typeof ConfiguracoesRoute
@@ -94,6 +101,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/agenda': typeof AgendaRoute
   '/automacoes': typeof AutomacoesRoute
+  '/central-ia': typeof CentralIaRoute
   '/clientes': typeof ClientesRoute
   '/comercial': typeof ComercialRoute
   '/configuracoes': typeof ConfiguracoesRoute
@@ -108,6 +116,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/agenda': typeof AgendaRoute
   '/automacoes': typeof AutomacoesRoute
+  '/central-ia': typeof CentralIaRoute
   '/clientes': typeof ClientesRoute
   '/comercial': typeof ComercialRoute
   '/configuracoes': typeof ConfiguracoesRoute
@@ -123,6 +132,7 @@ export interface FileRouteTypes {
     | '/'
     | '/agenda'
     | '/automacoes'
+    | '/central-ia'
     | '/clientes'
     | '/comercial'
     | '/configuracoes'
@@ -136,6 +146,7 @@ export interface FileRouteTypes {
     | '/'
     | '/agenda'
     | '/automacoes'
+    | '/central-ia'
     | '/clientes'
     | '/comercial'
     | '/configuracoes'
@@ -149,6 +160,7 @@ export interface FileRouteTypes {
     | '/'
     | '/agenda'
     | '/automacoes'
+    | '/central-ia'
     | '/clientes'
     | '/comercial'
     | '/configuracoes'
@@ -163,6 +175,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AgendaRoute: typeof AgendaRoute
   AutomacoesRoute: typeof AutomacoesRoute
+  CentralIaRoute: typeof CentralIaRoute
   ClientesRoute: typeof ClientesRoute
   ComercialRoute: typeof ComercialRoute
   ConfiguracoesRoute: typeof ConfiguracoesRoute
@@ -231,6 +244,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ClientesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/central-ia': {
+      id: '/central-ia'
+      path: '/central-ia'
+      fullPath: '/central-ia'
+      preLoaderRoute: typeof CentralIaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/automacoes': {
       id: '/automacoes'
       path: '/automacoes'
@@ -259,6 +279,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AgendaRoute: AgendaRoute,
   AutomacoesRoute: AutomacoesRoute,
+  CentralIaRoute: CentralIaRoute,
   ClientesRoute: ClientesRoute,
   ComercialRoute: ComercialRoute,
   ConfiguracoesRoute: ConfiguracoesRoute,
