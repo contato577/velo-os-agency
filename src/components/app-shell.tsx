@@ -17,6 +17,7 @@ import {
   ChevronsLeft,
   ChevronsRight,
   Command,
+  Brain,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { notifications } from "@/lib/mock-data";
@@ -24,6 +25,7 @@ import veloceLogo from "@/assets/veloce-logo.jpg.asset.json";
 
 const nav = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/central-ia", label: "Central de IA", icon: Brain, badge: "IA" },
   { to: "/comercial", label: "CRM Comercial", icon: Briefcase, badge: 18 },
   { to: "/clientes", label: "Clientes", icon: Users },
   { to: "/projetos", label: "Projetos", icon: FolderKanban },
