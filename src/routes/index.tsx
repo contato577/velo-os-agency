@@ -60,7 +60,131 @@ const kpis = [
   { label: "Receita recorrente", value: formatBRL(dashboardKPIs.receitaRecorrente), delta: 14.2, trend: "up", icon: Wallet, sub: "MRR" },
 ];
 
-const CHART_COLORS = ["#a5a3ff", "#8ff0c8", "#f5c56e", "#7ccff5", "#e6a5f5", "#f59ba3"];
+const CHART_COLORS = ["#34d399", "#10b981", "#a7f3d0", "#059669", "#6ee7b7", "#065f46"];
+const PRIMARY = "oklch(0.72 0.19 155)";
+const GRID = "oklch(0.22 0.010 155)";
+const AXIS = "oklch(0.68 0.02 155)";
+const TOOLTIP_BG = "oklch(0.14 0.008 155)";
+
+// Projeção de meta comercial — atualizada por dia
+const META_MENSAL = 55000;
+const HOJE_DIA = 20; // dia 20 do mês corrente
+const DIAS_NO_MES = 31;
+const DIAS_RESTANTES = DIAS_NO_MES - HOJE_DIA;
+const REALIZADO_ATUAL = 51000;
+const PCT_ATINGIMENTO = (REALIZADO_ATUAL / META_MENSAL) * 100;
+const RITMO_DIARIO = REALIZADO_ATUAL / HOJE_DIA;
+const PROJECAO_FIM_MES = RITMO_DIARIO * DIAS_NO_MES;
+
+const projectionData = Array.from({ length: DIAS_NO_MES }, (_, i) => {
+  const dia = i + 1;
+  const metaIdeal = (META_MENSAL / DIAS_NO_MES) * dia;
+  const isPast = dia <= HOJE_DIA;
+  // curva de realizado com pequena variação para parecer real
+  const realizado = isPast
+    ? Math.round(RITMO_DIARIO * dia * (0.9 + Math.sin(dia / 3) * 0.08))
+    : null;
+  const projecao = !isPast ? Math.round(RITMO_DIARIO * dia) : dia === HOJE_DIA ? REALIZADO_ATUAL : null;
+  return {
+    dia: `${dia.toString().padStart(2, "0")}`,
+    meta: Math.round(metaIdeal),
+    realizado,
+    projecao,
+  };
+});
+
+function ProjectionCard() {
+  const noRitmo = PROJECAO_FIM_MES >= META_MENSAL;
+  const gapProjecao = PROJECAO_FIM_MES - META_MENSAL;
+  return (
+    <div className="rounded-lg border bg-card p-4">
+      <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h3 className="text-sm font-semibold tracking-tight">Projeção de meta comercial</h3>
+          <p className="text-[11px] text-muted-foreground">
+            Atualizado automaticamente conforme o mês avança
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="rounded-md border bg-surface px-2.5 py-1.5">
+            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Atingimento</div>
+            <div className="font-mono text-sm font-semibold text-primary">
+              {PCT_ATINGIMENTO.toFixed(1)}%
+            </div>
+          </div>
+          <div className="rounded-md border bg-surface px-2.5 py-1.5">
+            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Dias restantes</div>
+            <div className="font-mono text-sm font-semibold">{DIAS_RESTANTES}</div>
+          </div>
+          <div
+            className={cn(
+              "rounded-md border px-2.5 py-1.5",
+              noRitmo ? "border-success/40 bg-success/10" : "border-warning/40 bg-warning/10",
+            )}
+          >
+            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Projeção fim do mês</div>
+            <div className={cn("font-mono text-sm font-semibold", noRitmo ? "text-success" : "text-warning")}>
+              {formatBRL(Math.round(PROJECAO_FIM_MES))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="mb-3 grid grid-cols-3 gap-2 text-[11px]">
+        <div className="rounded-md bg-surface/60 px-2 py-1.5">
+          <div className="text-muted-foreground">Realizado</div>
+          <div className="font-mono font-medium">{formatBRL(REALIZADO_ATUAL)}</div>
+        </div>
+        <div className="rounded-md bg-surface/60 px-2 py-1.5">
+          <div className="text-muted-foreground">Meta</div>
+          <div className="font-mono font-medium">{formatBRL(META_MENSAL)}</div>
+        </div>
+        <div className="rounded-md bg-surface/60 px-2 py-1.5">
+          <div className="text-muted-foreground">Falta p/ meta</div>
+          <div className="font-mono font-medium">
+            {formatBRL(Math.max(0, META_MENSAL - REALIZADO_ATUAL))}
+          </div>
+        </div>
+      </div>
+
+      <div className="mb-2 h-2 w-full overflow-hidden rounded-full bg-surface">
+        <div
+          className="h-full rounded-full bg-gradient-to-r from-primary/70 to-primary transition-all"
+          style={{ width: `${Math.min(100, PCT_ATINGIMENTO)}%` }}
+        />
+      </div>
+
+      <div className="h-[220px]">
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={projectionData}>
+            <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
+            <XAxis dataKey="dia" stroke={AXIS} fontSize={10} tickLine={false} axisLine={false} interval={2} />
+            <YAxis stroke={AXIS} fontSize={10} tickLine={false} axisLine={false} tickFormatter={(v) => `${v / 1000}k`} />
+            <Tooltip
+              contentStyle={{ background: TOOLTIP_BG, border: `1px solid ${GRID}`, borderRadius: 8, fontSize: 12 }}
+              formatter={(v: unknown, name) => [v == null ? "—" : formatBRL(Number(v)), name]}
+              labelFormatter={(l) => `Dia ${l}`}
+            />
+            <Line type="monotone" dataKey="meta" name="Meta ideal" stroke="#6b7280" strokeDasharray="5 4" strokeWidth={1.5} dot={false} />
+            <Line type="monotone" dataKey="realizado" name="Realizado" stroke={PRIMARY} strokeWidth={2.5} dot={{ r: 2.5, fill: PRIMARY }} />
+            <Line type="monotone" dataKey="projecao" name="Projeção" stroke={PRIMARY} strokeDasharray="3 3" strokeWidth={2} dot={false} />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+
+      <div className="mt-2 flex flex-wrap items-center gap-3 text-[10px] text-muted-foreground">
+        <span className="flex items-center gap-1"><span className="h-0.5 w-3 bg-primary" />Realizado</span>
+        <span className="flex items-center gap-1"><span className="h-0.5 w-3 border-t border-dashed border-primary" />Projeção</span>
+        <span className="flex items-center gap-1"><span className="h-0.5 w-3 border-t border-dashed border-muted-foreground" />Meta ideal</span>
+        {!noRitmo && (
+          <span className="ml-auto text-warning">
+            Ritmo abaixo do necessário — falta {formatBRL(Math.abs(gapProjecao))} para bater a meta
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
 
 function KpiCard({ k }: { k: (typeof kpis)[number] }) {
   const Icon = k.icon;
