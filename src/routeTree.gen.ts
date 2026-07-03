@@ -21,6 +21,7 @@ import { Route as CentralIaRouteImport } from './routes/central-ia'
 import { Route as AutomacoesRouteImport } from './routes/automacoes'
 import { Route as AgendaRouteImport } from './routes/agenda'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ClientesClientIdPerformanceRouteImport } from './routes/clientes.$clientId.performance'
 
 const TarefasRoute = TarefasRouteImport.update({
   id: '/tarefas',
@@ -82,13 +83,19 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ClientesClientIdPerformanceRoute =
+  ClientesClientIdPerformanceRouteImport.update({
+    id: '/$clientId/performance',
+    path: '/$clientId/performance',
+    getParentRoute: () => ClientesRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/agenda': typeof AgendaRoute
   '/automacoes': typeof AutomacoesRoute
   '/central-ia': typeof CentralIaRoute
-  '/clientes': typeof ClientesRoute
+  '/clientes': typeof ClientesRouteWithChildren
   '/comercial': typeof ComercialRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/dre': typeof DreRoute
@@ -96,13 +103,14 @@ export interface FileRoutesByFullPath {
   '/projetos': typeof ProjetosRoute
   '/relatorios': typeof RelatoriosRoute
   '/tarefas': typeof TarefasRoute
+  '/clientes/$clientId/performance': typeof ClientesClientIdPerformanceRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/agenda': typeof AgendaRoute
   '/automacoes': typeof AutomacoesRoute
   '/central-ia': typeof CentralIaRoute
-  '/clientes': typeof ClientesRoute
+  '/clientes': typeof ClientesRouteWithChildren
   '/comercial': typeof ComercialRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/dre': typeof DreRoute
@@ -110,6 +118,7 @@ export interface FileRoutesByTo {
   '/projetos': typeof ProjetosRoute
   '/relatorios': typeof RelatoriosRoute
   '/tarefas': typeof TarefasRoute
+  '/clientes/$clientId/performance': typeof ClientesClientIdPerformanceRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -117,7 +126,7 @@ export interface FileRoutesById {
   '/agenda': typeof AgendaRoute
   '/automacoes': typeof AutomacoesRoute
   '/central-ia': typeof CentralIaRoute
-  '/clientes': typeof ClientesRoute
+  '/clientes': typeof ClientesRouteWithChildren
   '/comercial': typeof ComercialRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/dre': typeof DreRoute
@@ -125,6 +134,7 @@ export interface FileRoutesById {
   '/projetos': typeof ProjetosRoute
   '/relatorios': typeof RelatoriosRoute
   '/tarefas': typeof TarefasRoute
+  '/clientes/$clientId/performance': typeof ClientesClientIdPerformanceRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -141,6 +151,7 @@ export interface FileRouteTypes {
     | '/projetos'
     | '/relatorios'
     | '/tarefas'
+    | '/clientes/$clientId/performance'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -155,6 +166,7 @@ export interface FileRouteTypes {
     | '/projetos'
     | '/relatorios'
     | '/tarefas'
+    | '/clientes/$clientId/performance'
   id:
     | '__root__'
     | '/'
@@ -169,6 +181,7 @@ export interface FileRouteTypes {
     | '/projetos'
     | '/relatorios'
     | '/tarefas'
+    | '/clientes/$clientId/performance'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -176,7 +189,7 @@ export interface RootRouteChildren {
   AgendaRoute: typeof AgendaRoute
   AutomacoesRoute: typeof AutomacoesRoute
   CentralIaRoute: typeof CentralIaRoute
-  ClientesRoute: typeof ClientesRoute
+  ClientesRoute: typeof ClientesRouteWithChildren
   ComercialRoute: typeof ComercialRoute
   ConfiguracoesRoute: typeof ConfiguracoesRoute
   DreRoute: typeof DreRoute
@@ -272,15 +285,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/clientes/$clientId/performance': {
+      id: '/clientes/$clientId/performance'
+      path: '/$clientId/performance'
+      fullPath: '/clientes/$clientId/performance'
+      preLoaderRoute: typeof ClientesClientIdPerformanceRouteImport
+      parentRoute: typeof ClientesRoute
+    }
   }
 }
+
+interface ClientesRouteChildren {
+  ClientesClientIdPerformanceRoute: typeof ClientesClientIdPerformanceRoute
+}
+
+const ClientesRouteChildren: ClientesRouteChildren = {
+  ClientesClientIdPerformanceRoute: ClientesClientIdPerformanceRoute,
+}
+
+const ClientesRouteWithChildren = ClientesRoute._addFileChildren(
+  ClientesRouteChildren,
+)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AgendaRoute: AgendaRoute,
   AutomacoesRoute: AutomacoesRoute,
   CentralIaRoute: CentralIaRoute,
-  ClientesRoute: ClientesRoute,
+  ClientesRoute: ClientesRouteWithChildren,
   ComercialRoute: ComercialRoute,
   ConfiguracoesRoute: ConfiguracoesRoute,
   DreRoute: DreRoute,
