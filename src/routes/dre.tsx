@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/dre")({
   head: () => ({
     meta: [
-      { title: "DRE Inteligente · Veloce Performance OS" },
+      { title: "DRE Inteligente · Veloce" },
       { name: "description", content: "DRE gerencial automático com indicadores, comparativos e insights de IA." },
     ],
   }),
