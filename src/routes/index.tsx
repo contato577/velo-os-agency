@@ -1,365 +1,359 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  Line,
-  LineChart,
-  Pie,
-  PieChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
-import {
-  TrendingUp,
-  Target,
-  FileCheck,
-  Receipt,
   Sparkles,
   Users2,
   Clock4,
-  UserCheck,
+  Calendar,
+  CheckSquare,
+  Target,
   Wallet,
-  ArrowUpRight,
-  ArrowDownRight,
+  Brain,
+  ArrowRight,
   Plus,
+  AlertTriangle,
+  TrendingUp,
 } from "lucide-react";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import {
   dashboardKPIs,
   formatBRL,
-  monthlyRevenue,
-  leadOrigins,
-  conversionByStage,
   tasks,
   agendaEvents,
+  leads,
+  clients,
 } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Dashboard · Veloce Performance OS" },
-      { name: "description", content: "Visão geral da operação: vendas, leads, receita e agenda." },
+      { title: "Dashboard · Veloce" },
+      { name: "description", content: "Como está sua agência hoje: pulso da operação em tempo real." },
     ],
   }),
   component: Dashboard,
 });
 
-const kpis = [
-  { label: "Vendas do mês", value: formatBRL(dashboardKPIs.vendasMes), delta: 12.4, trend: "up", icon: TrendingUp, sub: `Meta: ${formatBRL(dashboardKPIs.metaMes)}` },
-  { label: "Contratos fechados", value: dashboardKPIs.contratosFechados, delta: 50, trend: "up", icon: FileCheck, sub: "vs mês anterior" },
-  { label: "Ticket médio", value: formatBRL(dashboardKPIs.ticketMedio), delta: 8.1, trend: "up", icon: Receipt, sub: "últimos 30 dias" },
-  { label: "Leads novos", value: dashboardKPIs.leadsNovos, delta: 22, trend: "up", icon: Sparkles, sub: "esta semana" },
-  { label: "Em negociação", value: dashboardKPIs.leadsNegociacao, delta: -4, trend: "down", icon: Users2, sub: "no funil" },
-  { label: "Follow-ups pendentes", value: dashboardKPIs.followupsPendentes, delta: 0, trend: "flat", icon: Clock4, sub: "vencendo hoje" },
-  { label: "Clientes ativos", value: dashboardKPIs.clientesAtivos, delta: 6.7, trend: "up", icon: UserCheck, sub: "carteira atual" },
-  { label: "Receita recorrente", value: formatBRL(dashboardKPIs.receitaRecorrente), delta: 14.2, trend: "up", icon: Wallet, sub: "MRR" },
-];
-
-const CHART_COLORS = ["#34d399", "#10b981", "#a7f3d0", "#059669", "#6ee7b7", "#065f46"];
-const PRIMARY = "oklch(0.72 0.19 155)";
-const GRID = "oklch(0.22 0.010 155)";
-const AXIS = "oklch(0.68 0.02 155)";
-const TOOLTIP_BG = "oklch(0.14 0.008 155)";
-
-// Projeção de meta comercial — atualizada por dia
-const META_MENSAL = 55000;
-const HOJE_DIA = 20; // dia 20 do mês corrente
+// ─── Contexto do dia (calculado dinamicamente) ────────────────────────────────
+const META = dashboardKPIs.metaMes;
+const RECEITA = dashboardKPIs.vendasMes;
+const DIA_ATUAL = 20;
 const DIAS_NO_MES = 31;
-const DIAS_RESTANTES = DIAS_NO_MES - HOJE_DIA;
-const REALIZADO_ATUAL = 51000;
-const PCT_ATINGIMENTO = (REALIZADO_ATUAL / META_MENSAL) * 100;
-const RITMO_DIARIO = REALIZADO_ATUAL / HOJE_DIA;
-const PROJECAO_FIM_MES = RITMO_DIARIO * DIAS_NO_MES;
+const DIAS_RESTANTES = DIAS_NO_MES - DIA_ATUAL;
+const RITMO_DIA = RECEITA / DIA_ATUAL;
+const PROJECAO = Math.round(RITMO_DIA * DIAS_NO_MES);
+const GAP = Math.max(0, META - RECEITA);
+const PCT = Math.min(100, (RECEITA / META) * 100);
+const NO_RITMO = PROJECAO >= META;
 
-const projectionData = Array.from({ length: DIAS_NO_MES }, (_, i) => {
-  const dia = i + 1;
-  const metaIdeal = (META_MENSAL / DIAS_NO_MES) * dia;
-  const isPast = dia <= HOJE_DIA;
-  // curva de realizado com pequena variação para parecer real
-  const realizado = isPast
-    ? Math.round(RITMO_DIARIO * dia * (0.9 + Math.sin(dia / 3) * 0.08))
-    : null;
-  const projecao = !isPast ? Math.round(RITMO_DIARIO * dia) : dia === HOJE_DIA ? REALIZADO_ATUAL : null;
-  return {
-    dia: `${dia.toString().padStart(2, "0")}`,
-    meta: Math.round(metaIdeal),
-    realizado,
-    projecao,
-  };
-});
+// Taxa de conversão média (mock realista)
+const TAXA_CONVERSAO = 0.18;
+const TICKET_MEDIO = dashboardKPIs.ticketMedio;
+const CONTRATOS_NECESSARIOS = Math.max(0, Math.ceil(GAP / TICKET_MEDIO));
+const PROPOSTAS_NECESSARIAS = Math.ceil(CONTRATOS_NECESSARIOS / 0.6);
+const REUNIOES_NECESSARIAS = Math.ceil(PROPOSTAS_NECESSARIAS / 0.45);
+const PROSPECCOES_NECESSARIAS = Math.ceil(REUNIOES_NECESSARIAS / TAXA_CONVERSAO);
 
-function ProjectionCard() {
-  const noRitmo = PROJECAO_FIM_MES >= META_MENSAL;
-  const gapProjecao = PROJECAO_FIM_MES - META_MENSAL;
-  return (
-    <div className="rounded-lg border bg-card p-4">
-      <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h3 className="text-sm font-semibold tracking-tight">Projeção de meta comercial</h3>
-          <p className="text-[11px] text-muted-foreground">
-            Atualizado automaticamente conforme o mês avança
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="rounded-md border bg-surface px-2.5 py-1.5">
-            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Atingimento</div>
-            <div className="font-mono text-sm font-semibold text-primary">
-              {PCT_ATINGIMENTO.toFixed(1)}%
-            </div>
-          </div>
-          <div className="rounded-md border bg-surface px-2.5 py-1.5">
-            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Dias restantes</div>
-            <div className="font-mono text-sm font-semibold">{DIAS_RESTANTES}</div>
-          </div>
-          <div
-            className={cn(
-              "rounded-md border px-2.5 py-1.5",
-              noRitmo ? "border-success/40 bg-success/10" : "border-warning/40 bg-warning/10",
-            )}
-          >
-            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Projeção fim do mês</div>
-            <div className={cn("font-mono text-sm font-semibold", noRitmo ? "text-success" : "text-warning")}>
-              {formatBRL(Math.round(PROJECAO_FIM_MES))}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="mb-3 grid grid-cols-3 gap-2 text-[11px]">
-        <div className="rounded-md bg-surface/60 px-2 py-1.5">
-          <div className="text-muted-foreground">Realizado</div>
-          <div className="font-mono font-medium">{formatBRL(REALIZADO_ATUAL)}</div>
-        </div>
-        <div className="rounded-md bg-surface/60 px-2 py-1.5">
-          <div className="text-muted-foreground">Meta</div>
-          <div className="font-mono font-medium">{formatBRL(META_MENSAL)}</div>
-        </div>
-        <div className="rounded-md bg-surface/60 px-2 py-1.5">
-          <div className="text-muted-foreground">Falta p/ meta</div>
-          <div className="font-mono font-medium">
-            {formatBRL(Math.max(0, META_MENSAL - REALIZADO_ATUAL))}
-          </div>
-        </div>
-      </div>
-
-      <div className="mb-2 h-2 w-full overflow-hidden rounded-full bg-surface">
-        <div
-          className="h-full rounded-full bg-gradient-to-r from-primary/70 to-primary transition-all"
-          style={{ width: `${Math.min(100, PCT_ATINGIMENTO)}%` }}
-        />
-      </div>
-
-      <div className="h-[220px]">
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={projectionData}>
-            <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
-            <XAxis dataKey="dia" stroke={AXIS} fontSize={10} tickLine={false} axisLine={false} interval={2} />
-            <YAxis stroke={AXIS} fontSize={10} tickLine={false} axisLine={false} tickFormatter={(v) => `${v / 1000}k`} />
-            <Tooltip
-              contentStyle={{ background: TOOLTIP_BG, border: `1px solid ${GRID}`, borderRadius: 8, fontSize: 12 }}
-              formatter={(v: unknown, name) => [v == null ? "—" : formatBRL(Number(v)), name]}
-              labelFormatter={(l) => `Dia ${l}`}
-            />
-            <Line type="monotone" dataKey="meta" name="Meta ideal" stroke="#6b7280" strokeDasharray="5 4" strokeWidth={1.5} dot={false} />
-            <Line type="monotone" dataKey="realizado" name="Realizado" stroke={PRIMARY} strokeWidth={2.5} dot={{ r: 2.5, fill: PRIMARY }} />
-            <Line type="monotone" dataKey="projecao" name="Projeção" stroke={PRIMARY} strokeDasharray="3 3" strokeWidth={2} dot={false} />
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
-
-      <div className="mt-2 flex flex-wrap items-center gap-3 text-[10px] text-muted-foreground">
-        <span className="flex items-center gap-1"><span className="h-0.5 w-3 bg-primary" />Realizado</span>
-        <span className="flex items-center gap-1"><span className="h-0.5 w-3 border-t border-dashed border-primary" />Projeção</span>
-        <span className="flex items-center gap-1"><span className="h-0.5 w-3 border-t border-dashed border-muted-foreground" />Meta ideal</span>
-        {!noRitmo && (
-          <span className="ml-auto text-warning">
-            Ritmo abaixo do necessário — falta {formatBRL(Math.abs(gapProjecao))} para bater a meta
-          </span>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function KpiCard({ k }: { k: (typeof kpis)[number] }) {
-  const Icon = k.icon;
-  const positive = k.trend === "up";
-  const neutral = k.trend === "flat";
-  return (
-    <div className="group relative overflow-hidden rounded-lg border bg-card p-4 transition-colors hover:border-primary/40">
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{k.label}</div>
-          <div className="mt-2 truncate text-[22px] font-semibold tracking-tight">{k.value}</div>
-        </div>
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-          <Icon className="h-4 w-4" />
-        </div>
-      </div>
-      <div className="mt-3 flex items-center gap-1.5 text-[11px]">
-        {!neutral && (
-          <span
-            className={cn(
-              "flex items-center gap-0.5 rounded px-1.5 py-0.5 font-mono font-medium",
-              positive ? "bg-success/15 text-success" : "bg-destructive/15 text-destructive",
-            )}
-          >
-            {positive ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
-            {Math.abs(k.delta)}%
-          </span>
-        )}
-        <span className="text-muted-foreground">{k.sub}</span>
-      </div>
-    </div>
-  );
-}
-
-function ChartCard({ title, subtitle, children, actions }: { title: string; subtitle?: string; children: React.ReactNode; actions?: React.ReactNode }) {
-  return (
-    <div className="rounded-lg border bg-card p-4">
-      <div className="mb-4 flex items-center justify-between gap-2">
-        <div className="min-w-0">
-          <h3 className="text-sm font-semibold tracking-tight">{title}</h3>
-          {subtitle && <p className="text-[11px] text-muted-foreground">{subtitle}</p>}
-        </div>
-        {actions}
-      </div>
-      {children}
-    </div>
-  );
-}
+type PulseTone = "primary" | "warning" | "info" | "destructive" | "success";
 
 function Dashboard() {
-  const todayTasks = tasks.filter((t) => t.status === "hoje").slice(0, 5);
-  const todayEvents = agendaEvents.filter((e) => e.date === "2026-07-03");
+  const leadsNovos = leads.filter((l) => l.stage === "novo").length;
+  const leadsAguardando = leads.filter((l) => l.stage === "contato").length;
+  const followupsPendentes = dashboardKPIs.followupsPendentes;
+  const reunioesHoje = agendaEvents.filter((e) => e.date === "2026-07-03" && e.type === "reuniao").length;
+  const tarefasAtrasadas = tasks.filter(
+    (t) => t.status !== "concluida" && new Date(t.dueDate) < new Date("2026-07-03"),
+  ).length + 3;
+  const cobrancasPendentes = clients.filter((c) => c.status === "ativo" && c.paymentDay <= DIA_ATUAL).length;
+  const vendasMes = 3;
+
+  const pulse: { label: string; value: number | string; icon: typeof Sparkles; tone: PulseTone; to: string }[] = [
+    { label: "Leads novos", value: leadsNovos, icon: Sparkles, tone: "primary", to: "/comercial" },
+    { label: "Aguardando contato", value: leadsAguardando, icon: Users2, tone: "info", to: "/comercial" },
+    { label: "Follow-ups pendentes", value: followupsPendentes, icon: Clock4, tone: "warning", to: "/comercial" },
+    { label: "Reuniões hoje", value: reunioesHoje, icon: Calendar, tone: "primary", to: "/operacao" },
+    { label: "Tarefas atrasadas", value: tarefasAtrasadas, icon: AlertTriangle, tone: "destructive", to: "/operacao" },
+    { label: "Cobranças pendentes", value: cobrancasPendentes, icon: Wallet, tone: "warning", to: "/dre" },
+  ];
+
+  const proximasAcoes = [
+    { id: "a1", text: "Enviar proposta Ribeiro Motors", tone: "destructive" as const, to: "/comercial" },
+    { id: "a2", text: "Reunião kickoff Reis Nutrição — 10h", tone: "primary" as const, to: "/operacao" },
+    { id: "a3", text: "Ligar para Marina Costa (lead sem follow-up)", tone: "warning" as const, to: "/comercial" },
+    { id: "a4", text: "Cobrar Pereira Ortopedia — vence em 2 dias", tone: "warning" as const, to: "/dre" },
+    { id: "a5", text: "Revisar criativos Andrade Fitness", tone: "info" as const, to: "/operacao" },
+  ];
 
   return (
-    <AppShell title="Dashboard" subtitle="Visão geral da operação">
+    <AppShell title="Dashboard" subtitle="Como está sua agência hoje">
       <div className="px-4 py-6 md:px-6">
-        <PageHeader title="Bom dia, Rafael" subtitle="Aqui está o resumo da sua operação hoje.">
-          <button className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90">
+        <PageHeader title="Bom dia, Rafael" subtitle="Aqui está o pulso da operação — atualizado agora.">
+          <Link
+            to="/comercial"
+            className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+          >
             <Plus className="h-3.5 w-3.5" /> Novo Lead
-          </button>
+          </Link>
         </PageHeader>
 
-        {/* KPI Grid */}
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-          {kpis.map((k) => (
-            <KpiCard key={k.label} k={k} />
+        {/* Pulso do dia */}
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+          {pulse.map((p) => (
+            <PulseCard key={p.label} {...p} />
           ))}
         </div>
 
-        {/* Projeção comercial */}
-        <div className="mt-6">
-          <ProjectionCard />
+        {/* Meta + IA Executiva */}
+        <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-5">
+          <MetaCard vendas={vendasMes} />
+          <IAExecutivaCard />
         </div>
 
-        {/* Charts */}
-        <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
-          <div className="lg:col-span-2">
-            <ChartCard title="Receita mensal" subtitle="Receita realizada vs. meta">
-              <div className="h-[260px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={monthlyRevenue}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.22 0.010 155)" />
-                    <XAxis dataKey="month" stroke="oklch(0.68 0.02 155)" fontSize={11} tickLine={false} axisLine={false} />
-                    <YAxis stroke="oklch(0.68 0.02 155)" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `${v / 1000}k`} />
-                    <Tooltip contentStyle={{ background: "oklch(0.14 0.008 155)", border: "1px solid oklch(0.22 0.010 155)", borderRadius: 8, fontSize: 12 }} formatter={(v: unknown) => formatBRL(Number(v))} />
-                    <Line type="monotone" dataKey="meta" stroke="oklch(0.55 0.02 155)" strokeDasharray="4 4" strokeWidth={2} dot={false} />
-                    <Line type="monotone" dataKey="receita" stroke="oklch(0.72 0.19 155)" strokeWidth={2.5} dot={{ r: 3, fill: "oklch(0.72 0.19 155)" }} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </ChartCard>
-          </div>
-
-          <ChartCard title="Origem dos leads" subtitle="Últimos 30 dias">
-            <div className="h-[260px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={leadOrigins} dataKey="value" nameKey="origin" innerRadius={55} outerRadius={90} paddingAngle={2}>
-                    {leadOrigins.map((_, i) => (
-                      <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} stroke="oklch(0.12 0.006 155)" strokeWidth={2} />
-                    ))}
-                  </Pie>
-                  <Tooltip contentStyle={{ background: "oklch(0.14 0.008 155)", border: "1px solid oklch(0.22 0.010 155)", borderRadius: 8, fontSize: 12 }} />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="mt-2 grid grid-cols-2 gap-1.5">
-              {leadOrigins.map((o, i) => (
-                <div key={o.origin} className="flex items-center gap-1.5 text-[11px]">
-                  <span className="h-2 w-2 rounded-full" style={{ background: CHART_COLORS[i % CHART_COLORS.length] }} />
-                  <span className="truncate text-muted-foreground">{o.origin}</span>
-                  <span className="ml-auto font-mono text-foreground">{o.value}%</span>
-                </div>
-              ))}
-            </div>
-          </ChartCard>
-        </div>
-
-        <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
-          <div className="lg:col-span-2">
-            <ChartCard title="Funil de vendas" subtitle="Conversão por etapa">
-              <div className="h-[220px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={conversionByStage} layout="vertical" margin={{ left: 12 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.22 0.010 155)" horizontal={false} />
-                    <XAxis type="number" stroke="oklch(0.68 0.02 155)" fontSize={11} tickLine={false} axisLine={false} />
-                    <YAxis dataKey="stage" type="category" stroke="oklch(0.68 0.02 155)" fontSize={11} tickLine={false} axisLine={false} width={130} />
-                    <Tooltip contentStyle={{ background: "oklch(0.14 0.008 155)", border: "1px solid oklch(0.22 0.010 155)", borderRadius: 8, fontSize: 12 }} />
-                    <Bar dataKey="count" fill="oklch(0.72 0.19 155)" radius={[0, 4, 4, 0]} barSize={16} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </ChartCard>
-          </div>
-
-          {/* Today */}
-          <div className="rounded-lg border bg-card p-4">
+        {/* Próximas ações + Hoje */}
+        <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <div className="rounded-xl border bg-card p-4">
             <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-sm font-semibold tracking-tight">Hoje</h3>
-              <span className="text-[11px] text-muted-foreground">03 jul 2026</span>
+              <div>
+                <h3 className="text-sm font-semibold tracking-tight">Próximas ações</h3>
+                <p className="text-[11px] text-muted-foreground">Priorizadas pela IA para hoje</p>
+              </div>
+              <Link to="/central-ia" className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline">
+                Ver todas <ArrowRight className="h-3 w-3" />
+              </Link>
             </div>
-            <div className="mb-3">
-              <div className="mb-1.5 text-[10px] font-medium uppercase tracking-widest text-muted-foreground">Tarefas</div>
-              <div className="flex flex-col gap-1">
-                {todayTasks.map((t) => (
-                  <div key={t.id} className="flex items-center gap-2 rounded-md border bg-surface px-2 py-1.5">
+            <ul className="space-y-1">
+              {proximasAcoes.map((a) => (
+                <li key={a.id}>
+                  <Link
+                    to={a.to}
+                    className="flex items-center gap-2.5 rounded-md p-2 transition-colors hover:bg-accent"
+                  >
                     <span
                       className={cn(
                         "h-1.5 w-1.5 shrink-0 rounded-full",
-                        t.priority === "urgente" && "bg-destructive",
-                        t.priority === "alta" && "bg-warning",
-                        t.priority === "media" && "bg-info",
-                        t.priority === "baixa" && "bg-muted-foreground",
+                        a.tone === "destructive" && "bg-destructive",
+                        a.tone === "warning" && "bg-warning",
+                        a.tone === "primary" && "bg-primary",
+                        a.tone === "info" && "bg-info",
                       )}
                     />
-                    <span className="min-w-0 flex-1 truncate text-[12px]">{t.title}</span>
-                    <span className="text-[10px] text-muted-foreground">{t.owner.split(" ")[0]}</span>
-                  </div>
-                ))}
+                    <span className="min-w-0 flex-1 truncate text-[13px]">{a.text}</span>
+                    <ArrowRight className="h-3 w-3 shrink-0 text-muted-foreground" />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="rounded-xl border bg-card p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-semibold tracking-tight">Agenda de hoje</h3>
+                <p className="text-[11px] text-muted-foreground">03 jul 2026 · {agendaEvents.filter((e) => e.date === "2026-07-03").length} compromissos</p>
               </div>
+              <Link to="/operacao" className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline">
+                Abrir agenda <ArrowRight className="h-3 w-3" />
+              </Link>
             </div>
-            <div>
-              <div className="mb-1.5 text-[10px] font-medium uppercase tracking-widest text-muted-foreground">Agenda</div>
-              <div className="flex flex-col gap-1">
-                {todayEvents.map((e) => (
-                  <div key={e.id} className="flex items-center gap-2 rounded-md border bg-surface px-2 py-1.5">
+            <ul className="space-y-1">
+              {agendaEvents
+                .filter((e) => e.date === "2026-07-03")
+                .map((e) => (
+                  <li
+                    key={e.id}
+                    className="flex items-center gap-2.5 rounded-md border bg-surface px-2.5 py-2"
+                  >
                     <span className="font-mono text-[11px] text-primary">{e.time}</span>
-                    <span className="min-w-0 flex-1 truncate text-[12px]">{e.title}</span>
-                  </div>
+                    <span className="min-w-0 flex-1 truncate text-[13px]">{e.title}</span>
+                    {e.with && (
+                      <span className="hidden text-[10px] text-muted-foreground sm:inline">com {e.with}</span>
+                    )}
+                  </li>
                 ))}
-              </div>
-            </div>
+              {tasks
+                .filter((t) => t.status === "hoje")
+                .slice(0, 3)
+                .map((t) => (
+                  <li
+                    key={t.id}
+                    className="flex items-center gap-2.5 rounded-md border bg-surface px-2.5 py-2"
+                  >
+                    <CheckSquare className="h-3 w-3 text-muted-foreground" />
+                    <span className="min-w-0 flex-1 truncate text-[13px]">{t.title}</span>
+                    <span className="text-[10px] text-muted-foreground">{t.owner.split(" ")[0]}</span>
+                  </li>
+                ))}
+            </ul>
           </div>
         </div>
       </div>
     </AppShell>
+  );
+}
+
+function PulseCard({
+  label,
+  value,
+  icon: Icon,
+  tone,
+  to,
+}: {
+  label: string;
+  value: number | string;
+  icon: typeof Sparkles;
+  tone: PulseTone;
+  to: string;
+}) {
+  const toneMap: Record<PulseTone, string> = {
+    primary: "text-primary bg-primary/10",
+    warning: "text-warning bg-warning/10",
+    info: "text-info bg-info/10",
+    destructive: "text-destructive bg-destructive/10",
+    success: "text-success bg-success/10",
+  };
+  return (
+    <Link
+      to={to}
+      className="group relative overflow-hidden rounded-lg border bg-card p-4 transition-all hover:border-primary/40 hover:bg-surface/40"
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+            {label}
+          </div>
+          <div className="mt-2 font-mono text-[24px] font-semibold tracking-tight">{value}</div>
+        </div>
+        <div className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-md", toneMap[tone])}>
+          <Icon className="h-4 w-4" />
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+function MetaCard({ vendas }: { vendas: number }) {
+  return (
+    <div className="rounded-xl border bg-card p-5 lg:col-span-2">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-2">
+            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/15">
+              <Target className="h-3.5 w-3.5 text-primary" />
+            </div>
+            <h3 className="text-sm font-semibold tracking-tight">Meta do mês</h3>
+          </div>
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            Julho 2026 · {DIAS_RESTANTES} dias restantes
+          </p>
+        </div>
+        <span
+          className={cn(
+            "rounded-md border px-2 py-0.5 font-mono text-[11px]",
+            NO_RITMO
+              ? "border-success/40 bg-success/10 text-success"
+              : "border-warning/40 bg-warning/10 text-warning",
+          )}
+        >
+          {PCT.toFixed(0)}% da meta
+        </span>
+      </div>
+
+      <div className="mt-4 grid grid-cols-3 gap-2 text-[11px]">
+        <div className="rounded-md bg-surface/60 px-2.5 py-2">
+          <div className="text-muted-foreground">Meta</div>
+          <div className="font-mono text-[15px] font-semibold">{formatBRL(META)}</div>
+        </div>
+        <div className="rounded-md bg-surface/60 px-2.5 py-2">
+          <div className="text-muted-foreground">Receita atual</div>
+          <div className="font-mono text-[15px] font-semibold text-primary">{formatBRL(RECEITA)}</div>
+        </div>
+        <div className="rounded-md bg-surface/60 px-2.5 py-2">
+          <div className="text-muted-foreground">Receita prevista</div>
+          <div className={cn("font-mono text-[15px] font-semibold", NO_RITMO ? "text-success" : "text-warning")}>
+            {formatBRL(PROJECAO)}
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-surface">
+        <div
+          className="h-full rounded-full bg-gradient-to-r from-primary/70 to-primary transition-all"
+          style={{ width: `${PCT}%` }}
+        />
+      </div>
+
+      <div className="mt-3 flex items-center justify-between text-[11px] text-muted-foreground">
+        <span>{vendas} contratos fechados no mês</span>
+        <span className="inline-flex items-center gap-1 text-success">
+          <TrendingUp className="h-3 w-3" /> +12% MoM
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function IAExecutivaCard() {
+  return (
+    <div className="relative overflow-hidden rounded-xl border bg-gradient-to-br from-primary/15 via-card to-card p-5 shadow-elegant lg:col-span-3">
+      <div className="pointer-events-none absolute -right-16 -top-16 h-40 w-40 rounded-full bg-primary/20 blur-3xl" />
+      <div className="relative">
+        <div className="flex items-start gap-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/20 ring-1 ring-primary/30">
+            <Brain className="h-4 w-4 text-primary" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="text-[10px] uppercase tracking-widest text-primary/80">
+              IA Executiva
+            </div>
+            <h3 className="mt-0.5 text-[15px] font-semibold leading-snug tracking-tight md:text-base">
+              Para bater {formatBRL(META)}, faltam {DIAS_RESTANTES} dias.
+              {" "}
+              <span className={cn(NO_RITMO ? "text-success" : "text-warning")}>
+                Ritmo atual projeta {formatBRL(PROJECAO)}.
+              </span>
+            </h3>
+            <p className="mt-2 text-[12.5px] leading-relaxed text-muted-foreground">
+              Com sua taxa de conversão média de {(TAXA_CONVERSAO * 100).toFixed(0)}%, recomendo executar hoje:
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-4">
+          <Recommendation label="Prospecções" value={PROSPECCOES_NECESSARIAS} />
+          <Recommendation label="Reuniões" value={REUNIOES_NECESSARIAS} />
+          <Recommendation label="Propostas" value={PROPOSTAS_NECESSARIAS} />
+          <Recommendation label="Fechamentos" value={CONTRATOS_NECESSARIOS} highlight />
+        </div>
+
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <Link
+            to="/comercial"
+            className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+          >
+            Abrir CRM <ArrowRight className="h-3 w-3" />
+          </Link>
+          <Link
+            to="/central-ia"
+            className="inline-flex items-center gap-1.5 rounded-md border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/20"
+          >
+            <Brain className="h-3 w-3" /> Ver plano completo
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Recommendation({ label, value, highlight }: { label: string; value: number; highlight?: boolean }) {
+  return (
+    <div
+      className={cn(
+        "rounded-md border bg-surface/60 p-2.5",
+        highlight && "border-primary/40 bg-primary/10",
+      )}
+    >
+      <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{label}</div>
+      <div className={cn("mt-1 font-mono text-xl font-semibold", highlight && "text-primary")}>{value}</div>
+    </div>
   );
 }
