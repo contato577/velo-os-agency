@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as TarefasRouteImport } from './routes/tarefas'
 import { Route as RelatoriosRouteImport } from './routes/relatorios'
 import { Route as ProjetosRouteImport } from './routes/projetos'
+import { Route as PerformanceRouteImport } from './routes/performance'
 import { Route as OperacaoRouteImport } from './routes/operacao'
 import { Route as FinanceiroRouteImport } from './routes/financeiro'
 import { Route as DreRouteImport } from './routes/dre'
@@ -38,6 +39,11 @@ const RelatoriosRoute = RelatoriosRouteImport.update({
 const ProjetosRoute = ProjetosRouteImport.update({
   id: '/projetos',
   path: '/projetos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PerformanceRoute = PerformanceRouteImport.update({
+  id: '/performance',
+  path: '/performance',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OperacaoRoute = OperacaoRouteImport.update({
@@ -112,6 +118,7 @@ export interface FileRoutesByFullPath {
   '/dre': typeof DreRoute
   '/financeiro': typeof FinanceiroRoute
   '/operacao': typeof OperacaoRoute
+  '/performance': typeof PerformanceRoute
   '/projetos': typeof ProjetosRoute
   '/relatorios': typeof RelatoriosRoute
   '/tarefas': typeof TarefasRoute
@@ -128,6 +135,7 @@ export interface FileRoutesByTo {
   '/dre': typeof DreRoute
   '/financeiro': typeof FinanceiroRoute
   '/operacao': typeof OperacaoRoute
+  '/performance': typeof PerformanceRoute
   '/projetos': typeof ProjetosRoute
   '/relatorios': typeof RelatoriosRoute
   '/tarefas': typeof TarefasRoute
@@ -146,6 +154,7 @@ export interface FileRoutesById {
   '/dre': typeof DreRoute
   '/financeiro': typeof FinanceiroRoute
   '/operacao': typeof OperacaoRoute
+  '/performance': typeof PerformanceRoute
   '/projetos': typeof ProjetosRoute
   '/relatorios': typeof RelatoriosRoute
   '/tarefas': typeof TarefasRoute
@@ -165,6 +174,7 @@ export interface FileRouteTypes {
     | '/dre'
     | '/financeiro'
     | '/operacao'
+    | '/performance'
     | '/projetos'
     | '/relatorios'
     | '/tarefas'
@@ -181,6 +191,7 @@ export interface FileRouteTypes {
     | '/dre'
     | '/financeiro'
     | '/operacao'
+    | '/performance'
     | '/projetos'
     | '/relatorios'
     | '/tarefas'
@@ -198,6 +209,7 @@ export interface FileRouteTypes {
     | '/dre'
     | '/financeiro'
     | '/operacao'
+    | '/performance'
     | '/projetos'
     | '/relatorios'
     | '/tarefas'
@@ -216,6 +228,7 @@ export interface RootRouteChildren {
   DreRoute: typeof DreRoute
   FinanceiroRoute: typeof FinanceiroRoute
   OperacaoRoute: typeof OperacaoRoute
+  PerformanceRoute: typeof PerformanceRoute
   ProjetosRoute: typeof ProjetosRoute
   RelatoriosRoute: typeof RelatoriosRoute
   TarefasRoute: typeof TarefasRoute
@@ -242,6 +255,13 @@ declare module '@tanstack/react-router' {
       path: '/projetos'
       fullPath: '/projetos'
       preLoaderRoute: typeof ProjetosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/performance': {
+      id: '/performance'
+      path: '/performance'
+      fullPath: '/performance'
+      preLoaderRoute: typeof PerformanceRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/operacao': {
@@ -356,6 +376,7 @@ const rootRouteChildren: RootRouteChildren = {
   DreRoute: DreRoute,
   FinanceiroRoute: FinanceiroRoute,
   OperacaoRoute: OperacaoRoute,
+  PerformanceRoute: PerformanceRoute,
   ProjetosRoute: ProjetosRoute,
   RelatoriosRoute: RelatoriosRoute,
   TarefasRoute: TarefasRoute,
