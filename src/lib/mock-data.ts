@@ -33,6 +33,8 @@ export const stageOrder: LeadStage[] = [
   "perdido",
 ];
 
+export type LeadPotential = "alto" | "medio" | "baixo";
+
 export interface Lead {
   id: string;
   name: string;
@@ -44,6 +46,7 @@ export interface Lead {
   origin: "Instagram" | "Indicação" | "Google Ads" | "LinkedIn" | "Site" | "Outbound";
   owner: string;
   stage: LeadStage;
+  potencial: LeadPotential;
   value: number;
   createdAt: string;
   lastActivity: string;
@@ -53,6 +56,7 @@ export interface Lead {
 const owners = ["Rafael Souza", "Camila Torres", "Bruno Lima", "Ana Prado"];
 const cities = ["São Paulo", "Rio de Janeiro", "Curitiba", "Belo Horizonte", "Florianópolis", "Porto Alegre"];
 const origins: Lead["origin"][] = ["Instagram", "Indicação", "Google Ads", "LinkedIn", "Site", "Outbound"];
+const potenciais: LeadPotential[] = ["alto", "medio", "baixo"];
 
 const leadSeed: Array<[string, string, LeadStage, number]> = [
   ["Marina Costa", "Studio Marina Arquitetura", "novo", 3500],
@@ -86,6 +90,7 @@ export const leads: Lead[] = leadSeed.map(([name, company, stage, value], i) => 
   origin: origins[i % origins.length],
   owner: owners[i % owners.length],
   stage,
+  potencial: potenciais[i % potenciais.length],
   value,
   createdAt: new Date(Date.now() - (i + 1) * 86400000).toISOString(),
   lastActivity: new Date(Date.now() - i * 3600000 * 5).toISOString(),
