@@ -17,6 +17,7 @@ export const Route = createFileRoute("/dre")({
 });
 
 function DRE() {
+  const [openNew, setOpenNew] = useState(false);
   const july = financeEntries.filter((f) => f.date.startsWith("2026-07"));
   const receitas = {
     Mensalidades: july.filter((f) => f.category === "Mensalidade").reduce((s, f) => s + f.amount, 0),
