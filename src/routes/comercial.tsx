@@ -53,8 +53,20 @@ function LeadCard({ lead, onClick }: { lead: Lead; onClick: () => void }) {
       </div>
       <div className="flex items-center justify-between gap-2">
         <span className="font-mono text-[12px] font-semibold text-primary">{formatBRL(lead.value)}</span>
-        <div className="flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/40 text-[9px] font-semibold text-primary-foreground">
-          {lead.owner.split(" ").map((n) => n[0]).join("").slice(0, 2)}
+        <div className="flex items-center gap-1.5">
+          <span
+            className={cn(
+              "inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider",
+              potencialStyles[lead.potencial].chip,
+            )}
+            title={`Potencial ${potencialStyles[lead.potencial].label}`}
+          >
+            <span className={cn("h-1 w-1 rounded-full", potencialStyles[lead.potencial].dot)} />
+            {potencialStyles[lead.potencial].label}
+          </span>
+          <div className="flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/40 text-[9px] font-semibold text-primary-foreground">
+            {lead.owner.split(" ").map((n) => n[0]).join("").slice(0, 2)}
+          </div>
         </div>
       </div>
       {lead.tags && lead.tags.length > 0 && (
