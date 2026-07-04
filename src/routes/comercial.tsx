@@ -192,7 +192,7 @@ function Comercial() {
     .reduce((s, l) => s + l.value, 0);
 
   return (
-    <AppShell title="Comercial" subtitle="Pipeline de vendas">
+    <AppShell title="CRM" subtitle="Pipeline comercial">
       <div className="flex h-[calc(100vh-3.5rem)] flex-col">
         {/* Toolbar */}
         <div className="flex flex-wrap items-center gap-2 border-b px-4 py-3 md:px-6">
