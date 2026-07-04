@@ -1,15 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { Plus, Filter, Search, MoreHorizontal, Phone, Instagram, Globe, MapPin, X, Clock, Building2 } from "lucide-react";
+import { Plus, Filter, Search, MoreHorizontal, Phone, Instagram, Globe, MapPin, X, Clock, Building2, Flame } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
-import { leads, stageOrder, stageLabels, formatBRL, type Lead, type LeadStage } from "@/lib/mock-data";
+import { leads, stageOrder, stageLabels, formatBRL, type Lead, type LeadStage, type LeadPotential } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/comercial")({
   head: () => ({
     meta: [
-      { title: "Comercial · Veloce Performance OS" },
-      { name: "description", content: "CRM Kanban com pipeline completo de vendas e automações." },
+      { title: "CRM · Veloce" },
+      { name: "description", content: "Pipeline comercial completo com priorização inteligente de leads." },
     ],
   }),
   component: Comercial,
@@ -24,6 +24,12 @@ const stageColors: Record<LeadStage, string> = {
   negociacao: "bg-warning",
   fechado: "bg-success",
   perdido: "bg-muted-foreground",
+};
+
+const potencialStyles: Record<LeadPotential, { label: string; chip: string; dot: string }> = {
+  alto: { label: "Alto", chip: "bg-primary/15 text-primary border-primary/30", dot: "bg-primary" },
+  medio: { label: "Médio", chip: "bg-info/15 text-info border-info/30", dot: "bg-info" },
+  baixo: { label: "Baixo", chip: "bg-muted text-muted-foreground border-border", dot: "bg-muted-foreground" },
 };
 
 function LeadCard({ lead, onClick }: { lead: Lead; onClick: () => void }) {
