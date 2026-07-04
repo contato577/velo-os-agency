@@ -61,7 +61,6 @@ export function AppShell({
           {!collapsed && (
             <div className="flex min-w-0 flex-1 flex-col leading-tight">
               <span className="truncate text-sm font-semibold tracking-tight">Veloce</span>
-              <span className="truncate text-[10px] uppercase tracking-widest text-muted-foreground">Performance OS</span>
             </div>
           )}
           <button
