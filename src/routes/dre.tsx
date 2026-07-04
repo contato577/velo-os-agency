@@ -114,6 +114,12 @@ function DRE() {
     <AppShell title="DRE Inteligente" subtitle="Análise gerencial automática">
       <div className="px-4 py-6 md:px-6">
         <PageHeader title="DRE · Julho 2026" subtitle="Calculado automaticamente a partir do financeiro">
+          <button
+            onClick={() => setOpenNew(true)}
+            className="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+          >
+            <Plus className="h-3.5 w-3.5" /> Novo Lançamento
+          </button>
           <Link
             to="/central-ia"
             className="inline-flex h-8 items-center gap-1.5 rounded-md border border-primary/40 bg-primary/10 px-2.5 text-xs font-medium text-primary hover:bg-primary/20"
@@ -121,6 +127,8 @@ function DRE() {
             <Brain className="h-3.5 w-3.5" /> Central de IA
           </Link>
         </PageHeader>
+
+        {openNew && <NovoLancamentoDialog onClose={() => setOpenNew(false)} />}
 
         {/* Indicadores */}
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-8">
