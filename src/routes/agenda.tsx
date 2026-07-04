@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/agenda")({
   head: () => ({
     meta: [
-      { title: "Agenda · Veloce Performance OS" },
+      { title: "Agenda · Veloce" },
       { name: "description", content: "Calendário com reuniões, follow-ups, pagamentos e renovações." },
     ],
   }),

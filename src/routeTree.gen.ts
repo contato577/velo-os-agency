@@ -12,6 +12,8 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as TarefasRouteImport } from './routes/tarefas'
 import { Route as RelatoriosRouteImport } from './routes/relatorios'
 import { Route as ProjetosRouteImport } from './routes/projetos'
+import { Route as PerformanceRouteImport } from './routes/performance'
+import { Route as OperacaoRouteImport } from './routes/operacao'
 import { Route as FinanceiroRouteImport } from './routes/financeiro'
 import { Route as DreRouteImport } from './routes/dre'
 import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
@@ -21,7 +23,8 @@ import { Route as CentralIaRouteImport } from './routes/central-ia'
 import { Route as AutomacoesRouteImport } from './routes/automacoes'
 import { Route as AgendaRouteImport } from './routes/agenda'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as ClientesClientIdPerformanceRouteImport } from './routes/clientes.$clientId.performance'
+import { Route as ClientesIndexRouteImport } from './routes/clientes.index'
+import { Route as ClientesClientIdRouteImport } from './routes/clientes.$clientId'
 
 const TarefasRoute = TarefasRouteImport.update({
   id: '/tarefas',
@@ -36,6 +39,16 @@ const RelatoriosRoute = RelatoriosRouteImport.update({
 const ProjetosRoute = ProjetosRouteImport.update({
   id: '/projetos',
   path: '/projetos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PerformanceRoute = PerformanceRouteImport.update({
+  id: '/performance',
+  path: '/performance',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OperacaoRoute = OperacaoRouteImport.update({
+  id: '/operacao',
+  path: '/operacao',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FinanceiroRoute = FinanceiroRouteImport.update({
@@ -83,12 +96,16 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ClientesClientIdPerformanceRoute =
-  ClientesClientIdPerformanceRouteImport.update({
-    id: '/$clientId/performance',
-    path: '/$clientId/performance',
-    getParentRoute: () => ClientesRoute,
-  } as any)
+const ClientesIndexRoute = ClientesIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ClientesRoute,
+} as any)
+const ClientesClientIdRoute = ClientesClientIdRouteImport.update({
+  id: '/$clientId',
+  path: '/$clientId',
+  getParentRoute: () => ClientesRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -100,25 +117,30 @@ export interface FileRoutesByFullPath {
   '/configuracoes': typeof ConfiguracoesRoute
   '/dre': typeof DreRoute
   '/financeiro': typeof FinanceiroRoute
+  '/operacao': typeof OperacaoRoute
+  '/performance': typeof PerformanceRoute
   '/projetos': typeof ProjetosRoute
   '/relatorios': typeof RelatoriosRoute
   '/tarefas': typeof TarefasRoute
-  '/clientes/$clientId/performance': typeof ClientesClientIdPerformanceRoute
+  '/clientes/$clientId': typeof ClientesClientIdRoute
+  '/clientes/': typeof ClientesIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/agenda': typeof AgendaRoute
   '/automacoes': typeof AutomacoesRoute
   '/central-ia': typeof CentralIaRoute
-  '/clientes': typeof ClientesRouteWithChildren
   '/comercial': typeof ComercialRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/dre': typeof DreRoute
   '/financeiro': typeof FinanceiroRoute
+  '/operacao': typeof OperacaoRoute
+  '/performance': typeof PerformanceRoute
   '/projetos': typeof ProjetosRoute
   '/relatorios': typeof RelatoriosRoute
   '/tarefas': typeof TarefasRoute
-  '/clientes/$clientId/performance': typeof ClientesClientIdPerformanceRoute
+  '/clientes/$clientId': typeof ClientesClientIdRoute
+  '/clientes': typeof ClientesIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -131,10 +153,13 @@ export interface FileRoutesById {
   '/configuracoes': typeof ConfiguracoesRoute
   '/dre': typeof DreRoute
   '/financeiro': typeof FinanceiroRoute
+  '/operacao': typeof OperacaoRoute
+  '/performance': typeof PerformanceRoute
   '/projetos': typeof ProjetosRoute
   '/relatorios': typeof RelatoriosRoute
   '/tarefas': typeof TarefasRoute
-  '/clientes/$clientId/performance': typeof ClientesClientIdPerformanceRoute
+  '/clientes/$clientId': typeof ClientesClientIdRoute
+  '/clientes/': typeof ClientesIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -148,25 +173,30 @@ export interface FileRouteTypes {
     | '/configuracoes'
     | '/dre'
     | '/financeiro'
+    | '/operacao'
+    | '/performance'
     | '/projetos'
     | '/relatorios'
     | '/tarefas'
-    | '/clientes/$clientId/performance'
+    | '/clientes/$clientId'
+    | '/clientes/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/agenda'
     | '/automacoes'
     | '/central-ia'
-    | '/clientes'
     | '/comercial'
     | '/configuracoes'
     | '/dre'
     | '/financeiro'
+    | '/operacao'
+    | '/performance'
     | '/projetos'
     | '/relatorios'
     | '/tarefas'
-    | '/clientes/$clientId/performance'
+    | '/clientes/$clientId'
+    | '/clientes'
   id:
     | '__root__'
     | '/'
@@ -178,10 +208,13 @@ export interface FileRouteTypes {
     | '/configuracoes'
     | '/dre'
     | '/financeiro'
+    | '/operacao'
+    | '/performance'
     | '/projetos'
     | '/relatorios'
     | '/tarefas'
-    | '/clientes/$clientId/performance'
+    | '/clientes/$clientId'
+    | '/clientes/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -194,6 +227,8 @@ export interface RootRouteChildren {
   ConfiguracoesRoute: typeof ConfiguracoesRoute
   DreRoute: typeof DreRoute
   FinanceiroRoute: typeof FinanceiroRoute
+  OperacaoRoute: typeof OperacaoRoute
+  PerformanceRoute: typeof PerformanceRoute
   ProjetosRoute: typeof ProjetosRoute
   RelatoriosRoute: typeof RelatoriosRoute
   TarefasRoute: typeof TarefasRoute
@@ -220,6 +255,20 @@ declare module '@tanstack/react-router' {
       path: '/projetos'
       fullPath: '/projetos'
       preLoaderRoute: typeof ProjetosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/performance': {
+      id: '/performance'
+      path: '/performance'
+      fullPath: '/performance'
+      preLoaderRoute: typeof PerformanceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/operacao': {
+      id: '/operacao'
+      path: '/operacao'
+      fullPath: '/operacao'
+      preLoaderRoute: typeof OperacaoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/financeiro': {
@@ -285,22 +334,31 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/clientes/$clientId/performance': {
-      id: '/clientes/$clientId/performance'
-      path: '/$clientId/performance'
-      fullPath: '/clientes/$clientId/performance'
-      preLoaderRoute: typeof ClientesClientIdPerformanceRouteImport
+    '/clientes/': {
+      id: '/clientes/'
+      path: '/'
+      fullPath: '/clientes/'
+      preLoaderRoute: typeof ClientesIndexRouteImport
+      parentRoute: typeof ClientesRoute
+    }
+    '/clientes/$clientId': {
+      id: '/clientes/$clientId'
+      path: '/$clientId'
+      fullPath: '/clientes/$clientId'
+      preLoaderRoute: typeof ClientesClientIdRouteImport
       parentRoute: typeof ClientesRoute
     }
   }
 }
 
 interface ClientesRouteChildren {
-  ClientesClientIdPerformanceRoute: typeof ClientesClientIdPerformanceRoute
+  ClientesClientIdRoute: typeof ClientesClientIdRoute
+  ClientesIndexRoute: typeof ClientesIndexRoute
 }
 
 const ClientesRouteChildren: ClientesRouteChildren = {
-  ClientesClientIdPerformanceRoute: ClientesClientIdPerformanceRoute,
+  ClientesClientIdRoute: ClientesClientIdRoute,
+  ClientesIndexRoute: ClientesIndexRoute,
 }
 
 const ClientesRouteWithChildren = ClientesRoute._addFileChildren(
@@ -317,6 +375,8 @@ const rootRouteChildren: RootRouteChildren = {
   ConfiguracoesRoute: ConfiguracoesRoute,
   DreRoute: DreRoute,
   FinanceiroRoute: FinanceiroRoute,
+  OperacaoRoute: OperacaoRoute,
+  PerformanceRoute: PerformanceRoute,
   ProjetosRoute: ProjetosRoute,
   RelatoriosRoute: RelatoriosRoute,
   TarefasRoute: TarefasRoute,
@@ -324,13 +384,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

@@ -4,13 +4,9 @@ import {
   LayoutDashboard,
   Users,
   Briefcase,
-  FolderKanban,
-  Wallet,
+  LineChart,
   BarChart3,
-  CheckSquare,
-  Calendar,
-  Zap,
-  FileBarChart,
+  Layers,
   Settings,
   Search,
   Bell,
@@ -25,16 +21,12 @@ import veloceLogo from "@/assets/veloce-logo.jpg.asset.json";
 
 const nav = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/central-ia", label: "Central de IA", icon: Brain, badge: "IA" },
-  { to: "/comercial", label: "CRM Comercial", icon: Briefcase, badge: 18 },
+  { to: "/comercial", label: "CRM", icon: Briefcase, badge: 18 },
   { to: "/clientes", label: "Clientes", icon: Users },
-  { to: "/projetos", label: "Projetos", icon: FolderKanban },
-  { to: "/tarefas", label: "Tarefas do dia", icon: CheckSquare, badge: 4 },
-  { to: "/agenda", label: "Agenda", icon: Calendar },
-  { to: "/financeiro", label: "Financeiro", icon: Wallet },
+  { to: "/operacao", label: "Operação", icon: Layers, badge: 4 },
+  { to: "/performance", label: "Performance", icon: LineChart },
   { to: "/dre", label: "DRE Inteligente", icon: BarChart3 },
-  { to: "/automacoes", label: "Automações", icon: Zap },
-  { to: "/relatorios", label: "Relatórios", icon: FileBarChart },
+  { to: "/central-ia", label: "Central de IA", icon: Brain, badge: "IA" },
   { to: "/configuracoes", label: "Configurações", icon: Settings },
 ] as const;
 
@@ -69,7 +61,6 @@ export function AppShell({
           {!collapsed && (
             <div className="flex min-w-0 flex-1 flex-col leading-tight">
               <span className="truncate text-sm font-semibold tracking-tight">Veloce</span>
-              <span className="truncate text-[10px] uppercase tracking-widest text-muted-foreground">Performance OS</span>
             </div>
           )}
           <button

@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/relatorios")({
   head: () => ({
     meta: [
-      { title: "Relatórios · Veloce Performance OS" },
+      { title: "Relatórios · Veloce" },
       { name: "description", content: "Indicadores comerciais, LTV, CAC, ROI e desempenho da equipe." },
     ],
   }),

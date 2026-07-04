@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useState } from "react";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { Sparkles, ArrowUpRight, ArrowDownRight, TrendingUp, Brain, ArrowRight } from "lucide-react";
+import { Sparkles, ArrowUpRight, ArrowDownRight, TrendingUp, Brain, ArrowRight, Plus, X, Paperclip } from "lucide-react";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { clients, financeEntries, formatBRL, monthlyRevenue } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
@@ -8,7 +9,7 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/dre")({
   head: () => ({
     meta: [
-      { title: "DRE Inteligente · Veloce Performance OS" },
+      { title: "DRE Inteligente · Veloce" },
       { name: "description", content: "DRE gerencial automático com indicadores, comparativos e insights de IA." },
     ],
   }),
@@ -16,6 +17,7 @@ export const Route = createFileRoute("/dre")({
 });
 
 function DRE() {
+  const [openNew, setOpenNew] = useState(false);
   const july = financeEntries.filter((f) => f.date.startsWith("2026-07"));
   const receitas = {
     Mensalidades: july.filter((f) => f.category === "Mensalidade").reduce((s, f) => s + f.amount, 0),
@@ -112,6 +114,12 @@ function DRE() {
     <AppShell title="DRE Inteligente" subtitle="Análise gerencial automática">
       <div className="px-4 py-6 md:px-6">
         <PageHeader title="DRE · Julho 2026" subtitle="Calculado automaticamente a partir do financeiro">
+          <button
+            onClick={() => setOpenNew(true)}
+            className="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+          >
+            <Plus className="h-3.5 w-3.5" /> Novo Lançamento
+          </button>
           <Link
             to="/central-ia"
             className="inline-flex h-8 items-center gap-1.5 rounded-md border border-primary/40 bg-primary/10 px-2.5 text-xs font-medium text-primary hover:bg-primary/20"
@@ -119,6 +127,8 @@ function DRE() {
             <Brain className="h-3.5 w-3.5" /> Central de IA
           </Link>
         </PageHeader>
+
+        {openNew && <NovoLancamentoDialog onClose={() => setOpenNew(false)} />}
 
         {/* Indicadores */}
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-8">
@@ -361,6 +371,103 @@ function FinIndicator({ label, value, tone = "default" }: { label: string; value
     <div className="rounded-lg border bg-surface/40 p-3">
       <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{label}</div>
       <div className={cn("mt-1 font-mono text-lg font-semibold tracking-tight", toneClass)}>{value}</div>
+    </div>
+  );
+}
+
+function NovoLancamentoDialog({ onClose }: { onClose: () => void }) {
+  return (
+    <>
+      <div className="fixed inset-0 z-40 bg-background/70 backdrop-blur-sm" onClick={onClose} />
+      <div className="fixed left-1/2 top-1/2 z-50 w-[92vw] max-w-lg -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-xl border bg-card shadow-elegant">
+        <div className="flex items-center justify-between border-b px-4 py-3">
+          <div>
+            <h3 className="text-sm font-semibold tracking-tight">Novo lançamento</h3>
+            <p className="text-[11px] text-muted-foreground">Registre uma entrada ou saída — a IA usa isso para análises.</p>
+          </div>
+          <button onClick={onClose} className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <form
+          onSubmit={(e) => { e.preventDefault(); onClose(); }}
+          className="max-h-[70vh] space-y-3 overflow-y-auto p-4"
+        >
+          <FormField label="Descrição">
+            <input required placeholder="Ex: Mensalidade Pereira Ortopedia" className={inputCls} />
+          </FormField>
+          <div className="grid grid-cols-2 gap-3">
+            <FormField label="Categoria">
+              <select className={inputCls}>
+                <option>Mensalidade</option>
+                <option>Projeto</option>
+                <option>Software</option>
+                <option>Folha</option>
+                <option>Imposto</option>
+                <option>Anúncios</option>
+                <option>Outro</option>
+              </select>
+            </FormField>
+            <FormField label="Fornecedor / Cliente">
+              <input placeholder="Nome" className={inputCls} />
+            </FormField>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <FormField label="Valor (R$)">
+              <input type="number" min="0" step="0.01" required placeholder="0,00" className={inputCls} />
+            </FormField>
+            <FormField label="Data">
+              <input type="date" required className={inputCls} />
+            </FormField>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <FormField label="Forma de pagamento">
+              <select className={inputCls}>
+                <option>PIX</option>
+                <option>Boleto</option>
+                <option>Cartão de crédito</option>
+                <option>Transferência</option>
+                <option>Dinheiro</option>
+              </select>
+            </FormField>
+            <FormField label="Recorrente?">
+              <select className={inputCls}>
+                <option>Não</option>
+                <option>Mensal</option>
+                <option>Trimestral</option>
+                <option>Anual</option>
+              </select>
+            </FormField>
+          </div>
+          <FormField label="Observações">
+            <textarea rows={2} className={inputCls} placeholder="Notas internas…" />
+          </FormField>
+          <label className="flex cursor-pointer items-center gap-2 rounded-md border border-dashed p-3 text-[12px] text-muted-foreground hover:bg-accent">
+            <Paperclip className="h-3.5 w-3.5" />
+            <span>Anexar comprovante (opcional)</span>
+            <input type="file" className="hidden" />
+          </label>
+          <div className="flex items-center justify-end gap-2 border-t pt-3">
+            <button type="button" onClick={onClose} className="rounded-md border bg-surface px-3 py-1.5 text-xs font-medium hover:bg-accent">
+              Cancelar
+            </button>
+            <button type="submit" className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90">
+              Salvar lançamento
+            </button>
+          </div>
+        </form>
+      </div>
+    </>
+  );
+}
+
+const inputCls = "w-full rounded-md border bg-background px-3 py-1.5 text-[13px] focus:border-primary/60 focus:outline-none";
+
+function FormField({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <div className="mb-1 text-[10px] font-medium uppercase tracking-widest text-muted-foreground">{label}</div>
+      {children}
     </div>
   );
 }

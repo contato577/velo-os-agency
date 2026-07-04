@@ -1,15 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { Plus, Filter, Search, MoreHorizontal, Phone, Instagram, Globe, MapPin, X, Clock, Building2 } from "lucide-react";
+import { Plus, Filter, Search, MoreHorizontal, Phone, Instagram, Globe, MapPin, X, Clock, Building2, Flame } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
-import { leads, stageOrder, stageLabels, formatBRL, type Lead, type LeadStage } from "@/lib/mock-data";
+import { leads, stageOrder, stageLabels, formatBRL, type Lead, type LeadStage, type LeadPotential } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/comercial")({
   head: () => ({
     meta: [
-      { title: "Comercial · Veloce Performance OS" },
-      { name: "description", content: "CRM Kanban com pipeline completo de vendas e automações." },
+      { title: "CRM · Veloce" },
+      { name: "description", content: "Pipeline comercial completo com priorização inteligente de leads." },
     ],
   }),
   component: Comercial,
@@ -24,6 +24,12 @@ const stageColors: Record<LeadStage, string> = {
   negociacao: "bg-warning",
   fechado: "bg-success",
   perdido: "bg-muted-foreground",
+};
+
+const potencialStyles: Record<LeadPotential, { label: string; chip: string; dot: string }> = {
+  alto: { label: "Alto", chip: "bg-primary/15 text-primary border-primary/30", dot: "bg-primary" },
+  medio: { label: "Médio", chip: "bg-info/15 text-info border-info/30", dot: "bg-info" },
+  baixo: { label: "Baixo", chip: "bg-muted text-muted-foreground border-border", dot: "bg-muted-foreground" },
 };
 
 function LeadCard({ lead, onClick }: { lead: Lead; onClick: () => void }) {
@@ -47,8 +53,20 @@ function LeadCard({ lead, onClick }: { lead: Lead; onClick: () => void }) {
       </div>
       <div className="flex items-center justify-between gap-2">
         <span className="font-mono text-[12px] font-semibold text-primary">{formatBRL(lead.value)}</span>
-        <div className="flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/40 text-[9px] font-semibold text-primary-foreground">
-          {lead.owner.split(" ").map((n) => n[0]).join("").slice(0, 2)}
+        <div className="flex items-center gap-1.5">
+          <span
+            className={cn(
+              "inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider",
+              potencialStyles[lead.potencial].chip,
+            )}
+            title={`Potencial ${potencialStyles[lead.potencial].label}`}
+          >
+            <span className={cn("h-1 w-1 rounded-full", potencialStyles[lead.potencial].dot)} />
+            {potencialStyles[lead.potencial].label}
+          </span>
+          <div className="flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/40 text-[9px] font-semibold text-primary-foreground">
+            {lead.owner.split(" ").map((n) => n[0]).join("").slice(0, 2)}
+          </div>
         </div>
       </div>
       {lead.tags && lead.tags.length > 0 && (
@@ -91,6 +109,14 @@ function LeadDetailPanel({ lead, onClose }: { lead: Lead; onClose: () => void })
               {stageLabels[lead.stage]}
             </span>
             <span className="rounded-md bg-accent px-2 py-1 text-[11px] text-muted-foreground">{lead.origin}</span>
+            <span
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-[11px] font-medium",
+                potencialStyles[lead.potencial].chip,
+              )}
+            >
+              <Flame className="h-3 w-3" /> Potencial {potencialStyles[lead.potencial].label}
+            </span>
           </div>
 
           <div className="mt-4 rounded-lg border bg-surface p-3">
@@ -166,7 +192,7 @@ function Comercial() {
     .reduce((s, l) => s + l.value, 0);
 
   return (
-    <AppShell title="Comercial" subtitle="Pipeline de vendas">
+    <AppShell title="CRM" subtitle="Pipeline comercial">
       <div className="flex h-[calc(100vh-3.5rem)] flex-col">
         {/* Toolbar */}
         <div className="flex flex-wrap items-center gap-2 border-b px-4 py-3 md:px-6">
