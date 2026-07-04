@@ -75,15 +75,15 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Veloce Performance OS — Sistema operacional para agências" },
+      { title: "Veloce — Sistema operacional para agências de marketing" },
       {
         name: "description",
         content:
-          "Núcleo operacional da Veloce Performance: CRM, projetos, financeiro, DRE e automações em um só lugar.",
+          "Veloce: CRM, clientes, operação, performance, DRE inteligente e IA executiva em um só lugar.",
       },
-      { name: "author", content: "Veloce Performance" },
+      { name: "author", content: "Veloce" },
       { name: "theme-color", content: "#000000" },
-      { property: "og:title", content: "Veloce Performance OS" },
+      { property: "og:title", content: "Veloce" },
       {
         property: "og:description",
         content: "O sistema operacional completo da sua agência de marketing.",
