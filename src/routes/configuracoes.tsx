@@ -5,7 +5,7 @@ import { AppShell, PageHeader } from "@/components/app-shell";
 export const Route = createFileRoute("/configuracoes")({
   head: () => ({
     meta: [
-      { title: "Configurações · Veloce Performance OS" },
+      { title: "Configurações · Veloce" },
       { name: "description", content: "Perfil, workspace, usuários, permissões e integrações." },
     ],
   }),

@@ -1,4 +1,4 @@
-// Centralized mock data for the Veloce Performance OS.
+// Centralized mock data for the Veloce.
 // Structured to mirror a future Supabase schema (multi-tenant ready).
 
 export type LeadStage =

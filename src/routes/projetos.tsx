@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/projetos")({
   head: () => ({
     meta: [
-      { title: "Projetos · Veloce Performance OS" },
+      { title: "Projetos · Veloce" },
       { name: "description", content: "Projetos ativos por cliente com status e progresso." },
     ],
   }),

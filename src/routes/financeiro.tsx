@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/financeiro")({
   head: () => ({
     meta: [
-      { title: "Financeiro · Veloce Performance OS" },
+      { title: "Financeiro · Veloce" },
       { name: "description", content: "Entradas, saídas, fluxo de caixa e recorrências." },
     ],
   }),

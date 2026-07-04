@@ -35,7 +35,7 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/central-ia")({
   head: () => ({
     meta: [
-      { title: "Central de IA · Veloce Performance OS" },
+      { title: "Central de IA · Veloce" },
       { name: "description", content: "Diretor executivo em IA: diagnósticos, recomendações e previsão do mês." },
     ],
   }),

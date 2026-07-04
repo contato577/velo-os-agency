@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/automacoes")({
   head: () => ({
     meta: [
-      { title: "Automações · Veloce Performance OS" },
+      { title: "Automações · Veloce" },
       { name: "description", content: "Criador visual de automações e regras de negócio." },
     ],
   }),
