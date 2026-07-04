@@ -109,6 +109,14 @@ function LeadDetailPanel({ lead, onClose }: { lead: Lead; onClose: () => void })
               {stageLabels[lead.stage]}
             </span>
             <span className="rounded-md bg-accent px-2 py-1 text-[11px] text-muted-foreground">{lead.origin}</span>
+            <span
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-[11px] font-medium",
+                potencialStyles[lead.potencial].chip,
+              )}
+            >
+              <Flame className="h-3 w-3" /> Potencial {potencialStyles[lead.potencial].label}
+            </span>
           </div>
 
           <div className="mt-4 rounded-lg border bg-surface p-3">
