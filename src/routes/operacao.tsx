@@ -1,6 +1,17 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { Plus, FolderKanban, CheckSquare, Calendar as CalendarIcon, Users, MoreHorizontal } from "lucide-react";
+import {
+  Plus,
+  FolderKanban,
+  CheckSquare,
+  Calendar as CalendarIcon,
+  Users,
+  MoreHorizontal,
+  AlertTriangle,
+  Clock,
+  Flame,
+  ArrowRight,
+} from "lucide-react";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { projects, tasks, agendaEvents } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
@@ -17,11 +28,7 @@ export const Route = createFileRoute("/operacao")({
 
 type Tab = "projetos" | "tarefas" | "agenda";
 
-const tabsList: { key: Tab; label: string; icon: typeof FolderKanban; count: number }[] = [
-  { key: "projetos", label: "Projetos", icon: FolderKanban, count: projects.length },
-  { key: "tarefas", label: "Tarefas", icon: CheckSquare, count: tasks.filter((t) => t.status !== "concluida").length },
-  { key: "agenda", label: "Agenda", icon: CalendarIcon, count: agendaEvents.length },
-];
+const HOJE = "2026-07-03";
 
 const projStatus = {
   briefing: { label: "Briefing", color: "bg-info/15 text-info" },
@@ -32,6 +39,22 @@ const projStatus = {
 
 function Operacao() {
   const [tab, setTab] = useState<Tab>("projetos");
+
+  const tarefasAtrasadas = tasks.filter(
+    (t) => t.status !== "concluida" && new Date(t.dueDate) < new Date(HOJE),
+  );
+  const tarefasHoje = tasks.filter((t) => t.status === "hoje" || t.dueDate === HOJE);
+  const projetosAtrasados = projects.filter(
+    (p) => p.status !== "entregue" && new Date(p.deadline) < new Date("2026-07-15"),
+  );
+  const reunioesHoje = agendaEvents.filter((e) => e.date === HOJE && e.type === "reuniao");
+
+  const tabsList: { key: Tab; label: string; icon: typeof FolderKanban; count: number }[] = [
+    { key: "projetos", label: "Projetos", icon: FolderKanban, count: projects.length },
+    { key: "tarefas", label: "Tarefas", icon: CheckSquare, count: tasks.filter((t) => t.status !== "concluida").length },
+    { key: "agenda", label: "Agenda", icon: CalendarIcon, count: agendaEvents.length },
+  ];
+
   return (
     <AppShell title="Operação" subtitle="Projetos, tarefas e agenda">
       <div className="px-4 py-6 md:px-6">
@@ -41,7 +64,43 @@ function Operacao() {
           </button>
         </PageHeader>
 
-        <div className="mb-6 flex items-center gap-1 border-b">
+        {/* Pulso operacional */}
+        <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-4">
+          <PulseTile
+            label="Tarefas atrasadas"
+            value={tarefasAtrasadas.length}
+            tone="destructive"
+            icon={AlertTriangle}
+            hint="Resolver hoje"
+            onClick={() => setTab("tarefas")}
+          />
+          <PulseTile
+            label="Para hoje"
+            value={tarefasHoje.length}
+            tone="warning"
+            icon={Clock}
+            hint="Foco do dia"
+            onClick={() => setTab("tarefas")}
+          />
+          <PulseTile
+            label="Projetos em produção"
+            value={projects.filter((p) => p.status === "producao").length}
+            tone="primary"
+            icon={Flame}
+            hint={`${projetosAtrasados.length} com risco de atraso`}
+            onClick={() => setTab("projetos")}
+          />
+          <PulseTile
+            label="Reuniões hoje"
+            value={reunioesHoje.length}
+            tone="info"
+            icon={CalendarIcon}
+            hint="Não esqueça de preparar"
+            onClick={() => setTab("agenda")}
+          />
+        </div>
+
+        <div className="mb-5 flex items-center gap-1 border-b">
           {tabsList.map((t) => {
             const Icon = t.icon;
             const active = t.key === tab;
@@ -68,6 +127,53 @@ function Operacao() {
     </AppShell>
   );
 }
+
+type PulseTone = "primary" | "warning" | "info" | "destructive" | "success";
+
+function PulseTile({
+  label,
+  value,
+  tone,
+  icon: Icon,
+  hint,
+  onClick,
+}: {
+  label: string;
+  value: number | string;
+  tone: PulseTone;
+  icon: typeof AlertTriangle;
+  hint?: string;
+  onClick?: () => void;
+}) {
+  const toneMap: Record<PulseTone, string> = {
+    primary: "text-primary bg-primary/10",
+    warning: "text-warning bg-warning/10",
+    info: "text-info bg-info/10",
+    destructive: "text-destructive bg-destructive/10",
+    success: "text-success bg-success/10",
+  };
+  return (
+    <button
+      onClick={onClick}
+      className="group relative overflow-hidden rounded-lg border bg-card p-4 text-left transition-all hover:border-primary/40 hover:bg-surface/40"
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">{label}</div>
+          <div className="mt-2 font-mono text-[22px] font-semibold tracking-tight">{value}</div>
+          {hint && <div className="mt-1 text-[11px] text-muted-foreground">{hint}</div>}
+        </div>
+        <div className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-md", toneMap[tone])}>
+          <Icon className="h-4 w-4" />
+        </div>
+      </div>
+      <ArrowRight className="absolute right-3 bottom-3 h-3 w-3 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+    </button>
+  );
+}
+
+// keep Link import for future actions
+void Link;
 
 function ProjetosPanel() {
   const groups = ["briefing", "producao", "revisao", "entregue"] as const;
