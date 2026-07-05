@@ -442,6 +442,60 @@ function CentralIA() {
             </div>
           </div>
         </div>
+
+        {/* Automações ativas — motor declarativo */}
+        <div className="mt-6 rounded-xl border bg-card p-4">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/15">
+                <Zap className="h-3.5 w-3.5 text-primary" />
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold tracking-tight">Automações ativas</h3>
+                <p className="text-[11px] text-muted-foreground">
+                  Regras do motor de automação — disparadas pelos eventos da sua operação
+                </p>
+              </div>
+            </div>
+            <span className="rounded bg-success/15 px-2 py-0.5 text-[11px] font-medium text-success">
+              {automationRules.filter((r) => r.active).length} ativas
+            </span>
+          </div>
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+            {automationRules.map((r) => (
+              <div key={r.id} className="rounded-lg border bg-surface/40 p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className={cn("h-1.5 w-1.5 rounded-full", r.active ? "bg-success" : "bg-muted-foreground")} />
+                      <span className="truncate text-[13px] font-medium">{r.name}</span>
+                    </div>
+                    <div className="mt-0.5 text-[10px] uppercase tracking-widest text-muted-foreground">
+                      {r.category} · {r.runs} execuções
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-2 flex flex-wrap items-center gap-1 text-[11px]">
+                  <span className="rounded bg-info/15 px-1.5 py-0.5 text-info">
+                    Quando: {triggerLabels[r.when]}
+                  </span>
+                  {r.condition && (
+                    <span className="rounded bg-warning/15 px-1.5 py-0.5 text-warning">
+                      {r.condition}
+                    </span>
+                  )}
+                </div>
+                <div className="mt-1.5 flex flex-wrap gap-1 text-[10px]">
+                  {r.do.map((a) => (
+                    <span key={a} className="rounded bg-primary/10 px-1.5 py-0.5 text-primary">
+                      → {actionLabels[a]}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </AppShell>
   );
