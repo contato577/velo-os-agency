@@ -30,6 +30,7 @@ import {
 import { useMemo, useState } from "react";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { dashboardKPIs, formatBRL, leads, tasks, clients, agendaEvents, monthlyRevenue } from "@/lib/mock-data";
+import { automationRules, actionLabels, triggerLabels } from "@/lib/automation-engine";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/central-ia")({
