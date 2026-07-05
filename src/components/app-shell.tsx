@@ -1,10 +1,9 @@
-import { Link, useRouterState } from "@tanstack/react-router";
-import { useState, type ReactNode } from "react";
+import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
+import { useEffect, useState, type ReactNode } from "react";
 import {
   LayoutDashboard,
   Users,
   Briefcase,
-  LineChart,
   BarChart3,
   Layers,
   Settings,
@@ -14,9 +13,12 @@ import {
   ChevronsRight,
   Command,
   Brain,
+  LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { notifications } from "@/lib/mock-data";
+import { getSession, signOut, type Session } from "@/lib/auth-mock";
+import { QuickActions } from "@/components/quick-actions";
 import veloceLogo from "@/assets/veloce-logo.jpg.asset.json";
 
 const nav = [
@@ -24,7 +26,6 @@ const nav = [
   { to: "/comercial", label: "CRM", icon: Briefcase, badge: 18 },
   { to: "/clientes", label: "Clientes", icon: Users },
   { to: "/operacao", label: "Operação", icon: Layers, badge: 4 },
-  { to: "/performance", label: "Performance", icon: LineChart },
   { to: "/dre", label: "DRE Inteligente", icon: BarChart3 },
   { to: "/central-ia", label: "Central de IA", icon: Brain, badge: "IA" },
   { to: "/configuracoes", label: "Configurações", icon: Settings },
@@ -43,7 +44,35 @@ export function AppShell({
 }) {
   const [collapsed, setCollapsed] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
+  const [userOpen, setUserOpen] = useState(false);
+  const [session, setSession] = useState<Session | null>(null);
+  const [ready, setReady] = useState(false);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const navigate = useNavigate();
+
+  // Auth gate (client-side)
+  useEffect(() => {
+    const s = getSession();
+    if (!s) {
+      navigate({ to: "/auth" });
+      return;
+    }
+    setSession(s);
+    setReady(true);
+  }, [navigate]);
+
+  const handleSignOut = () => {
+    signOut();
+    navigate({ to: "/auth" });
+  };
+
+  if (!ready || !session) {
+    return (
+      <div className="dark flex min-h-screen w-full items-center justify-center bg-background text-foreground">
+        <div className="text-xs text-muted-foreground">Carregando…</div>
+      </div>
+    );
+  }
 
   return (
     <div className="dark flex min-h-screen w-full bg-background text-foreground">
@@ -51,12 +80,12 @@ export function AppShell({
       <aside
         className={cn(
           "sticky top-0 h-screen shrink-0 border-r bg-sidebar text-sidebar-foreground transition-[width] duration-200",
-          collapsed ? "w-[64px]" : "w-[240px]",
+          collapsed ? "w-[64px]" : "w-[236px]",
         )}
       >
         <div className="flex h-14 items-center gap-2 border-b px-3">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-md bg-black ring-1 ring-primary/30">
-            <img src={veloceLogo.url} alt="Veloce Performance" className="h-8 w-8 object-cover" />
+            <img src={veloceLogo.url} alt="Veloce" className="h-8 w-8 object-cover" />
           </div>
           {!collapsed && (
             <div className="flex min-w-0 flex-1 flex-col leading-tight">
@@ -96,7 +125,7 @@ export function AppShell({
                   <>
                     <span className="min-w-0 flex-1 truncate">{item.label}</span>
                     {"badge" in item && item.badge ? (
-                      <span className="rounded bg-sidebar-accent px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">
+                      <span className="rounded bg-sidebar-accent px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
                         {item.badge}
                       </span>
                     ) : null}
@@ -107,17 +136,34 @@ export function AppShell({
           })}
         </nav>
 
+        {/* User card + menu */}
         {!collapsed && (
-          <div className="absolute inset-x-2 bottom-2 rounded-md border bg-sidebar-accent/40 p-2.5">
-            <div className="flex items-center gap-2">
+          <div className="absolute inset-x-2 bottom-2">
+            <button
+              onClick={() => setUserOpen((v) => !v)}
+              className="flex w-full items-center gap-2 rounded-md border bg-sidebar-accent/40 p-2.5 text-left transition-colors hover:bg-sidebar-accent/70"
+            >
               <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/50 text-[11px] font-semibold text-primary-foreground">
-                RS
+                {session.initials}
               </div>
               <div className="min-w-0 flex-1 leading-tight">
-                <div className="truncate text-xs font-medium">Rafael Souza</div>
-                <div className="truncate text-[10px] text-muted-foreground">Administrador</div>
+                <div className="truncate text-xs font-medium">{session.name}</div>
+                <div className="truncate text-[10px] text-muted-foreground">{session.email}</div>
               </div>
-            </div>
+            </button>
+            {userOpen && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setUserOpen(false)} />
+                <div className="absolute bottom-14 left-0 right-0 z-50 overflow-hidden rounded-md border bg-popover shadow-elegant">
+                  <button
+                    onClick={handleSignOut}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-destructive transition-colors hover:bg-destructive/10"
+                  >
+                    <LogOut className="h-3.5 w-3.5" /> Sair
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         )}
       </aside>
@@ -136,15 +182,21 @@ export function AppShell({
             <div className="group relative flex items-center">
               <Search className="pointer-events-none absolute left-2.5 h-3.5 w-3.5 text-muted-foreground" />
               <input
-                placeholder="Buscar cliente, lead, projeto, tarefa…"
+                placeholder="Buscar cliente, lead, projeto…  (⌘K)"
                 className="h-8 w-full rounded-md border bg-surface pl-8 pr-14 text-[13px] placeholder:text-muted-foreground/70 focus:border-primary/60 focus:outline-none focus:ring-2 focus:ring-primary/20"
+                readOnly
+                onFocus={(e) => {
+                  e.currentTarget.blur();
+                  window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true }));
+                }}
               />
               <kbd className="pointer-events-none absolute right-2 flex items-center gap-0.5 rounded border bg-background px-1 py-0.5 font-mono text-[10px] text-muted-foreground">
                 <Command className="h-2.5 w-2.5" />K
               </kbd>
             </div>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1.5">
+            <QuickActions />
             <div className="relative">
               <button
                 onClick={() => setNotifOpen((v) => !v)}
@@ -155,31 +207,34 @@ export function AppShell({
                 <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-primary ring-2 ring-background" />
               </button>
               {notifOpen && (
-                <div className="absolute right-0 top-10 z-30 w-80 rounded-lg border bg-popover p-2 shadow-elegant">
-                  <div className="mb-1 flex items-center justify-between px-2 py-1">
-                    <span className="text-xs font-semibold">Notificações</span>
-                    <span className="text-[10px] text-muted-foreground">{notifications.length} novas</span>
-                  </div>
-                  <div className="flex flex-col gap-0.5">
-                    {notifications.map((n) => (
-                      <div key={n.id} className="flex items-start gap-2 rounded-md p-2 hover:bg-accent">
-                        <span
-                          className={cn(
-                            "mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full",
-                            n.type === "success" && "bg-success",
-                            n.type === "warning" && "bg-warning",
-                            n.type === "info" && "bg-info",
-                          )}
-                        />
-                        <div className="min-w-0 flex-1">
-                          <div className="truncate text-[12px] font-medium">{n.title}</div>
-                          <div className="truncate text-[11px] text-muted-foreground">{n.description}</div>
+                <>
+                  <div className="fixed inset-0 z-30" onClick={() => setNotifOpen(false)} />
+                  <div className="absolute right-0 top-10 z-40 w-80 rounded-lg border bg-popover p-2 shadow-elegant">
+                    <div className="mb-1 flex items-center justify-between px-2 py-1">
+                      <span className="text-xs font-semibold">Notificações</span>
+                      <span className="text-[10px] text-muted-foreground">{notifications.length} novas</span>
+                    </div>
+                    <div className="flex flex-col gap-0.5">
+                      {notifications.map((n) => (
+                        <div key={n.id} className="flex items-start gap-2 rounded-md p-2 hover:bg-accent">
+                          <span
+                            className={cn(
+                              "mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full",
+                              n.type === "success" && "bg-success",
+                              n.type === "warning" && "bg-warning",
+                              n.type === "info" && "bg-info",
+                            )}
+                          />
+                          <div className="min-w-0 flex-1">
+                            <div className="truncate text-[12px] font-medium">{n.title}</div>
+                            <div className="truncate text-[11px] text-muted-foreground">{n.description}</div>
+                          </div>
+                          <span className="text-[10px] text-muted-foreground">{n.time}</span>
                         </div>
-                        <span className="text-[10px] text-muted-foreground">{n.time}</span>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
+                </>
               )}
             </div>
             {actions}
