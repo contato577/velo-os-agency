@@ -1,9 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { Sparkles, ArrowUpRight, ArrowDownRight, TrendingUp, Brain, ArrowRight, Plus, X, Paperclip } from "lucide-react";
+import { ArrowUpRight, ArrowDownRight, TrendingUp, Brain, ArrowRight, Plus, X } from "lucide-react";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { clients, financeEntries, formatBRL, monthlyRevenue } from "@/lib/mock-data";
+import { useDataStore } from "@/lib/data-store";
+import { LancamentoForm } from "@/components/lancamento-form";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/dre")({
