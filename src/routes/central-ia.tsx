@@ -3,7 +3,6 @@ import {
   Sparkles,
   AlertTriangle,
   TrendingDown,
-  TrendingUp,
   Users2,
   Wallet,
   Target,
@@ -29,8 +28,16 @@ import {
 } from "recharts";
 import { useMemo, useState } from "react";
 import { AppShell, PageHeader } from "@/components/app-shell";
-import { dashboardKPIs, formatBRL, leads, tasks, clients, agendaEvents, monthlyRevenue } from "@/lib/mock-data";
+import { dashboardKPIs, formatBRL, agendaEvents } from "@/lib/mock-data";
 import { automationRules, actionLabels, triggerLabels } from "@/lib/automation-engine";
+import {
+  sortByPriority,
+  priorityStyles,
+  type Insight,
+  type InsightArea,
+  type InsightPriority,
+} from "@/lib/ai-engine";
+import { useDataStore } from "@/lib/data-store";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/central-ia")({
@@ -43,26 +50,13 @@ export const Route = createFileRoute("/central-ia")({
   component: CentralIA,
 });
 
-type Priority = "critica" | "alta" | "media" | "baixa";
-type Area = "Comercial" | "Financeiro" | "Operacional" | "Clientes" | "Tarefas" | "DRE" | "Agenda" | "Metas";
-
-interface Diagnostic {
-  id: string;
-  area: Area;
-  title: string;
-  description: string;
-  priority: Priority;
-  impact: string;
-  icon: typeof AlertTriangle;
-  actionLabel: string;
-  to: string;
-}
-
-const priorityStyles: Record<Priority, { chip: string; ring: string; label: string }> = {
-  critica: { chip: "bg-destructive/15 text-destructive", ring: "ring-destructive/30", label: "Crítica" },
-  alta: { chip: "bg-warning/15 text-warning", ring: "ring-warning/30", label: "Alta" },
-  media: { chip: "bg-info/15 text-info", ring: "ring-info/30", label: "Média" },
-  baixa: { chip: "bg-muted text-muted-foreground", ring: "ring-border", label: "Baixa" },
+const areaIcons: Record<InsightArea, typeof AlertTriangle> = {
+  Comercial: Users2,
+  Financeiro: Wallet,
+  Operacional: CheckSquare,
+  Clientes: BadgeCheck,
+  Agenda: Calendar,
+  Metas: Target,
 };
 
 function CentralIA() {
