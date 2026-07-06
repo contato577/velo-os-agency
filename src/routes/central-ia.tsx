@@ -358,3 +358,41 @@ function MiniStat({ label, value, tone = "default" }: { label: string; value: st
     </div>
   );
 }
+
+function DiagnosticCard({ d }: { d: Insight }) {
+  const Icon = areaIcons[d.area] ?? AlertTriangle;
+  const ps = priorityStyles[d.prioridade];
+  const isCritico = d.prioridade === "critica";
+  return (
+    <div
+      className={cn(
+        "group relative flex flex-col rounded-lg border bg-card p-4 transition-all hover:-translate-y-0.5 hover:shadow-elegant",
+        isCritico ? `${ps.border} ${ps.ring}` : `hover:ring-1 ${ps.ring}`,
+      )}
+    >
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <div className={cn("flex h-7 w-7 items-center justify-center rounded-md", ps.chip)}>
+            <Icon className="h-3.5 w-3.5" />
+          </div>
+          <span className="text-[10px] uppercase tracking-widest text-muted-foreground">{d.area}</span>
+        </div>
+        <span className={cn("rounded px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider", ps.chip)}>
+          {ps.label}
+        </span>
+      </div>
+      <h3 className="text-[14px] font-semibold leading-snug tracking-tight">{d.titulo}</h3>
+      <p className="mt-1.5 text-[12px] leading-relaxed text-muted-foreground">{d.descricao}</p>
+      <div className="mt-3 flex items-center justify-between border-t pt-3">
+        <span className="text-[11px] font-mono text-muted-foreground">{d.impacto}</span>
+        <Link
+          to={d.to}
+          {...(d.search ? { search: d.search as never } : {})}
+          className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-1 text-[11px] font-medium text-primary transition-colors hover:bg-primary/20"
+        >
+          {d.acaoLabel} <ArrowRight className="h-3 w-3" />
+        </Link>
+      </div>
+    </div>
+  );
+}
