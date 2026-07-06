@@ -45,6 +45,8 @@
   --color-surface: var(--surface);
   --color-surface-2: var(--surface-2);
   --color-surface-3: var(--surface-3);
+  --color-brand-deep: var(--brand-deep);
+  --color-brand-deep-foreground: var(--brand-deep-foreground);
 
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
