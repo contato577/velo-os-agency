@@ -68,14 +68,14 @@ export function AppShell({
 
   if (!ready || !session) {
     return (
-      <div className="dark flex min-h-screen w-full items-center justify-center bg-background text-foreground">
+      <div className="flex min-h-screen w-full items-center justify-center bg-background text-foreground">
         <div className="text-xs text-muted-foreground">Carregando…</div>
       </div>
     );
   }
 
   return (
-    <div className="dark flex min-h-screen w-full bg-background text-foreground">
+    <div className="flex min-h-screen w-full bg-background text-foreground">
       {/* Sidebar */}
       <aside
         className={cn(

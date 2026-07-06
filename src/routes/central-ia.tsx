@@ -2,8 +2,6 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   Sparkles,
   AlertTriangle,
-  TrendingDown,
-  TrendingUp,
   Users2,
   Wallet,
   Target,
@@ -12,7 +10,6 @@ import {
   ArrowRight,
   Brain,
   Zap,
-  ClipboardList,
   BadgeCheck,
 } from "lucide-react";
 import {
@@ -29,8 +26,15 @@ import {
 } from "recharts";
 import { useMemo, useState } from "react";
 import { AppShell, PageHeader } from "@/components/app-shell";
-import { dashboardKPIs, formatBRL, leads, tasks, clients, agendaEvents, monthlyRevenue } from "@/lib/mock-data";
+import { dashboardKPIs, formatBRL } from "@/lib/mock-data";
 import { automationRules, actionLabels, triggerLabels } from "@/lib/automation-engine";
+import {
+  sortByPriority,
+  priorityStyles,
+  type Insight,
+  type InsightArea,
+} from "@/lib/ai-engine";
+import { useDataStore } from "@/lib/data-store";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/central-ia")({
@@ -43,162 +47,38 @@ export const Route = createFileRoute("/central-ia")({
   component: CentralIA,
 });
 
-type Priority = "critica" | "alta" | "media" | "baixa";
-type Area = "Comercial" | "Financeiro" | "Operacional" | "Clientes" | "Tarefas" | "DRE" | "Agenda" | "Metas";
-
-interface Diagnostic {
-  id: string;
-  area: Area;
-  title: string;
-  description: string;
-  priority: Priority;
-  impact: string;
-  icon: typeof AlertTriangle;
-  actionLabel: string;
-  to: string;
-}
-
-const priorityStyles: Record<Priority, { chip: string; ring: string; label: string }> = {
-  critica: { chip: "bg-destructive/15 text-destructive", ring: "ring-destructive/30", label: "Crítica" },
-  alta: { chip: "bg-warning/15 text-warning", ring: "ring-warning/30", label: "Alta" },
-  media: { chip: "bg-info/15 text-info", ring: "ring-info/30", label: "Média" },
-  baixa: { chip: "bg-muted text-muted-foreground", ring: "ring-border", label: "Baixa" },
+const areaIcons: Record<InsightArea, typeof AlertTriangle> = {
+  Comercial: Users2,
+  Financeiro: Wallet,
+  Operacional: CheckSquare,
+  Clientes: BadgeCheck,
+  Agenda: Calendar,
+  Metas: Target,
 };
 
 function CentralIA() {
-  // Compute diagnostics dynamically from mock data
-  const leadsSemFollowup = leads.filter((l) => ["novo", "contato"].includes(l.stage)).length;
-  const propostasAbertas = leads.filter((l) => l.stage === "proposta").length;
-  const tarefasAtrasadas = tasks.filter((t) => t.status !== "concluida" && new Date(t.dueDate) < new Date("2026-07-03")).length + 3;
-  const clientesVencendo = clients.filter((c) => {
-    const d = new Date(c.renewalDate);
-    const hoje = new Date("2026-07-03");
-    const diff = (d.getTime() - hoje.getTime()) / 86400000;
-    return diff >= 0 && diff <= 30;
-  }).length;
+  const { insights } = useDataStore();
   const meta = dashboardKPIs.metaMes;
   const receita = dashboardKPIs.vendasMes;
-  const gapMeta = ((meta - receita) / meta) * 100;
 
-  const diagnostics: Diagnostic[] = [
-    {
-      id: "d1",
-      area: "Comercial",
-      title: `${leadsSemFollowup} leads sem follow-up`,
-      description: "Leads em estágios iniciais parados há mais de 48h. Priorize contato ativo hoje.",
-      priority: "alta",
-      impact: `Potencial em risco: ${formatBRL(leadsSemFollowup * 4500)}`,
-      icon: Users2,
-      actionLabel: "Abrir CRM",
-      to: "/comercial",
-    },
-    {
-      id: "d2",
-      area: "Comercial",
-      title: `${propostasAbertas} propostas aguardando retorno`,
-      description: "Propostas enviadas há mais de 5 dias sem resposta. Recomendo cadência de nutrição.",
-      priority: "alta",
-      impact: "Ciclo de venda alongando 22%",
-      icon: ClipboardList,
-      actionLabel: "Ver propostas",
-      to: "/comercial",
-    },
-    {
-      id: "d3",
-      area: "Tarefas",
-      title: `${tarefasAtrasadas} tarefas atrasadas`,
-      description: "Tarefas críticas passaram do prazo. Isso afeta prazos com clientes ativos.",
-      priority: "critica",
-      impact: "Risco de SLA em 2 contas",
-      icon: CheckSquare,
-      actionLabel: "Resolver agora",
-      to: "/tarefas",
-    },
-    {
-      id: "d4",
-      area: "Clientes",
-      title: `${clientesVencendo} contratos vencendo em 30 dias`,
-      description: "Prepare pauta de renovação, resultados alcançados e proposta de upsell.",
-      priority: "media",
-      impact: `MRR em jogo: ${formatBRL(clientesVencendo * 6500)}`,
-      icon: BadgeCheck,
-      actionLabel: "Abrir Clientes",
-      to: "/clientes",
-    },
-    {
-      id: "d5",
-      area: "Metas",
-      title: `Você está ${gapMeta.toFixed(1)}% abaixo da meta`,
-      description: "Faltam poucos dias para o fim do mês. Concentre esforços nas negociações quentes.",
-      priority: "alta",
-      impact: `Gap: ${formatBRL(meta - receita)}`,
-      icon: Target,
-      actionLabel: "Ver funil",
-      to: "/comercial",
-    },
-    {
-      id: "d6",
-      area: "DRE",
-      title: "Margem caiu 4% vs mês anterior",
-      description: "Aumento das despesas com ferramentas explica boa parte da queda. Reavaliar contratos.",
-      priority: "media",
-      impact: "Impacto estimado: R$ 2.4k",
-      icon: TrendingDown,
-      actionLabel: "Abrir DRE",
-      to: "/dre",
-    },
-    {
-      id: "d7",
-      area: "Financeiro",
-      title: "Fluxo de caixa negativo em 8 dias",
-      description: "Projeção indica saldo negativo caso 2 recebimentos atrasem. Antecipe cobranças.",
-      priority: "critica",
-      impact: "Saldo projetado: -R$ 4.8k",
-      icon: Wallet,
-      actionLabel: "Abrir Financeiro",
-      to: "/financeiro",
-    },
-    {
-      id: "d8",
-      area: "Comercial",
-      title: "Conversão do funil caiu 6%",
-      description: "Reunião → Proposta perdeu eficiência. Reveja o script de diagnóstico.",
-      priority: "media",
-      impact: "Menos 2 fechamentos/mês",
-      icon: TrendingDown,
-      actionLabel: "Abrir CRM",
-      to: "/comercial",
-    },
-    {
-      id: "d9",
-      area: "Clientes",
-      title: "1 cliente com risco de churn",
-      description: "Reis Nutrição está pausado há 12 dias. Recomendo reunião de saúde da conta.",
-      priority: "alta",
-      impact: `MRR: ${formatBRL(3200)}`,
-      icon: AlertTriangle,
-      actionLabel: "Ver cliente",
-      to: "/clientes",
-    },
-    {
-      id: "d10",
-      area: "Agenda",
-      title: `${agendaEvents.filter((e) => e.date === "2026-07-03").length} compromissos hoje`,
-      description: "Reuniões e follow-ups agendados. Verifique preparação e materiais.",
-      priority: "baixa",
-      impact: "Rotina do dia",
-      icon: Calendar,
-      actionLabel: "Abrir Agenda",
-      to: "/agenda",
-    },
+  const areas: (InsightArea | "Todas")[] = [
+    "Todas",
+    "Comercial",
+    "Financeiro",
+    "Operacional",
+    "Clientes",
+    "Agenda",
+    "Metas",
   ];
+  const [filter, setFilter] = useState<InsightArea | "Todas">("Todas");
 
-  const [filter, setFilter] = useState<Area | "Todas">("Todas");
-  const filtered = filter === "Todas" ? diagnostics : diagnostics.filter((d) => d.area === filter);
+  const filtered = useMemo(() => {
+    const list = filter === "Todas" ? insights : insights.filter((d) => d.area === filter);
+    return sortByPriority(list);
+  }, [insights, filter]);
 
-  const areas: (Area | "Todas")[] = ["Todas", "Comercial", "Financeiro", "Operacional", "Clientes", "Tarefas", "DRE", "Agenda", "Metas"];
+  const criticos = insights.filter((d) => d.prioridade === "critica").length;
 
-  // Recomendações
   const [recs, setRecs] = useState([
     { id: "r1", text: "Cobrar Empresa Alpha — fatura em atraso há 3 dias", done: false },
     { id: "r2", text: "Agendar reunião com Cliente Beta — renovação em 20 dias", done: false },
@@ -208,7 +88,6 @@ function CentralIA() {
     { id: "r6", text: "Ativar automação de renovação para contratos < 30d", done: false },
   ]);
 
-  // Previsão do mês
   const previsao = useMemo(() => {
     const diaAtual = 3;
     const diasNoMes = 31;
@@ -219,7 +98,6 @@ function CentralIA() {
     const ticketMedio = dashboardKPIs.ticketMedio;
     const contratosNecessarios = Math.ceil(falta / ticketMedio);
     const probabilidade = Math.min(100, Math.max(0, Math.round((projecao / meta) * 100)));
-
     const forecastData = Array.from({ length: diasNoMes }, (_, i) => {
       const day = i + 1;
       const realizado = day <= diaAtual ? Math.round((receita / diaAtual) * day) : null;
@@ -227,7 +105,6 @@ function CentralIA() {
       const metaLinha = Math.round((meta / diasNoMes) * day);
       return { day: `${day}`, realizado, projetado, meta: metaLinha };
     });
-
     return { diasRestantes, projecao, falta, contratosNecessarios, probabilidade, forecastData };
   }, [receita, meta]);
 
@@ -244,7 +121,6 @@ function CentralIA() {
           </div>
         </PageHeader>
 
-        {/* Hero: IA summary */}
         <div className="mb-6 overflow-hidden rounded-xl border bg-gradient-to-br from-primary/10 via-card to-card p-5 shadow-elegant">
           <div className="flex items-start gap-4">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/20 ring-1 ring-primary/30">
@@ -253,12 +129,12 @@ function CentralIA() {
             <div className="min-w-0 flex-1">
               <div className="text-[11px] uppercase tracking-widest text-primary/80">Resumo executivo</div>
               <h2 className="mt-1 text-lg font-semibold tracking-tight md:text-xl">
-                Sua operação está saudável, mas com {" "}
-                <span className="text-warning">{diagnostics.filter((d) => d.priority === "critica").length} pontos críticos</span>{" "}
+                Sua operação tem{" "}
+                <span className="text-warning">{criticos} ponto{criticos === 1 ? "" : "s"} crítico{criticos === 1 ? "" : "s"}</span>{" "}
                 e uma projeção {previsao.probabilidade >= 100 ? "acima" : "abaixo"} da meta.
               </h2>
               <p className="mt-2 max-w-3xl text-[13px] leading-relaxed text-muted-foreground">
-                A IA identificou {diagnostics.length} diagnósticos e {recs.filter((r) => !r.done).length} ações recomendadas para hoje.
+                A IA identificou {insights.length} diagnósticos e {recs.filter((r) => !r.done).length} ações recomendadas para hoje.
                 Focando nos itens críticos, o impacto estimado é de +{formatBRL(previsao.falta)} até o fim do mês.
               </p>
             </div>
@@ -269,7 +145,6 @@ function CentralIA() {
           </div>
         </div>
 
-        {/* Filtros */}
         <div className="mb-4 flex flex-wrap gap-1.5">
           {areas.map((a) => (
             <button
@@ -287,45 +162,10 @@ function CentralIA() {
           ))}
         </div>
 
-        {/* Diagnósticos grid */}
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {filtered.map((d) => {
-            const Icon = d.icon;
-            const ps = priorityStyles[d.priority];
-            return (
-              <div
-                key={d.id}
-                className={cn(
-                  "group relative flex flex-col rounded-lg border bg-card p-4 transition-all hover:-translate-y-0.5 hover:shadow-elegant hover:ring-1",
-                  ps.ring,
-                )}
-              >
-                <div className="mb-2 flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <div className={cn("flex h-7 w-7 items-center justify-center rounded-md", ps.chip)}>
-                      <Icon className="h-3.5 w-3.5" />
-                    </div>
-                    <span className="text-[10px] uppercase tracking-widest text-muted-foreground">{d.area}</span>
-                  </div>
-                  <span className={cn("rounded px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider", ps.chip)}>
-                    {ps.label}
-                  </span>
-                </div>
-                <h3 className="text-[14px] font-semibold leading-snug tracking-tight">{d.title}</h3>
-                <p className="mt-1.5 text-[12px] leading-relaxed text-muted-foreground">{d.description}</p>
-                <div className="mt-3 flex items-center justify-between border-t pt-3">
-                  <span className="text-[11px] font-mono text-muted-foreground">{d.impact}</span>
-                  <Link
-                    to={d.to}
-                    className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-1 text-[11px] font-medium text-primary transition-colors hover:bg-primary/20"
-                  >
-                    {d.actionLabel} <ArrowRight className="h-3 w-3" />
-                  </Link>
-                </div>
-              </div>
-            );
-          })}
+          {filtered.map((d) => <DiagnosticCard key={d.id} d={d} />)}
         </div>
+
 
         {/* Recomendações + Previsão */}
         <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-5">
@@ -512,6 +352,44 @@ function MiniStat({ label, value, tone = "default" }: { label: string; value: st
     <div className="rounded-lg border bg-surface/40 p-2.5">
       <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{label}</div>
       <div className={cn("mt-1 font-mono text-[15px] font-semibold tracking-tight", toneClass)}>{value}</div>
+    </div>
+  );
+}
+
+function DiagnosticCard({ d }: { d: Insight }) {
+  const Icon = areaIcons[d.area] ?? AlertTriangle;
+  const ps = priorityStyles[d.prioridade];
+  const isCritico = d.prioridade === "critica";
+  return (
+    <div
+      className={cn(
+        "group relative flex flex-col rounded-lg border bg-card p-4 transition-all hover:-translate-y-0.5 hover:shadow-elegant",
+        isCritico ? `${ps.border} ${ps.ring}` : `hover:ring-1 ${ps.ring}`,
+      )}
+    >
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <div className={cn("flex h-7 w-7 items-center justify-center rounded-md", ps.chip)}>
+            <Icon className="h-3.5 w-3.5" />
+          </div>
+          <span className="text-[10px] uppercase tracking-widest text-muted-foreground">{d.area}</span>
+        </div>
+        <span className={cn("rounded px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider", ps.chip)}>
+          {ps.label}
+        </span>
+      </div>
+      <h3 className="text-[14px] font-semibold leading-snug tracking-tight">{d.titulo}</h3>
+      <p className="mt-1.5 text-[12px] leading-relaxed text-muted-foreground">{d.descricao}</p>
+      <div className="mt-3 flex items-center justify-between border-t pt-3">
+        <span className="text-[11px] font-mono text-muted-foreground">{d.impacto}</span>
+        <Link
+          to={d.to}
+          {...(d.search ? { search: d.search as never } : {})}
+          className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-1 text-[11px] font-medium text-primary transition-colors hover:bg-primary/20"
+        >
+          {d.acaoLabel} <ArrowRight className="h-3 w-3" />
+        </Link>
+      </div>
     </div>
   );
 }

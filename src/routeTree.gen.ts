@@ -9,52 +9,20 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as TarefasRouteImport } from './routes/tarefas'
-import { Route as RelatoriosRouteImport } from './routes/relatorios'
-import { Route as ProjetosRouteImport } from './routes/projetos'
-import { Route as PerformanceRouteImport } from './routes/performance'
 import { Route as OperacaoRouteImport } from './routes/operacao'
-import { Route as FinanceiroRouteImport } from './routes/financeiro'
 import { Route as DreRouteImport } from './routes/dre'
 import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
 import { Route as ComercialRouteImport } from './routes/comercial'
 import { Route as ClientesRouteImport } from './routes/clientes'
 import { Route as CentralIaRouteImport } from './routes/central-ia'
-import { Route as AutomacoesRouteImport } from './routes/automacoes'
 import { Route as AuthRouteImport } from './routes/auth'
-import { Route as AgendaRouteImport } from './routes/agenda'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ClientesIndexRouteImport } from './routes/clientes.index'
 import { Route as ClientesClientIdRouteImport } from './routes/clientes.$clientId'
 
-const TarefasRoute = TarefasRouteImport.update({
-  id: '/tarefas',
-  path: '/tarefas',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RelatoriosRoute = RelatoriosRouteImport.update({
-  id: '/relatorios',
-  path: '/relatorios',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ProjetosRoute = ProjetosRouteImport.update({
-  id: '/projetos',
-  path: '/projetos',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PerformanceRoute = PerformanceRouteImport.update({
-  id: '/performance',
-  path: '/performance',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const OperacaoRoute = OperacaoRouteImport.update({
   id: '/operacao',
   path: '/operacao',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const FinanceiroRoute = FinanceiroRouteImport.update({
-  id: '/financeiro',
-  path: '/financeiro',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DreRoute = DreRouteImport.update({
@@ -82,19 +50,9 @@ const CentralIaRoute = CentralIaRouteImport.update({
   path: '/central-ia',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AutomacoesRoute = AutomacoesRouteImport.update({
-  id: '/automacoes',
-  path: '/automacoes',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AgendaRoute = AgendaRouteImport.update({
-  id: '/agenda',
-  path: '/agenda',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -115,58 +73,37 @@ const ClientesClientIdRoute = ClientesClientIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/agenda': typeof AgendaRoute
   '/auth': typeof AuthRoute
-  '/automacoes': typeof AutomacoesRoute
   '/central-ia': typeof CentralIaRoute
   '/clientes': typeof ClientesRouteWithChildren
   '/comercial': typeof ComercialRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/dre': typeof DreRoute
-  '/financeiro': typeof FinanceiroRoute
   '/operacao': typeof OperacaoRoute
-  '/performance': typeof PerformanceRoute
-  '/projetos': typeof ProjetosRoute
-  '/relatorios': typeof RelatoriosRoute
-  '/tarefas': typeof TarefasRoute
   '/clientes/$clientId': typeof ClientesClientIdRoute
   '/clientes/': typeof ClientesIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/agenda': typeof AgendaRoute
   '/auth': typeof AuthRoute
-  '/automacoes': typeof AutomacoesRoute
   '/central-ia': typeof CentralIaRoute
   '/comercial': typeof ComercialRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/dre': typeof DreRoute
-  '/financeiro': typeof FinanceiroRoute
   '/operacao': typeof OperacaoRoute
-  '/performance': typeof PerformanceRoute
-  '/projetos': typeof ProjetosRoute
-  '/relatorios': typeof RelatoriosRoute
-  '/tarefas': typeof TarefasRoute
   '/clientes/$clientId': typeof ClientesClientIdRoute
   '/clientes': typeof ClientesIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/agenda': typeof AgendaRoute
   '/auth': typeof AuthRoute
-  '/automacoes': typeof AutomacoesRoute
   '/central-ia': typeof CentralIaRoute
   '/clientes': typeof ClientesRouteWithChildren
   '/comercial': typeof ComercialRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/dre': typeof DreRoute
-  '/financeiro': typeof FinanceiroRoute
   '/operacao': typeof OperacaoRoute
-  '/performance': typeof PerformanceRoute
-  '/projetos': typeof ProjetosRoute
-  '/relatorios': typeof RelatoriosRoute
-  '/tarefas': typeof TarefasRoute
   '/clientes/$clientId': typeof ClientesClientIdRoute
   '/clientes/': typeof ClientesIndexRoute
 }
@@ -174,121 +111,58 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/agenda'
     | '/auth'
-    | '/automacoes'
     | '/central-ia'
     | '/clientes'
     | '/comercial'
     | '/configuracoes'
     | '/dre'
-    | '/financeiro'
     | '/operacao'
-    | '/performance'
-    | '/projetos'
-    | '/relatorios'
-    | '/tarefas'
     | '/clientes/$clientId'
     | '/clientes/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/agenda'
     | '/auth'
-    | '/automacoes'
     | '/central-ia'
     | '/comercial'
     | '/configuracoes'
     | '/dre'
-    | '/financeiro'
     | '/operacao'
-    | '/performance'
-    | '/projetos'
-    | '/relatorios'
-    | '/tarefas'
     | '/clientes/$clientId'
     | '/clientes'
   id:
     | '__root__'
     | '/'
-    | '/agenda'
     | '/auth'
-    | '/automacoes'
     | '/central-ia'
     | '/clientes'
     | '/comercial'
     | '/configuracoes'
     | '/dre'
-    | '/financeiro'
     | '/operacao'
-    | '/performance'
-    | '/projetos'
-    | '/relatorios'
-    | '/tarefas'
     | '/clientes/$clientId'
     | '/clientes/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AgendaRoute: typeof AgendaRoute
   AuthRoute: typeof AuthRoute
-  AutomacoesRoute: typeof AutomacoesRoute
   CentralIaRoute: typeof CentralIaRoute
   ClientesRoute: typeof ClientesRouteWithChildren
   ComercialRoute: typeof ComercialRoute
   ConfiguracoesRoute: typeof ConfiguracoesRoute
   DreRoute: typeof DreRoute
-  FinanceiroRoute: typeof FinanceiroRoute
   OperacaoRoute: typeof OperacaoRoute
-  PerformanceRoute: typeof PerformanceRoute
-  ProjetosRoute: typeof ProjetosRoute
-  RelatoriosRoute: typeof RelatoriosRoute
-  TarefasRoute: typeof TarefasRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/tarefas': {
-      id: '/tarefas'
-      path: '/tarefas'
-      fullPath: '/tarefas'
-      preLoaderRoute: typeof TarefasRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/relatorios': {
-      id: '/relatorios'
-      path: '/relatorios'
-      fullPath: '/relatorios'
-      preLoaderRoute: typeof RelatoriosRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/projetos': {
-      id: '/projetos'
-      path: '/projetos'
-      fullPath: '/projetos'
-      preLoaderRoute: typeof ProjetosRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/performance': {
-      id: '/performance'
-      path: '/performance'
-      fullPath: '/performance'
-      preLoaderRoute: typeof PerformanceRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/operacao': {
       id: '/operacao'
       path: '/operacao'
       fullPath: '/operacao'
       preLoaderRoute: typeof OperacaoRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/financeiro': {
-      id: '/financeiro'
-      path: '/financeiro'
-      fullPath: '/financeiro'
-      preLoaderRoute: typeof FinanceiroRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dre': {
@@ -326,25 +200,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CentralIaRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/automacoes': {
-      id: '/automacoes'
-      path: '/automacoes'
-      fullPath: '/automacoes'
-      preLoaderRoute: typeof AutomacoesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/auth': {
       id: '/auth'
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/agenda': {
-      id: '/agenda'
-      path: '/agenda'
-      fullPath: '/agenda'
-      preLoaderRoute: typeof AgendaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -387,20 +247,13 @@ const ClientesRouteWithChildren = ClientesRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AgendaRoute: AgendaRoute,
   AuthRoute: AuthRoute,
-  AutomacoesRoute: AutomacoesRoute,
   CentralIaRoute: CentralIaRoute,
   ClientesRoute: ClientesRouteWithChildren,
   ComercialRoute: ComercialRoute,
   ConfiguracoesRoute: ConfiguracoesRoute,
   DreRoute: DreRoute,
-  FinanceiroRoute: FinanceiroRoute,
   OperacaoRoute: OperacaoRoute,
-  PerformanceRoute: PerformanceRoute,
-  ProjetosRoute: ProjetosRoute,
-  RelatoriosRoute: RelatoriosRoute,
-  TarefasRoute: TarefasRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

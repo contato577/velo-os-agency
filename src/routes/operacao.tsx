@@ -17,6 +17,13 @@ import { projects, tasks, agendaEvents } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/operacao")({
+  validateSearch: (s: Record<string, unknown>) => ({
+    tab: (s.tab === "tarefas" || s.tab === "agenda" || s.tab === "projetos" ? s.tab : undefined) as
+      | "tarefas"
+      | "agenda"
+      | "projetos"
+      | undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Operação · Veloce" },
@@ -38,7 +45,8 @@ const projStatus = {
 };
 
 function Operacao() {
-  const [tab, setTab] = useState<Tab>("projetos");
+  const search = Route.useSearch();
+  const [tab, setTab] = useState<Tab>(search.tab ?? "projetos");
 
   const tarefasAtrasadas = tasks.filter(
     (t) => t.status !== "concluida" && new Date(t.dueDate) < new Date(HOJE),

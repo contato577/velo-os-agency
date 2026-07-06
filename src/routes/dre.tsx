@@ -1,9 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { Sparkles, ArrowUpRight, ArrowDownRight, TrendingUp, Brain, ArrowRight, Plus, X, Paperclip } from "lucide-react";
+import { ArrowUpRight, ArrowDownRight, TrendingUp, Brain, ArrowRight, Plus, X } from "lucide-react";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { clients, financeEntries, formatBRL, monthlyRevenue } from "@/lib/mock-data";
+import { useDataStore } from "@/lib/data-store";
+import { LancamentoForm } from "@/components/lancamento-form";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/dre")({
@@ -103,12 +105,17 @@ function DRE() {
     margem: 18 + Math.sin(i) * 3 + i * 0.6,
   }));
 
-  const insights = [
-    { title: "Receita recorrente cresceu", text: "O lucro aumentou porque o MRR cresceu 8% e diluiu o custo fixo.", tone: "success" as const },
-    { title: "Ferramentas puxam a estrutura", text: "As despesas com ferramentas representam ~4% do faturamento. Consolide licenças para reduzir custo.", tone: "warning" as const },
-    { title: "Oportunidade em administrativo", text: "Custos administrativos podem cair até 12% renegociando fornecedores recorrentes.", tone: "info" as const },
-    { title: "Lucro acima da média", text: `Seu lucro líquido de ${formatBRL(lucroLiquido)} está acima da média dos últimos 6 meses.`, tone: "success" as const },
-  ];
+  // Insights de IA vindos da mesma engine central, filtrados por Financeiro
+  const { insights: aiInsights } = useDataStore();
+  const insights = useMemo(() => {
+    const financeiros = aiInsights.filter((i) => i.area === "Financeiro");
+    // Fallback: garantir 2 insights positivos junto aos alertas
+    const complementos = [
+      { id: "loc-1", titulo: "Receita recorrente cresceu", descricao: "O lucro aumentou porque o MRR cresceu 8% e diluiu o custo fixo.", prioridade: "baixa" as const },
+      { id: "loc-2", titulo: "Lucro acima da média", descricao: `Seu lucro líquido de ${formatBRL(lucroLiquido)} está acima da média dos últimos 6 meses.`, prioridade: "baixa" as const },
+    ];
+    return [...financeiros.map((i) => ({ id: i.id, titulo: i.titulo, descricao: i.descricao, prioridade: i.prioridade })), ...complementos];
+  }, [aiInsights, lucroLiquido]);
 
   return (
     <AppShell title="DRE Inteligente" subtitle="Análise gerencial automática">
@@ -161,19 +168,20 @@ function DRE() {
           </div>
           <div className="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-4">
             {insights.map((ins) => (
-              <div key={ins.title} className="rounded-lg border bg-card/60 p-3">
+              <div key={ins.id} className="rounded-lg border bg-card/60 p-3">
                 <div className="flex items-center gap-1.5">
                   <span
                     className={cn(
                       "h-1.5 w-1.5 rounded-full",
-                      ins.tone === "success" && "bg-success",
-                      ins.tone === "warning" && "bg-warning",
-                      ins.tone === "info" && "bg-info",
+                      ins.prioridade === "critica" && "bg-destructive",
+                      ins.prioridade === "alta" && "bg-warning",
+                      ins.prioridade === "media" && "bg-info",
+                      ins.prioridade === "baixa" && "bg-success",
                     )}
                   />
-                  <span className="text-[12px] font-semibold">{ins.title}</span>
+                  <span className="text-[12px] font-semibold">{ins.titulo}</span>
                 </div>
-                <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">{ins.text}</p>
+                <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">{ins.descricao}</p>
               </div>
             ))}
           </div>
@@ -389,85 +397,10 @@ function NovoLancamentoDialog({ onClose }: { onClose: () => void }) {
             <X className="h-4 w-4" />
           </button>
         </div>
-        <form
-          onSubmit={(e) => { e.preventDefault(); onClose(); }}
-          className="max-h-[70vh] space-y-3 overflow-y-auto p-4"
-        >
-          <FormField label="Descrição">
-            <input required placeholder="Ex: Mensalidade Pereira Ortopedia" className={inputCls} />
-          </FormField>
-          <div className="grid grid-cols-2 gap-3">
-            <FormField label="Categoria">
-              <select className={inputCls}>
-                <option>Mensalidade</option>
-                <option>Projeto</option>
-                <option>Software</option>
-                <option>Folha</option>
-                <option>Imposto</option>
-                <option>Anúncios</option>
-                <option>Outro</option>
-              </select>
-            </FormField>
-            <FormField label="Fornecedor / Cliente">
-              <input placeholder="Nome" className={inputCls} />
-            </FormField>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <FormField label="Valor (R$)">
-              <input type="number" min="0" step="0.01" required placeholder="0,00" className={inputCls} />
-            </FormField>
-            <FormField label="Data">
-              <input type="date" required className={inputCls} />
-            </FormField>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <FormField label="Forma de pagamento">
-              <select className={inputCls}>
-                <option>PIX</option>
-                <option>Boleto</option>
-                <option>Cartão de crédito</option>
-                <option>Transferência</option>
-                <option>Dinheiro</option>
-              </select>
-            </FormField>
-            <FormField label="Recorrente?">
-              <select className={inputCls}>
-                <option>Não</option>
-                <option>Mensal</option>
-                <option>Trimestral</option>
-                <option>Anual</option>
-              </select>
-            </FormField>
-          </div>
-          <FormField label="Observações">
-            <textarea rows={2} className={inputCls} placeholder="Notas internas…" />
-          </FormField>
-          <label className="flex cursor-pointer items-center gap-2 rounded-md border border-dashed p-3 text-[12px] text-muted-foreground hover:bg-accent">
-            <Paperclip className="h-3.5 w-3.5" />
-            <span>Anexar comprovante (opcional)</span>
-            <input type="file" className="hidden" />
-          </label>
-          <div className="flex items-center justify-end gap-2 border-t pt-3">
-            <button type="button" onClick={onClose} className="rounded-md border bg-surface px-3 py-1.5 text-xs font-medium hover:bg-accent">
-              Cancelar
-            </button>
-            <button type="submit" className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90">
-              Salvar lançamento
-            </button>
-          </div>
-        </form>
+        <div className="max-h-[75vh] overflow-y-auto p-4">
+          <LancamentoForm onCancel={onClose} />
+        </div>
       </div>
     </>
-  );
-}
-
-const inputCls = "w-full rounded-md border bg-background px-3 py-1.5 text-[13px] focus:border-primary/60 focus:outline-none";
-
-function FormField({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <div className="mb-1 text-[10px] font-medium uppercase tracking-widest text-muted-foreground">{label}</div>
-      {children}
-    </div>
   );
 }

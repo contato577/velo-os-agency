@@ -187,9 +187,37 @@ function InfoRow({ icon: Icon, label, value }: { icon: React.ComponentType<{ cla
 
 function Comercial() {
   const [selected, setSelected] = useState<Lead | null>(null);
-  const totalPipeline = leads
+  const [query, setQuery] = useState("");
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [potFilter, setPotFilter] = useState<Set<LeadPotential>>(new Set());
+  const [ownerFilter, setOwnerFilter] = useState<string>("");
+
+  const openNewLead = () => {
+    // Aciona o mesmo dialog do QuickActions via cmd+k → "Novo Lead"
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true }));
+  };
+
+  const owners = Array.from(new Set(leads.map((l) => l.owner)));
+  const filteredLeads = leads.filter((l) => {
+    const q = query.toLowerCase().trim();
+    if (q && !l.name.toLowerCase().includes(q) && !l.company.toLowerCase().includes(q)) return false;
+    if (potFilter.size > 0 && !potFilter.has(l.potencial)) return false;
+    if (ownerFilter && l.owner !== ownerFilter) return false;
+    return true;
+  });
+
+  const totalPipeline = filteredLeads
     .filter((l) => !["fechado", "perdido"].includes(l.stage))
     .reduce((s, l) => s + l.value, 0);
+
+  const togglePot = (p: LeadPotential) => {
+    setPotFilter((prev) => {
+      const next = new Set(prev);
+      if (next.has(p)) next.delete(p);
+      else next.add(p);
+      return next;
+    });
+  };
 
   return (
     <AppShell title="CRM" subtitle="Pipeline comercial">
@@ -199,18 +227,70 @@ function Comercial() {
           <div className="min-w-0">
             <h2 className="text-lg font-semibold tracking-tight">Pipeline</h2>
             <p className="text-xs text-muted-foreground">
-              {leads.length} leads · <span className="text-primary font-mono">{formatBRL(totalPipeline)}</span> em aberto
+              {filteredLeads.length} de {leads.length} leads · <span className="text-primary font-mono">{formatBRL(totalPipeline)}</span> em aberto
             </p>
           </div>
           <div className="ml-auto flex items-center gap-2">
             <div className="relative">
               <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-              <input placeholder="Filtrar leads…" className="h-8 w-52 rounded-md border bg-surface pl-7 pr-2 text-xs focus:border-primary/60 focus:outline-none" />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Filtrar leads…"
+                className="h-8 w-52 rounded-md border bg-surface pl-7 pr-2 text-xs focus:border-primary/60 focus:outline-none"
+              />
             </div>
-            <button className="inline-flex h-8 items-center gap-1.5 rounded-md border bg-surface px-2.5 text-xs font-medium hover:bg-accent">
-              <Filter className="h-3.5 w-3.5" /> Filtrar
-            </button>
-            <button className="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary/90">
+            <div className="relative">
+              <button
+                onClick={() => setFilterOpen((v) => !v)}
+                className={cn(
+                  "inline-flex h-8 items-center gap-1.5 rounded-md border px-2.5 text-xs font-medium hover:bg-accent",
+                  (potFilter.size > 0 || ownerFilter) ? "border-primary/50 bg-primary/10 text-primary" : "bg-surface",
+                )}
+              >
+                <Filter className="h-3.5 w-3.5" /> Filtrar
+                {(potFilter.size + (ownerFilter ? 1 : 0)) > 0 && (
+                  <span className="rounded bg-primary px-1 font-mono text-[10px] text-primary-foreground">
+                    {potFilter.size + (ownerFilter ? 1 : 0)}
+                  </span>
+                )}
+              </button>
+              {filterOpen && (
+                <>
+                  <div className="fixed inset-0 z-30" onClick={() => setFilterOpen(false)} />
+                  <div className="absolute right-0 top-9 z-40 w-64 rounded-lg border bg-popover p-3 shadow-elegant">
+                    <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Potencial</div>
+                    <div className="mb-3 flex flex-col gap-1">
+                      {(["alto", "medio", "baixo"] as LeadPotential[]).map((p) => (
+                        <label key={p} className="flex items-center gap-2 text-[12px] capitalize">
+                          <input type="checkbox" checked={potFilter.has(p)} onChange={() => togglePot(p)} className="h-3 w-3" />
+                          {potencialStyles[p].label}
+                        </label>
+                      ))}
+                    </div>
+                    <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Responsável</div>
+                    <select
+                      value={ownerFilter}
+                      onChange={(e) => setOwnerFilter(e.target.value)}
+                      className="w-full rounded-md border bg-background px-2 py-1 text-[12px]"
+                    >
+                      <option value="">Todos</option>
+                      {owners.map((o) => <option key={o} value={o}>{o}</option>)}
+                    </select>
+                    <button
+                      onClick={() => { setPotFilter(new Set()); setOwnerFilter(""); }}
+                      className="mt-3 w-full rounded-md border bg-surface py-1 text-[11px] text-muted-foreground hover:bg-accent"
+                    >
+                      Limpar filtros
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+            <button
+              onClick={openNewLead}
+              className="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+            >
               <Plus className="h-3.5 w-3.5" /> Novo Lead
             </button>
           </div>
@@ -220,7 +300,7 @@ function Comercial() {
         <div className="flex-1 overflow-x-auto overflow-y-hidden">
           <div className="flex h-full min-w-max gap-3 p-4 md:p-6">
             {stageOrder.map((stage) => {
-              const stageLeads = leads.filter((l) => l.stage === stage);
+              const stageLeads = filteredLeads.filter((l) => l.stage === stage);
               const stageValue = stageLeads.reduce((s, l) => s + l.value, 0);
               return (
                 <div key={stage} className="flex h-full w-72 shrink-0 flex-col rounded-lg border bg-surface/40">
@@ -239,7 +319,10 @@ function Comercial() {
                     {stageLeads.map((lead) => (
                       <LeadCard key={lead.id} lead={lead} onClick={() => setSelected(lead)} />
                     ))}
-                    <button className="flex items-center justify-center gap-1 rounded-md border border-dashed py-1.5 text-[11px] text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary">
+                    <button
+                      onClick={openNewLead}
+                      className="flex items-center justify-center gap-1 rounded-md border border-dashed py-1.5 text-[11px] text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary"
+                    >
                       <Plus className="h-3 w-3" /> Adicionar lead
                     </button>
                   </div>
