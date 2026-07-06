@@ -105,12 +105,17 @@ function DRE() {
     margem: 18 + Math.sin(i) * 3 + i * 0.6,
   }));
 
-  const insights = [
-    { title: "Receita recorrente cresceu", text: "O lucro aumentou porque o MRR cresceu 8% e diluiu o custo fixo.", tone: "success" as const },
-    { title: "Ferramentas puxam a estrutura", text: "As despesas com ferramentas representam ~4% do faturamento. Consolide licenças para reduzir custo.", tone: "warning" as const },
-    { title: "Oportunidade em administrativo", text: "Custos administrativos podem cair até 12% renegociando fornecedores recorrentes.", tone: "info" as const },
-    { title: "Lucro acima da média", text: `Seu lucro líquido de ${formatBRL(lucroLiquido)} está acima da média dos últimos 6 meses.`, tone: "success" as const },
-  ];
+  // Insights de IA vindos da mesma engine central, filtrados por Financeiro
+  const { insights: aiInsights } = useDataStore();
+  const insights = useMemo(() => {
+    const financeiros = aiInsights.filter((i) => i.area === "Financeiro");
+    // Fallback: garantir 2 insights positivos junto aos alertas
+    const complementos = [
+      { id: "loc-1", titulo: "Receita recorrente cresceu", descricao: "O lucro aumentou porque o MRR cresceu 8% e diluiu o custo fixo.", prioridade: "baixa" as const },
+      { id: "loc-2", titulo: "Lucro acima da média", descricao: `Seu lucro líquido de ${formatBRL(lucroLiquido)} está acima da média dos últimos 6 meses.`, prioridade: "baixa" as const },
+    ];
+    return [...financeiros.map((i) => ({ id: i.id, titulo: i.titulo, descricao: i.descricao, prioridade: i.prioridade })), ...complementos];
+  }, [aiInsights, lucroLiquido]);
 
   return (
     <AppShell title="DRE Inteligente" subtitle="Análise gerencial automática">
