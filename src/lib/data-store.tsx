@@ -52,12 +52,13 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
 
   const addLead: DataStoreContextValue["addLead"] = (partial) => {
     const now = new Date().toISOString();
+    const { stage, ...rest } = partial;
     const lead: Lead = {
       id: `lead-${Date.now()}`,
       createdAt: now,
       lastActivity: now,
-      stage: partial.stage ?? "novo",
-      ...partial,
+      stage: stage ?? "novo",
+      ...rest,
     } as Lead;
     setLeads((prev) => [lead, ...prev]);
 
