@@ -109,6 +109,12 @@ function RootShell({ children }: { children: ReactNode }) {
     <html lang="pt-BR" className="dark">
       <head>
         <HeadContent />
+        <script
+          // Aplica tema salvo antes da hidratação para evitar flash
+          dangerouslySetInnerHTML={{
+            __html: `try{var t=localStorage.getItem('veloce-theme');if(t==='light'){document.documentElement.classList.remove('dark')}else{document.documentElement.classList.add('dark')}}catch(e){}`,
+          }}
+        />
       </head>
       <body>
         {children}
@@ -123,7 +129,11 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <Outlet />
+      <ThemeProvider>
+        <DataStoreProvider>
+          <Outlet />
+        </DataStoreProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }
