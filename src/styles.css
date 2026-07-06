@@ -67,10 +67,71 @@
   --shadow-glow: 0 0 40px -8px oklch(0.72 0.19 155 / 0.45);
 }
 
-/* Veloce Performance — Emerald on Black */
+/* Veloce — Light theme (default) */
 :root {
   --radius: 0.5rem;
 
+  --background: oklch(0.99 0.003 155);
+  --foreground: oklch(0.18 0.01 155);
+
+  --surface: oklch(0.97 0.005 155);
+  --surface-2: oklch(0.94 0.006 155);
+  --surface-3: oklch(0.90 0.008 155);
+
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.18 0.01 155);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.18 0.01 155);
+
+  --primary: oklch(0.58 0.17 155);
+  --primary-foreground: oklch(1 0 0);
+
+  --brand-deep: oklch(0.42 0.14 155);
+  --brand-deep-foreground: oklch(0.98 0 0);
+
+  --secondary: oklch(0.94 0.006 155);
+  --secondary-foreground: oklch(0.18 0.01 155);
+
+  --muted: oklch(0.94 0.006 155);
+  --muted-foreground: oklch(0.48 0.02 155);
+
+  --accent: oklch(0.92 0.010 155);
+  --accent-foreground: oklch(0.18 0.01 155);
+
+  --destructive: oklch(0.60 0.22 25);
+  --destructive-foreground: oklch(0.98 0.005 25);
+
+  --success: oklch(0.58 0.17 155);
+  --success-foreground: oklch(1 0 0);
+
+  --warning: oklch(0.68 0.16 65);
+  --warning-foreground: oklch(0.18 0.02 65);
+
+  --info: oklch(0.60 0.14 220);
+  --info-foreground: oklch(1 0 0);
+
+  --border: oklch(0.90 0.008 155);
+  --input: oklch(0.90 0.008 155);
+  --ring: oklch(0.58 0.17 155);
+
+  --chart-1: oklch(0.58 0.17 155);
+  --chart-2: oklch(0.42 0.14 155);
+  --chart-3: oklch(0.72 0.14 130);
+  --chart-4: oklch(0.60 0.14 220);
+  --chart-5: oklch(0.75 0.10 155);
+
+  --sidebar: oklch(0.97 0.005 155);
+  --sidebar-foreground: oklch(0.25 0.01 155);
+  --sidebar-primary: oklch(0.58 0.17 155);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.92 0.010 155);
+  --sidebar-accent-foreground: oklch(0.18 0.01 155);
+  --sidebar-border: oklch(0.88 0.010 155);
+  --sidebar-ring: oklch(0.58 0.17 155);
+}
+
+/* Veloce Performance — Emerald on Black (dark) */
+.dark {
   --background: oklch(0.08 0 0);
   --foreground: oklch(0.97 0.005 155);
 
@@ -85,6 +146,9 @@
 
   --primary: oklch(0.72 0.19 155);
   --primary-foreground: oklch(0.08 0 0);
+
+  --brand-deep: oklch(0.42 0.14 155);
+  --brand-deep-foreground: oklch(0.98 0.005 155);
 
   --secondary: oklch(0.18 0.010 155);
   --secondary-foreground: oklch(0.97 0.005 155);
