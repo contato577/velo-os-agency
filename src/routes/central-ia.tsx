@@ -2,7 +2,6 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   Sparkles,
   AlertTriangle,
-  TrendingDown,
   Users2,
   Wallet,
   Target,
@@ -11,7 +10,6 @@ import {
   ArrowRight,
   Brain,
   Zap,
-  ClipboardList,
   BadgeCheck,
 } from "lucide-react";
 import {
@@ -28,14 +26,13 @@ import {
 } from "recharts";
 import { useMemo, useState } from "react";
 import { AppShell, PageHeader } from "@/components/app-shell";
-import { dashboardKPIs, formatBRL, agendaEvents } from "@/lib/mock-data";
+import { dashboardKPIs, formatBRL } from "@/lib/mock-data";
 import { automationRules, actionLabels, triggerLabels } from "@/lib/automation-engine";
 import {
   sortByPriority,
   priorityStyles,
   type Insight,
   type InsightArea,
-  type InsightPriority,
 } from "@/lib/ai-engine";
 import { useDataStore } from "@/lib/data-store";
 import { cn } from "@/lib/utils";
