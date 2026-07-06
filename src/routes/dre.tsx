@@ -168,19 +168,20 @@ function DRE() {
           </div>
           <div className="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-4">
             {insights.map((ins) => (
-              <div key={ins.title} className="rounded-lg border bg-card/60 p-3">
+              <div key={ins.id} className="rounded-lg border bg-card/60 p-3">
                 <div className="flex items-center gap-1.5">
                   <span
                     className={cn(
                       "h-1.5 w-1.5 rounded-full",
-                      ins.tone === "success" && "bg-success",
-                      ins.tone === "warning" && "bg-warning",
-                      ins.tone === "info" && "bg-info",
+                      ins.prioridade === "critica" && "bg-destructive",
+                      ins.prioridade === "alta" && "bg-warning",
+                      ins.prioridade === "media" && "bg-info",
+                      ins.prioridade === "baixa" && "bg-success",
                     )}
                   />
-                  <span className="text-[12px] font-semibold">{ins.title}</span>
+                  <span className="text-[12px] font-semibold">{ins.titulo}</span>
                 </div>
-                <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">{ins.text}</p>
+                <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">{ins.descricao}</p>
               </div>
             ))}
           </div>
