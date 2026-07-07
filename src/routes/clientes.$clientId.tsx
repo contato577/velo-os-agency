@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   ArrowLeft,
   Building2,
@@ -23,28 +23,34 @@ import {
   Layout as LayoutIcon,
   TrendingUp,
   Paperclip,
+  FolderOpen,
+  Link as LinkIcon,
+  Plus,
+  ChevronDown,
 } from "lucide-react";
 import { AppShell, PageHeader } from "@/components/app-shell";
-import { clients, projects, tasks, formatBRL } from "@/lib/mock-data";
+import { clients, projects, tasks, formatBRL, type Client } from "@/lib/mock-data";
+import { gerarResumoCliente, exportarRelatorioPDF, linkWhatsApp } from "@/lib/client-report";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/clientes/$clientId")({
   head: () => ({
     meta: [
       { title: "Cliente · Veloce" },
-      { name: "description", content: "Visão 360° do cliente: geral, performance, operação, financeiro e histórico." },
+      { name: "description", content: "Visão 360° do cliente: geral, performance, operação, financeiro, documentos e histórico." },
     ],
   }),
   component: ClienteDetalhe,
 });
 
-type Tab = "geral" | "performance" | "operacao" | "financeiro" | "historico";
+type Tab = "geral" | "performance" | "operacao" | "financeiro" | "documentos" | "historico";
 
 const tabsList: { key: Tab; label: string; icon: typeof User }[] = [
   { key: "geral", label: "Geral", icon: User },
   { key: "performance", label: "Performance", icon: TrendingUp },
   { key: "operacao", label: "Operação", icon: Folder },
   { key: "financeiro", label: "Financeiro", icon: Wallet },
+  { key: "documentos", label: "Documentos", icon: FolderOpen },
   { key: "historico", label: "Histórico", icon: History },
 ];
 
