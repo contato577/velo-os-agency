@@ -189,53 +189,253 @@ const integrations = [
   { key: "landing", name: "Landing Pages", description: "Visitantes, conversões e taxa de conversão." },
 ];
 
-function TabPerformance() {
+function TabPerformance({ client }: { client: Client }) {
+  const [exporting, setExporting] = useState(false);
+  const clientProjects = projects.filter((p) => p.clientId === client.id);
+  const relatorio = useMemo(() => gerarResumoCliente(client, clientProjects), [client, clientProjects]);
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      await exportarRelatorioPDF(relatorio);
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Resumo em linguagem simples */}
+      <div className="rounded-xl border bg-card p-5">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 className="text-sm font-semibold tracking-tight">Resumo do período</h3>
+            <p className="text-[11px] text-muted-foreground">{relatorio.periodo} · gerado automaticamente</p>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={handleExport}
+              disabled={exporting}
+              className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-70"
+            >
+              <Download className="h-3.5 w-3.5" /> {exporting ? "Gerando…" : "Exportar PDF"}
+            </button>
+            <a
+              href={linkWhatsApp(relatorio)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-md border border-success/40 bg-success/10 px-3 py-1.5 text-xs font-medium text-success hover:bg-success/20"
+            >
+              <MessageSquare className="h-3.5 w-3.5" /> Enviar por WhatsApp
+            </a>
+          </div>
+        </div>
+        <pre className="whitespace-pre-wrap rounded-md border bg-surface/40 p-4 text-[12.5px] leading-relaxed text-foreground/90 font-sans">
+          {relatorio.resumo}
+        </pre>
+      </div>
+
+      {/* Integrações */}
+      <div>
+        <div className="mb-3">
+          <h3 className="text-sm font-semibold tracking-tight">Integrações de performance</h3>
+          <p className="text-[12px] text-muted-foreground">Conecte contas para trazer dados de anúncios em tempo real.</p>
+        </div>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {integrations.map((i) => (
+            <div key={i.key} className="group relative overflow-hidden rounded-lg border bg-card p-4 transition-all hover:-translate-y-0.5 hover:shadow-elegant">
+              <div className="mb-3 flex items-center justify-between">
+                <div className="flex h-9 w-9 items-center justify-center rounded-md border bg-background/70">
+                  {i.key === "meta" && <TrendingUp className="h-4 w-4" />}
+                  {i.key === "google-ads" && <MousePointerClick className="h-4 w-4" />}
+                  {i.key === "ga4" && <LineIcon className="h-4 w-4" />}
+                  {i.key === "gsc" && <SearchIcon className="h-4 w-4" />}
+                  {i.key === "landing" && <LayoutIcon className="h-4 w-4" />}
+                </div>
+                <span className="rounded border border-info/30 bg-info/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-info">
+                  Em breve
+                </span>
+              </div>
+              <h4 className="text-[14px] font-semibold tracking-tight">{i.name}</h4>
+              <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">{i.description}</p>
+              <p className="mt-3 text-[11px] italic text-muted-foreground">
+                Autenticação OAuth com {i.name.split(" ")[0]} exige backend com armazenamento seguro de tokens. Disponível quando o banco de dados for ativado.
+              </p>
+              <div className="mt-4 flex items-center gap-2">
+                <button
+                  disabled
+                  className="inline-flex h-8 flex-1 items-center justify-center gap-1.5 rounded-md border bg-surface px-3 text-xs font-medium text-muted-foreground opacity-70"
+                >
+                  <Plug className="h-3.5 w-3.5" /> Disponível em breve
+                </button>
+                <button className="inline-flex h-8 items-center justify-center rounded-md border bg-surface px-2 text-xs text-muted-foreground hover:bg-accent hover:text-foreground">
+                  <ExternalLink className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── DOCUMENTOS ─────────────────────────────────────────────────────────────
+type DocCategory = "Atas" | "Relatórios" | "Estratégia" | "Contratos" | "Outros";
+interface DocItem {
+  id: string;
+  title: string;
+  category: DocCategory;
+  type: "file" | "link";
+  url?: string;
+  size?: string;
+  addedBy: string;
+  addedAt: string;
+}
+
+const seedDocs: DocItem[] = [
+  { id: "d1", title: "Ata reunião kickoff.pdf", category: "Atas", type: "file", size: "420 KB", addedBy: "Rafael Souza", addedAt: "2026-06-01" },
+  { id: "d2", title: "Relatório Junho 2026.pdf", category: "Relatórios", type: "file", size: "1.2 MB", addedBy: "Camila Torres", addedAt: "2026-07-01" },
+  { id: "d3", title: "Plano estratégico Q3", category: "Estratégia", type: "link", url: "https://miro.com/app/board/exemplo", addedBy: "Rafael Souza", addedAt: "2026-06-15" },
+  { id: "d4", title: "Contrato assinado.pdf", category: "Contratos", type: "file", size: "480 KB", addedBy: "Sistema", addedAt: "2025-01-15" },
+];
+
+function TabDocumentos() {
+  const [docs, setDocs] = useState<DocItem[]>(seedDocs);
+  const [query, setQuery] = useState("");
+  const [addingIn, setAddingIn] = useState<DocCategory | null>(null);
+  const [linkTitle, setLinkTitle] = useState("");
+  const [linkUrl, setLinkUrl] = useState("");
+
+  const categories: DocCategory[] = ["Atas", "Relatórios", "Estratégia", "Contratos", "Outros"];
+  const filtered = docs.filter((d) => d.title.toLowerCase().includes(query.toLowerCase()));
+
+  const addFile = (category: DocCategory, files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    const now = new Date().toISOString().slice(0, 10);
+    const items: DocItem[] = Array.from(files).map((f, i) => ({
+      id: `d-${Date.now()}-${i}`,
+      title: f.name,
+      category,
+      type: "file",
+      size: `${Math.max(1, Math.round(f.size / 1024))} KB`,
+      addedBy: "Rafael Souza",
+      addedAt: now,
+    }));
+    setDocs((prev) => [...items, ...prev]);
+  };
+
+  const addLink = (category: DocCategory) => {
+    if (!linkTitle || !linkUrl) return;
+    setDocs((prev) => [
+      {
+        id: `d-${Date.now()}`,
+        title: linkTitle,
+        category,
+        type: "link",
+        url: linkUrl,
+        addedBy: "Rafael Souza",
+        addedAt: new Date().toISOString().slice(0, 10),
+      },
+      ...prev,
+    ]);
+    setLinkTitle("");
+    setLinkUrl("");
+    setAddingIn(null);
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h3 className="text-sm font-semibold tracking-tight">Integrações de performance</h3>
-          <p className="text-[12px] text-muted-foreground">Conecte as contas do cliente para visualizar resultados em tempo real.</p>
+          <h3 className="text-sm font-semibold tracking-tight">Documentos do cliente</h3>
+          <p className="text-[12px] text-muted-foreground">Atas, relatórios, contratos e links externos (Miro, Figma, etc).</p>
         </div>
-        <button
-          disabled
-          className="inline-flex items-center gap-1.5 rounded-md border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary opacity-70"
-          title="Disponível quando as integrações estiverem conectadas"
-        >
-          <Download className="h-3.5 w-3.5" /> Exportar Relatório
-        </button>
+        <div className="relative">
+          <SearchIcon className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Buscar em todos os documentos…"
+            className="h-8 w-64 rounded-md border bg-surface pl-7 pr-2 text-xs focus:border-primary/60 focus:outline-none"
+          />
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-        {integrations.map((i) => (
-          <div key={i.key} className="group relative overflow-hidden rounded-lg border bg-card p-4 transition-all hover:-translate-y-0.5 hover:shadow-elegant">
-            <div className="mb-3 flex items-center justify-between">
-              <div className="flex h-9 w-9 items-center justify-center rounded-md border bg-background/70">
-                {i.key === "meta" && <TrendingUp className="h-4 w-4" />}
-                {i.key === "google-ads" && <MousePointerClick className="h-4 w-4" />}
-                {i.key === "ga4" && <LineIcon className="h-4 w-4" />}
-                {i.key === "gsc" && <SearchIcon className="h-4 w-4" />}
-                {i.key === "landing" && <LayoutIcon className="h-4 w-4" />}
+      <div className="space-y-2">
+        {categories.map((cat) => {
+          const items = filtered.filter((d) => d.category === cat);
+          return (
+            <details key={cat} open className="group rounded-xl border bg-card">
+              <summary className="flex cursor-pointer items-center gap-3 px-4 py-3 hover:bg-surface/40">
+                <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-0 [details:not([open])>&]:-rotate-90" />
+                <FolderOpen className="h-4 w-4 text-primary" />
+                <span className="text-[13px] font-medium">{cat}</span>
+                <span className="rounded bg-accent px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">{items.length}</span>
+                <div className="ml-auto flex gap-2" onClick={(e) => e.preventDefault()}>
+                  <label className="inline-flex cursor-pointer items-center gap-1 rounded-md border bg-surface px-2 py-1 text-[11px] hover:bg-accent">
+                    <FileUp className="h-3 w-3" /> Arquivo
+                    <input type="file" multiple className="hidden" onChange={(e) => addFile(cat, e.target.files)} />
+                  </label>
+                  <button
+                    onClick={() => setAddingIn(addingIn === cat ? null : cat)}
+                    className="inline-flex items-center gap-1 rounded-md border bg-surface px-2 py-1 text-[11px] hover:bg-accent"
+                  >
+                    <LinkIcon className="h-3 w-3" /> Link
+                  </button>
+                </div>
+              </summary>
+
+              <div className="border-t p-3">
+                {addingIn === cat && (
+                  <div className="mb-3 flex flex-wrap items-end gap-2 rounded-md border bg-surface/40 p-2">
+                    <input
+                      value={linkTitle}
+                      onChange={(e) => setLinkTitle(e.target.value)}
+                      placeholder="Título do link"
+                      className="h-8 flex-1 rounded-md border bg-background px-2 text-xs"
+                    />
+                    <input
+                      value={linkUrl}
+                      onChange={(e) => setLinkUrl(e.target.value)}
+                      placeholder="https://…"
+                      className="h-8 flex-1 rounded-md border bg-background px-2 text-xs"
+                    />
+                    <button
+                      onClick={() => addLink(cat)}
+                      className="h-8 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+                    >
+                      <Plus className="h-3 w-3" />
+                    </button>
+                  </div>
+                )}
+                {items.length === 0 ? (
+                  <div className="rounded-md border border-dashed py-4 text-center text-[11px] text-muted-foreground">
+                    Nenhum documento nesta categoria ainda.
+                  </div>
+                ) : (
+                  <ul className="space-y-1">
+                    {items.map((d) => (
+                      <li key={d.id} className="flex items-center gap-2.5 rounded-md border bg-surface/50 px-3 py-2 text-[12px]">
+                        {d.type === "file" ? <FileText className="h-3.5 w-3.5 text-muted-foreground" /> : <LinkIcon className="h-3.5 w-3.5 text-info" />}
+                        {d.type === "link" ? (
+                          <a href={d.url} target="_blank" rel="noopener noreferrer" className="min-w-0 flex-1 truncate hover:text-primary">
+                            {d.title}
+                          </a>
+                        ) : (
+                          <span className="min-w-0 flex-1 truncate">{d.title}</span>
+                        )}
+                        <span className="hidden text-[10px] text-muted-foreground sm:inline">{d.addedBy}</span>
+                        <span className="text-[10px] text-muted-foreground">{new Date(d.addedAt).toLocaleDateString("pt-BR")}</span>
+                        {d.size && <span className="text-[10px] text-muted-foreground">{d.size}</span>}
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
-              <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                Não conectado
-              </span>
-            </div>
-            <h4 className="text-[14px] font-semibold tracking-tight">{i.name}</h4>
-            <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">{i.description}</p>
-            <p className="mt-3 text-[11px] italic text-muted-foreground">
-              Conecte sua conta para visualizar os resultados.
-            </p>
-            <div className="mt-4 flex items-center gap-2">
-              <button className="inline-flex h-8 flex-1 items-center justify-center gap-1.5 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary/90">
-                <Plug className="h-3.5 w-3.5" /> Conectar Conta
-              </button>
-              <button className="inline-flex h-8 items-center justify-center rounded-md border bg-surface px-2 text-xs text-muted-foreground hover:bg-accent hover:text-foreground">
-                <ExternalLink className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          </div>
-        ))}
+            </details>
+          );
+        })}
       </div>
     </div>
   );
