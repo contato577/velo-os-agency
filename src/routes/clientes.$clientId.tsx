@@ -106,9 +106,10 @@ function ClienteDetalhe() {
         </div>
 
         {tab === "geral" && <TabGeral client={client} />}
-        {tab === "performance" && <TabPerformance />}
+        {tab === "performance" && <TabPerformance client={client} />}
         {tab === "operacao" && <TabOperacao clientId={client.id} />}
         {tab === "financeiro" && <TabFinanceiro client={client} />}
+        {tab === "documentos" && <TabDocumentos />}
         {tab === "historico" && <TabHistorico client={client} />}
       </div>
     </AppShell>
