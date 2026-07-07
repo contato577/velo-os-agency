@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import {
   User, Building2, Bell, Shield, Palette, Users, Zap, Plug, FileStack, ChevronRight, Check,
-  Sun, Moon, Monitor,
+  Sun, Moon,
 } from "lucide-react";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { serviceTemplates } from "@/lib/service-templates";
@@ -115,11 +115,10 @@ function Config() {
               <p className="text-[11px] text-muted-foreground">Escolha o tema da interface.</p>
             </div>
           </div>
-          <div className="mt-4 grid grid-cols-3 gap-2 md:max-w-md">
+          <div className="mt-4 grid grid-cols-2 gap-2 md:max-w-sm">
             {([
               { value: "light", label: "Claro", icon: Sun },
               { value: "dark", label: "Escuro", icon: Moon },
-              { value: "system", label: "Sistema", icon: Monitor },
             ] as const).map((t) => {
               const Icon = t.icon;
               const active = theme === t.value;
