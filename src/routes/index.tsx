@@ -20,7 +20,7 @@ import {
   agendaEvents,
 } from "@/lib/mock-data";
 import { useDataStore } from "@/lib/data-store";
-import { sortByPriority, priorityStyles } from "@/lib/ai-engine";
+import { sortByPriority } from "@/lib/ai-engine";
 import { cn } from "@/lib/utils";
 
 
