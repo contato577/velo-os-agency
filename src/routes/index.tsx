@@ -17,12 +17,12 @@ import { AppShell, PageHeader } from "@/components/app-shell";
 import {
   dashboardKPIs,
   formatBRL,
-  tasks,
   agendaEvents,
-  leads,
-  clients,
 } from "@/lib/mock-data";
+import { useDataStore } from "@/lib/data-store";
+import { sortByPriority, priorityStyles } from "@/lib/ai-engine";
 import { cn } from "@/lib/utils";
+
 
 export const Route = createFileRoute("/")({
   head: () => ({
