@@ -499,12 +499,21 @@ function TabOperacao({ clientId }: { clientId: string }) {
         <div className="rounded-xl border bg-card p-4">
           <div className="mb-3 flex items-center justify-between">
             <h3 className="text-sm font-semibold tracking-tight">Tarefas</h3>
-            <span className="text-[11px] text-muted-foreground">{clientTasks.length} tarefas</span>
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] text-muted-foreground">{clientTasks.length} tarefas</span>
+              <NewTaskButton
+                defaultContext={{ type: "cliente", id: client.id, label: client.company }}
+              />
+            </div>
           </div>
           <ul className="space-y-1">
             {clientTasks.length === 0 && (
-              <li className="rounded-md border border-dashed py-6 text-center text-[12px] text-muted-foreground">
-                Nenhuma tarefa vinculada a este cliente.
+              <li className="flex flex-col items-center gap-2 rounded-md border border-dashed py-6 text-center text-[12px] text-muted-foreground">
+                <span>Nenhuma tarefa vinculada a este cliente.</span>
+                <NewTaskButton
+                  defaultContext={{ type: "cliente", id: client.id, label: client.company }}
+                  label="+ Nova tarefa"
+                />
               </li>
             )}
             {clientTasks.map((t) => (
@@ -524,6 +533,7 @@ function TabOperacao({ clientId }: { clientId: string }) {
             ))}
           </ul>
         </div>
+
 
         {/* Comentários */}
         <div className="rounded-xl border bg-card p-4">
