@@ -57,15 +57,17 @@ const PROSPECCOES_NECESSARIAS = Math.ceil(REUNIOES_NECESSARIAS / TAXA_CONVERSAO)
 type PulseTone = "primary" | "warning" | "info" | "destructive" | "success";
 
 function Dashboard() {
+  const { leads, tasks, clients, insights } = useDataStore();
   const leadsNovos = leads.filter((l) => l.stage === "novo").length;
   const leadsAguardando = leads.filter((l) => l.stage === "contato").length;
   const followupsPendentes = dashboardKPIs.followupsPendentes;
   const reunioesHoje = agendaEvents.filter((e) => e.date === "2026-07-03" && e.type === "reuniao").length;
   const tarefasAtrasadas = tasks.filter(
     (t) => t.status !== "concluida" && new Date(t.dueDate) < new Date("2026-07-03"),
-  ).length + 3;
+  ).length;
   const cobrancasPendentes = clients.filter((c) => c.status === "ativo" && c.paymentDay <= DIA_ATUAL).length;
-  const vendasMes = 3;
+  const vendasMes = leads.filter((l) => l.stage === "fechado").length;
+
 
   const pulse: { label: string; value: number | string; icon: typeof Sparkles; tone: PulseTone; to: string }[] = [
     { label: "Leads novos", value: leadsNovos, icon: Sparkles, tone: "primary", to: "/comercial" },
