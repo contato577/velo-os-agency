@@ -17,12 +17,12 @@ import { AppShell, PageHeader } from "@/components/app-shell";
 import {
   dashboardKPIs,
   formatBRL,
-  tasks,
   agendaEvents,
-  leads,
-  clients,
 } from "@/lib/mock-data";
+import { useDataStore } from "@/lib/data-store";
+import { sortByPriority } from "@/lib/ai-engine";
 import { cn } from "@/lib/utils";
+
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -57,15 +57,17 @@ const PROSPECCOES_NECESSARIAS = Math.ceil(REUNIOES_NECESSARIAS / TAXA_CONVERSAO)
 type PulseTone = "primary" | "warning" | "info" | "destructive" | "success";
 
 function Dashboard() {
+  const { leads, tasks, clients, insights } = useDataStore();
   const leadsNovos = leads.filter((l) => l.stage === "novo").length;
   const leadsAguardando = leads.filter((l) => l.stage === "contato").length;
   const followupsPendentes = dashboardKPIs.followupsPendentes;
   const reunioesHoje = agendaEvents.filter((e) => e.date === "2026-07-03" && e.type === "reuniao").length;
   const tarefasAtrasadas = tasks.filter(
     (t) => t.status !== "concluida" && new Date(t.dueDate) < new Date("2026-07-03"),
-  ).length + 3;
+  ).length;
   const cobrancasPendentes = clients.filter((c) => c.status === "ativo" && c.paymentDay <= DIA_ATUAL).length;
-  const vendasMes = 3;
+  const vendasMes = leads.filter((l) => l.stage === "fechado").length;
+
 
   const pulse: { label: string; value: number | string; icon: typeof Sparkles; tone: PulseTone; to: string }[] = [
     { label: "Leads novos", value: leadsNovos, icon: Sparkles, tone: "primary", to: "/comercial" },
@@ -76,13 +78,22 @@ function Dashboard() {
     { label: "Cobranças pendentes", value: cobrancasPendentes, icon: Wallet, tone: "warning", to: "/dre" },
   ];
 
-  const proximasAcoes = [
-    { id: "a1", text: "Enviar proposta Ribeiro Motors", tone: "destructive" as const, to: "/comercial" },
-    { id: "a2", text: "Reunião kickoff Reis Nutrição — 10h", tone: "primary" as const, to: "/operacao" },
-    { id: "a3", text: "Ligar para Marina Costa (lead sem follow-up)", tone: "warning" as const, to: "/comercial" },
-    { id: "a4", text: "Cobrar Pereira Ortopedia — vence em 2 dias", tone: "warning" as const, to: "/dre" },
-    { id: "a5", text: "Revisar criativos Andrade Fitness", tone: "info" as const, to: "/operacao" },
-  ];
+  const proximasAcoes = sortByPriority(insights)
+    .slice(0, 5)
+    .map((i) => ({
+      id: i.id,
+      text: i.titulo,
+      tone:
+        i.prioridade === "critica"
+          ? ("destructive" as const)
+          : i.prioridade === "alta"
+            ? ("warning" as const)
+            : i.prioridade === "media"
+              ? ("info" as const)
+              : ("primary" as const),
+      to: i.to,
+    }));
+
 
   return (
     <AppShell title="Dashboard" subtitle="Como está sua agência hoje">
@@ -125,9 +136,10 @@ function Dashboard() {
               {proximasAcoes.map((a) => (
                 <li key={a.id}>
                   <Link
-                    to={a.to}
+                    to={a.to as string}
                     className="flex items-center gap-2.5 rounded-md p-2 transition-colors hover:bg-accent"
                   >
+
                     <span
                       className={cn(
                         "h-1.5 w-1.5 shrink-0 rounded-full",
