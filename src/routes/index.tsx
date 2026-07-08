@@ -78,13 +78,22 @@ function Dashboard() {
     { label: "Cobranças pendentes", value: cobrancasPendentes, icon: Wallet, tone: "warning", to: "/dre" },
   ];
 
-  const proximasAcoes = [
-    { id: "a1", text: "Enviar proposta Ribeiro Motors", tone: "destructive" as const, to: "/comercial" },
-    { id: "a2", text: "Reunião kickoff Reis Nutrição — 10h", tone: "primary" as const, to: "/operacao" },
-    { id: "a3", text: "Ligar para Marina Costa (lead sem follow-up)", tone: "warning" as const, to: "/comercial" },
-    { id: "a4", text: "Cobrar Pereira Ortopedia — vence em 2 dias", tone: "warning" as const, to: "/dre" },
-    { id: "a5", text: "Revisar criativos Andrade Fitness", tone: "info" as const, to: "/operacao" },
-  ];
+  const proximasAcoes = sortByPriority(insights)
+    .slice(0, 5)
+    .map((i) => ({
+      id: i.id,
+      text: i.titulo,
+      tone:
+        i.prioridade === "critica"
+          ? ("destructive" as const)
+          : i.prioridade === "alta"
+            ? ("warning" as const)
+            : i.prioridade === "media"
+              ? ("info" as const)
+              : ("primary" as const),
+      to: i.to,
+    }));
+
 
   return (
     <AppShell title="Dashboard" subtitle="Como está sua agência hoje">
