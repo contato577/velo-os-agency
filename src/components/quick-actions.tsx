@@ -479,7 +479,9 @@ function DespesaForm() {
   );
 }
 
-function TarefaForm() {
+export type TarefaDefaultContext = { type: "cliente" | "projeto"; id: string; label: string };
+
+function TarefaForm({ defaultContext }: { defaultContext?: TarefaDefaultContext }) {
   return (
     <>
       <F label="Título"><input required placeholder="Ex: Ligar para Marina" className={cls} /></F>
@@ -489,10 +491,50 @@ function TarefaForm() {
           <select className={cls}><option>Baixa</option><option>Média</option><option>Alta</option><option>Urgente</option></select>
         </F>
       </Row2>
-      <F label="Vincular a cliente / projeto (opcional)">
-        <input placeholder="Buscar…" className={cls} />
+      <F label={defaultContext ? `Vinculado a ${defaultContext.type}` : "Vincular a cliente / projeto (opcional)"}>
+        {defaultContext ? (
+          <div className="flex items-center gap-2 rounded-md border bg-surface/60 px-3 py-1.5 text-[13px]">
+            <span className="inline-flex h-5 items-center rounded-full bg-primary/10 px-2 text-[10px] font-medium uppercase tracking-widest text-primary">
+              {defaultContext.type}
+            </span>
+            <span className="min-w-0 flex-1 truncate">{defaultContext.label}</span>
+            <span className="text-[10px] text-muted-foreground">travado</span>
+            <input type="hidden" value={defaultContext.id} readOnly />
+          </div>
+        ) : (
+          <input placeholder="Buscar…" className={cls} />
+        )}
       </F>
       <F label="Observações"><textarea rows={2} className={cls} /></F>
+    </>
+  );
+}
+
+export function NewTaskButton({
+  defaultContext,
+  className,
+  label = "+ Nova tarefa",
+}: {
+  defaultContext?: TarefaDefaultContext;
+  className?: string;
+  label?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className={cn(
+          "inline-flex h-8 items-center gap-1.5 rounded-md border bg-surface px-3 text-xs font-medium hover:bg-accent",
+          className,
+        )}
+      >
+        {label}
+      </button>
+      {open && (
+        <QuickDialog kind="tarefa" defaultContext={defaultContext} onClose={() => setOpen(false)} />
+      )}
     </>
   );
 }
