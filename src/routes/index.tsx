@@ -136,9 +136,10 @@ function Dashboard() {
               {proximasAcoes.map((a) => (
                 <li key={a.id}>
                   <Link
-                    to={a.to}
+                    to={a.to as string}
                     className="flex items-center gap-2.5 rounded-md p-2 transition-colors hover:bg-accent"
                   >
+
                     <span
                       className={cn(
                         "h-1.5 w-1.5 shrink-0 rounded-full",
