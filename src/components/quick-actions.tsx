@@ -272,7 +272,7 @@ const kindMeta: Record<QuickKind, { title: string; desc: string }> = {
   tarefa: { title: "Nova Tarefa", desc: "Adicionar item à sua lista de execução" },
 };
 
-function QuickDialog({ kind, onClose }: { kind: QuickKind; onClose: () => void }) {
+function QuickDialog({ kind, onClose, defaultContext }: { kind: QuickKind; onClose: () => void; defaultContext?: TarefaDefaultContext }) {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const meta = kindMeta[kind];
@@ -322,7 +322,8 @@ function QuickDialog({ kind, onClose }: { kind: QuickKind; onClose: () => void }
             {kind === "cliente" && <ClienteForm />}
             {kind === "venda" && <VendaForm />}
             {kind === "despesa" && <DespesaForm />}
-            {kind === "tarefa" && <TarefaForm />}
+            {kind === "tarefa" && <TarefaForm defaultContext={defaultContext} />}
+
 
             <div className="flex items-center justify-end gap-2 border-t pt-3">
               <button
