@@ -29,6 +29,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { AppShell, PageHeader } from "@/components/app-shell";
+import { NewTaskButton } from "@/components/quick-actions";
 import { clients, projects, tasks, formatBRL, type Client } from "@/lib/mock-data";
 import { gerarResumoCliente, exportarRelatorioPDF, linkWhatsApp } from "@/lib/client-report";
 import { cn } from "@/lib/utils";
