@@ -444,6 +444,7 @@ function TabDocumentos() {
 
 // ─── OPERAÇÃO ────────────────────────────────────────────────────────────────
 function TabOperacao({ clientId }: { clientId: string }) {
+  const client = clients.find((c) => c.id === clientId) ?? clients[0];
   const clientProjects = projects.filter((p) => p.clientId === clientId);
   const clientTasks = tasks.filter((t) => t.clientId === clientId);
   const checklist = [
