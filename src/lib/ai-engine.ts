@@ -37,6 +37,7 @@ export function sortByPriority(list: Insight[]): Insight[] {
 }
 
 const HOJE = new Date("2026-07-03");
+const RENEWAL_ALERT_DAYS = 5; // dias de antecedência para alerta crítico de renovação
 const BRL = (n: number) =>
   n.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
 
@@ -114,6 +115,44 @@ export function gerarInsights(input: AIInputs): Insight[] {
       to: "/clientes",
     });
   }
+
+  const clientesOnboardingAtrasado = clients.filter(
+    (c) => c.status === "onboarding" && c.dataPrevistaFimOnboarding && new Date(c.dataPrevistaFimOnboarding) < HOJE,
+  );
+  clientesOnboardingAtrasado.forEach((c) => {
+    const diasAtraso = Math.floor(
+      (HOJE.getTime() - new Date(c.dataPrevistaFimOnboarding!).getTime()) / 86400000,
+    );
+    insights.push({
+      id: `d-onboarding-atraso-${c.id}`,
+      area: "Clientes",
+      titulo: `Onboarding de ${c.company} atrasado`,
+      descricao: `Previsão de conclusão era ${new Date(c.dataPrevistaFimOnboarding!).toLocaleDateString("pt-BR")}. Já são ${diasAtraso} dia(s) além do prazo.`,
+      prioridade: "alta",
+      impacto: `${diasAtraso} dia(s) de atraso`,
+      acaoLabel: "Ver cliente",
+      to: "/clientes",
+    });
+  });
+
+  const clientesRenovacaoProxima = clients.filter((c) => {
+    const d = new Date(c.renewalDate);
+    const diff = (d.getTime() - HOJE.getTime()) / 86400000;
+    return diff >= 0 && diff <= RENEWAL_ALERT_DAYS;
+  });
+  clientesRenovacaoProxima.forEach((c) => {
+    const diasRestantes = Math.ceil((new Date(c.renewalDate).getTime() - HOJE.getTime()) / 86400000);
+    insights.push({
+      id: `d-renovacao-urgente-${c.id}`,
+      area: "Clientes",
+      titulo: `Renovação de ${c.company} em ${diasRestantes} dia(s)`,
+      descricao: "Contrato vence em breve. Confirme a renovação ou agende uma conversa antes do vencimento.",
+      prioridade: "critica",
+      impacto: `MRR: ${BRL(c.monthlyValue)}`,
+      acaoLabel: "Ver cliente",
+      to: "/clientes",
+    });
+  });
 
   const gapMeta = ((kpis.metaMes - kpis.vendasMes) / kpis.metaMes) * 100;
   if (gapMeta > 0) {
