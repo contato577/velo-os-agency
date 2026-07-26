@@ -13,6 +13,7 @@ import { Plus, Filter, Search, MoreHorizontal, Phone, Instagram, Globe, MapPin, 
 import { AppShell } from "@/components/app-shell";
 import { stageOrder, stageLabels, formatBRL, type Lead, type LeadStage, type LeadPotential, type Client } from "@/lib/mock-data";
 import { useDataStore } from "@/lib/data-store";
+import { useQuickActions } from "@/components/quick-actions";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/comercial")({
@@ -123,7 +124,7 @@ function StageColumn({
   leads: Lead[];
   onCardClick: (lead: Lead) => void;
   justMovedId: string | null;
-  onAdd: () => void;
+  onAdd: (stage: LeadStage) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: `col-${stage}` });
   const stageValue = leads.reduce((s, l) => s + l.value, 0);
@@ -157,7 +158,7 @@ function StageColumn({
         ))}
         <button
           data-no-drag
-          onClick={onAdd}
+          onClick={() => onAdd(stage)}
           className="flex items-center justify-center gap-1 rounded-md border border-dashed py-1.5 text-[11px] text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary"
         >
           <Plus className="h-3 w-3" /> Adicionar lead
@@ -316,6 +317,7 @@ function VendaConfirmDialog({
 
 function Comercial() {
   const { leads, updateLeadStage, criarClienteDeVenda } = useDataStore();
+  const { openDialog } = useQuickActions();
   const [selected, setSelected] = useState<Lead | null>(null);
   const [query, setQuery] = useState("");
   const [filterOpen, setFilterOpen] = useState(false);
@@ -326,10 +328,6 @@ function Comercial() {
   const [createdClient, setCreatedClient] = useState<Client | null>(null);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
-
-  const openNewLead = () => {
-    window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true }));
-  };
 
   const owners = useMemo(() => Array.from(new Set(leads.map((l) => l.owner))), [leads]);
   const filteredLeads = useMemo(
@@ -459,7 +457,7 @@ function Comercial() {
               )}
             </div>
             <button
-              onClick={openNewLead}
+              onClick={() => openDialog("lead")}
               className="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary/90"
             >
               <Plus className="h-3.5 w-3.5" /> Novo Lead
@@ -478,7 +476,7 @@ function Comercial() {
                   leads={filteredLeads.filter((l) => l.stage === stage)}
                   onCardClick={setSelected}
                   justMovedId={justMovedId}
-                  onAdd={openNewLead}
+                  onAdd={(s) => openDialog("lead", s)}
                 />
               ))}
             </div>

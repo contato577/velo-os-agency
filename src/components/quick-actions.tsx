@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "@tanstack/react-router";
 import {
   Plus,
@@ -15,8 +16,25 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { leads, clients } from "@/lib/mock-data";
+import type { LeadStage } from "@/lib/mock-data";
 
-type QuickKind = "lead" | "cliente" | "venda" | "despesa" | "tarefa";
+export type QuickKind = "lead" | "cliente" | "venda" | "despesa" | "tarefa";
+
+// ─── Context ─────────────────────────────────────────────────────────────────
+
+interface QuickActionsContextValue {
+  openDialog: (kind: QuickKind, defaultStage?: LeadStage) => void;
+}
+
+const QuickActionsContext = createContext<QuickActionsContextValue | null>(null);
+
+export function useQuickActions() {
+  const ctx = useContext(QuickActionsContext);
+  if (!ctx) throw new Error("useQuickActions must be used within QuickActions");
+  return ctx;
+}
+
+// ─── Items ───────────────────────────────────────────────────────────────────
 
 const items: {
   key: QuickKind;
@@ -25,17 +43,21 @@ const items: {
   hint: string;
   shortcut: string;
 }[] = [
-  { key: "lead", label: "Novo Lead", icon: UserPlus, hint: "Adicionar oportunidade ao CRM", shortcut: "L" },
-  { key: "cliente", label: "Novo Cliente", icon: Building2, hint: "Cadastrar cliente diretamente", shortcut: "C" },
-  { key: "venda", label: "Nova Venda", icon: DollarSign, hint: "Registrar venda fechada", shortcut: "V" },
-  { key: "despesa", label: "Nova Despesa", icon: Receipt, hint: "Lançar despesa no DRE", shortcut: "D" },
-  { key: "tarefa", label: "Nova Tarefa", icon: CheckSquare, hint: "Criar tarefa rápida", shortcut: "T" },
-];
+    { key: "lead", label: "Novo Lead", icon: UserPlus, hint: "Adicionar oportunidade ao CRM", shortcut: "L" },
+    { key: "cliente", label: "Novo Cliente", icon: Building2, hint: "Cadastrar cliente diretamente", shortcut: "C" },
+    { key: "venda", label: "Nova Venda", icon: DollarSign, hint: "Registrar venda fechada", shortcut: "V" },
+    { key: "despesa", label: "Nova Despesa", icon: Receipt, hint: "Lançar despesa no DRE", shortcut: "D" },
+    { key: "tarefa", label: "Nova Tarefa", icon: CheckSquare, hint: "Criar tarefa rápida", shortcut: "T" },
+  ];
+
+// ─── Main Component ──────────────────────────────────────────────────────────
 
 export function QuickActions() {
   const [openMenu, setOpenMenu] = useState(false);
   const [openCmd, setOpenCmd] = useState(false);
-  const [dialog, setDialog] = useState<QuickKind | null>(null);
+  const [dialog, setDialog] = useState<{ kind: QuickKind; defaultStage?: LeadStage } | null>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -52,17 +74,31 @@ export function QuickActions() {
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
-  const open = (k: QuickKind) => {
-    setDialog(k);
+  const handleMenuToggle = () => {
+    if (!openMenu && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setMenuPos({
+        top: rect.bottom + 8,
+        right: window.innerWidth - rect.right,
+      });
+    }
+    setOpenMenu((v) => !v);
+  };
+
+  const open = (kind: QuickKind, defaultStage?: LeadStage) => {
+    setDialog({ kind, defaultStage });
     setOpenMenu(false);
     setOpenCmd(false);
   };
 
+  const contextValue: QuickActionsContextValue = { openDialog: open };
+
   return (
-    <>
+    <QuickActionsContext.Provider value={contextValue}>
       <div className="relative">
         <button
-          onClick={() => setOpenMenu((v) => !v)}
+          ref={buttonRef}
+          onClick={handleMenuToggle}
           className="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground shadow-sm hover:bg-primary/90"
         >
           <Plus className="h-3.5 w-3.5" /> Novo
@@ -70,11 +106,17 @@ export function QuickActions() {
             <CommandIcon className="h-2 w-2" />K
           </kbd>
         </button>
+      </div>
 
-        {openMenu && (
+      {/* Dropdown menu — portal to body */}
+      {openMenu &&
+        createPortal(
           <>
             <div className="fixed inset-0 z-40" onClick={() => setOpenMenu(false)} />
-            <div className="absolute right-0 top-10 z-50 w-64 overflow-hidden rounded-lg border bg-popover shadow-elegant">
+            <div
+              className="fixed z-50 w-64 overflow-hidden rounded-lg border bg-popover shadow-elegant"
+              style={{ top: menuPos.top, right: menuPos.right }}
+            >
               <div className="border-b bg-surface/50 px-3 py-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
                 Criar rapidamente
               </div>
@@ -102,13 +144,28 @@ export function QuickActions() {
                 })}
               </div>
             </div>
-          </>
+          </>,
+          document.body,
         )}
-      </div>
 
-      {openCmd && <CommandPalette onClose={() => setOpenCmd(false)} onCreate={open} />}
-      {dialog && <QuickDialog kind={dialog} onClose={() => setDialog(null)} />}
-    </>
+      {/* Command Palette — portal to body */}
+      {openCmd &&
+        createPortal(
+          <CommandPalette onClose={() => setOpenCmd(false)} onCreate={open} />,
+          document.body,
+        )}
+
+      {/* Quick Dialog — portal to body */}
+      {dialog &&
+        createPortal(
+          <QuickDialog
+            kind={dialog.kind}
+            defaultStage={dialog.defaultStage}
+            onClose={() => setDialog(null)}
+          />,
+          document.body,
+        )}
+    </QuickActionsContext.Provider>
   );
 }
 
@@ -272,7 +329,17 @@ const kindMeta: Record<QuickKind, { title: string; desc: string }> = {
   tarefa: { title: "Nova Tarefa", desc: "Adicionar item à sua lista de execução" },
 };
 
-function QuickDialog({ kind, onClose, defaultContext }: { kind: QuickKind; onClose: () => void; defaultContext?: TarefaDefaultContext }) {
+function QuickDialog({
+  kind,
+  onClose,
+  defaultContext,
+  defaultStage,
+}: {
+  kind: QuickKind;
+  onClose: () => void;
+  defaultContext?: TarefaDefaultContext;
+  defaultStage?: LeadStage;
+}) {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const meta = kindMeta[kind];
@@ -318,12 +385,11 @@ function QuickDialog({ kind, onClose, defaultContext }: { kind: QuickKind; onClo
           </div>
         ) : (
           <form onSubmit={submit} className="max-h-[70vh] space-y-3 overflow-y-auto p-4">
-            {kind === "lead" && <LeadForm />}
+            {kind === "lead" && <LeadForm defaultStage={defaultStage} />}
             {kind === "cliente" && <ClienteForm />}
             {kind === "venda" && <VendaForm />}
             {kind === "despesa" && <DespesaForm />}
             {kind === "tarefa" && <TarefaForm defaultContext={defaultContext} />}
-
 
             <div className="flex items-center justify-end gap-2 border-t pt-3">
               <button
@@ -365,7 +431,9 @@ function F({ label, children }: { label: string; children: React.ReactNode }) {
   );
 }
 
-function LeadForm() {
+import { stageLabels } from "@/lib/mock-data";
+
+function LeadForm({ defaultStage }: { defaultStage?: LeadStage }) {
   return (
     <>
       <Row2>
@@ -391,6 +459,16 @@ function LeadForm() {
           <select className={cls}><option>Alto</option><option>Médio</option><option>Baixo</option></select>
         </F>
       </Row2>
+      {defaultStage && (
+        <F label="Estágio inicial">
+          <div className="flex items-center gap-2 rounded-md border bg-surface/60 px-3 py-1.5 text-[13px]">
+            <span className="inline-flex h-5 items-center rounded-full bg-primary/10 px-2 text-[10px] font-medium uppercase tracking-widest text-primary">
+              {stageLabels[defaultStage]}
+            </span>
+            <span className="text-[10px] text-muted-foreground">pré-selecionado</span>
+          </div>
+        </F>
+      )}
       <F label="Próxima ação">
         <input placeholder="Ex: Ligar amanhã 14h" className={cls} />
       </F>
@@ -533,12 +611,11 @@ export function NewTaskButton({
       >
         {label}
       </button>
-      {open && (
-        <QuickDialog kind="tarefa" defaultContext={defaultContext} onClose={() => setOpen(false)} />
-      )}
+      {open &&
+        createPortal(
+          <QuickDialog kind="tarefa" defaultContext={defaultContext} onClose={() => setOpen(false)} />,
+          document.body,
+        )}
     </>
   );
 }
-
-// Silence unused import warning
-void cn;
