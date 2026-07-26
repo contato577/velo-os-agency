@@ -28,6 +28,7 @@ interface DataStoreContextValue {
   updateLeadStage: (id: string, stage: LeadStage) => void;
   addTask: (partial: Omit<Task, "id">) => Task;
   criarClienteDeVenda: (lead: Lead, servicos: string[]) => Client;
+  toggleChecklistItem: (projectId: string, itemId: string) => void;
 }
 
 const DataStoreContext = createContext<DataStoreContextValue | null>(null);
@@ -222,6 +223,77 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
     return newClient;
   };
 
+  const toggleChecklistItem = (projectId: string, itemId: string) => {
+    // 1. Inverte o done do item e captura o clientId do projeto
+    let affectedClientId: string | null = null;
+
+    setProjects((prevProjects) => {
+      const updated = prevProjects.map((p) => {
+        if (p.id !== projectId) return p;
+        affectedClientId = p.clientId;
+        return {
+          ...p,
+          checklist: (p.checklist ?? []).map((item) =>
+            item.id === itemId ? { ...item, done: !item.done } : item,
+          ),
+        };
+      });
+
+      // 2. Verifica se todos os itens de TODOS os projetos do cliente estão done
+      if (!affectedClientId) return updated;
+      const clientProjects = updated.filter((p) => p.clientId === affectedClientId);
+      const allDone =
+        clientProjects.length > 0 &&
+        clientProjects.every((p) => (p.checklist ?? []).every((item) => item.done));
+
+      if (allDone) {
+        // 3. Avança a etapa da jornada do cliente
+        setClients((prevClients) =>
+          prevClients.map((c) => {
+            if (c.id !== affectedClientId) return c;
+
+            const matchedTemplate = (c.services ?? [])
+              .map((s) => serviceTemplates.find((t) => t.name === s || t.id === s))
+              .find(Boolean);
+            const stages: string[] = matchedTemplate?.stages ?? [];
+            const currentIdx = stages.indexOf(c.etapaJornada ?? "");
+            const isLast = currentIdx >= stages.length - 1 || currentIdx === -1;
+
+            const timelineId = `tl-${Date.now()}`;
+
+            if (isLast) {
+              return {
+                ...c,
+                status: "ativo" as const,
+                timeline: [
+                  { id: timelineId, time: "Agora", user: "Sistema", text: "Jornada de onboarding concluída — cliente ativo" },
+                  ...(c.timeline ?? []),
+                ],
+              };
+            }
+
+            const nextStage = stages[currentIdx + 1];
+            return {
+              ...c,
+              etapaJornada: nextStage,
+              timeline: [
+                {
+                  id: timelineId,
+                  time: "Agora",
+                  user: "Sistema",
+                  text: `Etapa concluída: ${c.etapaJornada} → ${nextStage}`,
+                },
+                ...(c.timeline ?? []),
+              ],
+            };
+          }),
+        );
+      }
+
+      return updated;
+    });
+  };
+
   return (
     <DataStoreContext.Provider
       value={{
@@ -235,6 +307,7 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
         updateLeadStage,
         addTask,
         criarClienteDeVenda,
+        toggleChecklistItem,
       }}
     >
       {children}

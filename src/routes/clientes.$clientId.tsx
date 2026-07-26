@@ -34,6 +34,7 @@ import { formatBRL, type Client } from "@/lib/mock-data";
 import { useDataStore } from "@/lib/data-store";
 import { gerarResumoCliente, exportarRelatorioPDF, linkWhatsApp } from "@/lib/client-report";
 import { cn } from "@/lib/utils";
+import { serviceTemplates } from "@/lib/service-templates";
 
 export const Route = createFileRoute("/clientes/$clientId")({
   head: () => ({
@@ -446,23 +447,37 @@ function TabDocumentos() {
 }
 
 // ─── OPERAÇÃO ────────────────────────────────────────────────────────────────
+interface ArquivoItem {
+  id: string;
+  name: string;
+  size: string;
+  url?: string;
+}
+
 function TabOperacao({ clientId }: { clientId: string }) {
   const { clients, projects, tasks } = useDataStore();
   const client = clients.find((c) => c.id === clientId) ?? clients[0];
   const clientProjects = projects.filter((p) => p.clientId === clientId);
   const clientTasks = tasks.filter((t) => t.clientId === clientId);
-  const checklist = [
-    { id: "cl1", text: "Kickoff realizado", done: true },
-    { id: "cl2", text: "Pixel Meta instalado", done: true },
-    { id: "cl3", text: "Landing page publicada", done: true },
-    { id: "cl4", text: "Primeira campanha ativa", done: false },
-    { id: "cl5", text: "Relatório mensal enviado", done: false },
-  ];
-  const arquivos = [
+
+  const [arquivos, setArquivos] = useState<ArquivoItem[]>([
     { id: "f1", name: "Briefing_kickoff.pdf", size: "1.2 MB" },
     { id: "f2", name: "Contrato_assinado.pdf", size: "480 KB" },
     { id: "f3", name: "Criativos_Julho.zip", size: "12.4 MB" },
-  ];
+  ]);
+
+  const handleUpload = (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    const novos: ArquivoItem[] = Array.from(files).map((f, i) => ({
+      id: `f-${Date.now()}-${i}`,
+      name: f.name,
+      size: f.size < 1024 * 1024
+        ? `${Math.max(1, Math.round(f.size / 1024))} KB`
+        : `${(f.size / (1024 * 1024)).toFixed(1)} MB`,
+      url: URL.createObjectURL(f),
+    }));
+    setArquivos((prev) => [...novos, ...prev]);
+  };
   const comentarios = [
     { id: "c1", user: "Rafael Souza", time: "há 2h", text: "Cliente aprovou os criativos para veiculação." },
     { id: "c2", user: "Camila Torres", time: "há 1d", text: "Ajustamos o público da campanha conforme feedback." },
@@ -566,28 +581,8 @@ function TabOperacao({ clientId }: { clientId: string }) {
       </div>
 
       <div className="space-y-4">
-        {/* Checklist */}
-        <div className="rounded-xl border bg-card p-4">
-          <div className="mb-3 flex items-center gap-2">
-            <CheckSquare className="h-3.5 w-3.5 text-muted-foreground" />
-            <h3 className="text-sm font-semibold tracking-tight">Checklist de entregas</h3>
-          </div>
-          <ul className="space-y-1">
-            {checklist.map((c) => (
-              <li key={c.id} className="flex items-center gap-2.5 rounded-md p-2 hover:bg-accent">
-                <span
-                  className={cn(
-                    "flex h-4 w-4 items-center justify-center rounded border",
-                    c.done ? "border-primary bg-primary text-primary-foreground" : "border-border",
-                  )}
-                >
-                  {c.done && <CheckSquare className="h-2.5 w-2.5" />}
-                </span>
-                <span className={cn("text-[13px]", c.done && "text-muted-foreground line-through")}>{c.text}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
+        {/* Jornada do Cliente */}
+        <JornadaCliente client={client} clientProjects={clientProjects} />
 
         {/* Arquivos */}
         <div className="rounded-xl border bg-card p-4">
@@ -596,21 +591,226 @@ function TabOperacao({ clientId }: { clientId: string }) {
               <Paperclip className="h-3.5 w-3.5 text-muted-foreground" />
               <h3 className="text-sm font-semibold tracking-tight">Arquivos</h3>
             </div>
-            <button className="inline-flex items-center gap-1 rounded-md border bg-surface px-2 py-1 text-[11px] hover:bg-accent">
+            <label className="inline-flex cursor-pointer items-center gap-1 rounded-md border bg-surface px-2 py-1 text-[11px] hover:bg-accent">
               <FileUp className="h-3 w-3" /> Upload
-            </button>
+              <input
+                type="file"
+                multiple
+                className="hidden"
+                onChange={(e) => handleUpload(e.target.files)}
+              />
+            </label>
           </div>
           <ul className="space-y-1">
+            {arquivos.length === 0 && (
+              <li className="rounded-md border border-dashed py-4 text-center text-[11px] text-muted-foreground">
+                Nenhum arquivo enviado ainda.
+              </li>
+            )}
             {arquivos.map((a) => (
               <li key={a.id} className="flex items-center gap-2 rounded-md border bg-surface/50 px-2.5 py-2">
                 <FileText className="h-3.5 w-3.5 text-muted-foreground" />
-                <span className="min-w-0 flex-1 truncate text-[12px]">{a.name}</span>
+                {a.url ? (
+                  <a
+                    href={a.url}
+                    download={a.name}
+                    className="min-w-0 flex-1 truncate text-[12px] hover:text-primary hover:underline"
+                  >
+                    {a.name}
+                  </a>
+                ) : (
+                  <span className="min-w-0 flex-1 truncate text-[12px]">{a.name}</span>
+                )}
                 <span className="text-[10px] text-muted-foreground">{a.size}</span>
+                {a.url && (
+                  <a
+                    href={a.url}
+                    download={a.name}
+                    className="text-muted-foreground hover:text-foreground"
+                    title="Baixar"
+                  >
+                    <Download className="h-3 w-3" />
+                  </a>
+                )}
               </li>
             ))}
           </ul>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ─── JORNADA DO CLIENTE ──────────────────────────────────────────────────────
+function JornadaCliente({
+  client,
+  clientProjects,
+}: {
+  client: Client;
+  clientProjects: import("@/lib/mock-data").Project[];
+}) {
+  const { toggleChecklistItem } = useDataStore();
+
+  // Etapas do primeiro template de serviço do cliente
+  const matchedTemplate = (client.services ?? [])
+    .map((s) => serviceTemplates.find((t) => t.name === s || t.id === s))
+    .find(Boolean);
+  const stages: string[] = matchedTemplate?.stages ?? [];
+  const currentIdx = stages.indexOf(client.etapaJornada ?? "");
+
+  // Indicador de prazo
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+  const prazoStatus = (() => {
+    if (client.status !== "onboarding" || !client.dataPrevistaFimOnboarding) return null;
+    const fim = new Date(client.dataPrevistaFimOnboarding);
+    fim.setHours(0, 0, 0, 0);
+    const diffDias = Math.round((fim.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
+    if (diffDias > 3) return { label: "No prazo", variant: "success" as const, diff: diffDias };
+    if (diffDias >= 0) return { label: `Atenção — faltam ${diffDias}d`, variant: "warning" as const, diff: diffDias };
+    return { label: `Atrasado ${Math.abs(diffDias)} dias`, variant: "destructive" as const, diff: diffDias };
+  })();
+
+  // Checklist flat de todos os projetos do cliente
+  const allItems = clientProjects.flatMap((p) =>
+    (p.checklist ?? []).map((item) => ({ ...item, projectId: p.id, projectName: p.name }))
+  );
+  const doneCount = allItems.filter((i) => i.done).length;
+  const totalCount = allItems.length;
+
+  if (stages.length === 0 && allItems.length === 0) return null;
+
+  return (
+    <div className="rounded-xl border bg-card p-4">
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <CheckSquare className="h-3.5 w-3.5 text-muted-foreground" />
+          <h3 className="text-sm font-semibold tracking-tight">Jornada do cliente</h3>
+        </div>
+        {prazoStatus && (
+          <span
+            className={cn(
+              "rounded px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider",
+              prazoStatus.variant === "success" && "bg-success/15 text-success",
+              prazoStatus.variant === "warning" && "bg-warning/15 text-warning",
+              prazoStatus.variant === "destructive" && "bg-destructive/15 text-destructive",
+            )}
+          >
+            {prazoStatus.label}
+          </span>
+        )}
+      </div>
+
+      {/* Barra de etapas */}
+      {stages.length > 0 && (
+        <div className="mb-4">
+          <div className="flex items-center gap-0">
+            {stages.map((stage, idx) => {
+              const isPast = idx < currentIdx;
+              const isCurrent = idx === currentIdx;
+              const isFirst = idx === 0;
+              const isLast = idx === stages.length - 1;
+              return (
+                <div key={stage} className="flex flex-1 flex-col items-center">
+                  <div className="relative flex w-full items-center">
+                    {/* Linha esquerda */}
+                    {!isFirst && (
+                      <div
+                        className={cn(
+                          "h-0.5 flex-1 transition-colors",
+                          isPast || isCurrent ? "bg-primary" : "bg-border",
+                        )}
+                      />
+                    )}
+                    {/* Bolinha */}
+                    <div
+                      className={cn(
+                        "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 text-[9px] font-bold transition-all",
+                        isPast && "border-primary bg-primary text-primary-foreground",
+                        isCurrent && "border-primary bg-background text-primary shadow-[0_0_0_3px] shadow-primary/20",
+                        !isPast && !isCurrent && "border-border bg-background text-muted-foreground",
+                      )}
+                    >
+                      {isPast ? "✓" : idx + 1}
+                    </div>
+                    {/* Linha direita */}
+                    {!isLast && (
+                      <div
+                        className={cn(
+                          "h-0.5 flex-1 transition-colors",
+                          isPast ? "bg-primary" : "bg-border",
+                        )}
+                      />
+                    )}
+                  </div>
+                  <span
+                    className={cn(
+                      "mt-1.5 text-center text-[9px] leading-tight",
+                      isCurrent ? "font-semibold text-primary" : isPast ? "text-muted-foreground" : "text-muted-foreground/60",
+                    )}
+                  >
+                    {stage}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Checklist real dos projetos */}
+      {allItems.length > 0 && (
+        <>
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-[11px] text-muted-foreground">Checklist de entregas</span>
+            <span className="font-mono text-[10px] text-muted-foreground">{doneCount}/{totalCount}</span>
+          </div>
+          {/* Progress bar */}
+          <div className="mb-3 h-1 overflow-hidden rounded-full bg-border">
+            <div
+              className="h-full rounded-full bg-primary transition-all"
+              style={{ width: totalCount > 0 ? `${(doneCount / totalCount) * 100}%` : "0%" }}
+            />
+          </div>
+          <ul className="space-y-1">
+            {allItems.map((item) => (
+              <li
+                key={`${item.projectId}-${item.id}`}
+                className="flex cursor-pointer items-center gap-2.5 rounded-md p-1.5 hover:bg-accent"
+                onClick={() => toggleChecklistItem(item.projectId, item.id)}
+              >
+                <span
+                  className={cn(
+                    "flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors",
+                    item.done
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border",
+                  )}
+                >
+                  {item.done && <span className="text-[9px] font-bold">✓</span>}
+                </span>
+                <span
+                  className={cn(
+                    "min-w-0 flex-1 truncate text-[12px]",
+                    item.done && "text-muted-foreground line-through",
+                  )}
+                >
+                  {item.text}
+                </span>
+                <span className="shrink-0 rounded bg-surface px-1.5 py-0.5 text-[9px] text-muted-foreground">
+                  {item.projectName.replace(/ — .*/, "")}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+
+      {allItems.length === 0 && stages.length > 0 && (
+        <p className="text-center text-[11px] text-muted-foreground">
+          Nenhum item de checklist ainda. Crie um projeto para este cliente.
+        </p>
+      )}
     </div>
   );
 }
