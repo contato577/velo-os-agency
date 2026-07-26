@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "@tanstack/react-router";
 import {
@@ -52,10 +52,35 @@ const items: {
 
 // ─── Main Component ──────────────────────────────────────────────────────────
 
-export function QuickActions() {
+export function QuickActionsProvider({ children }: { children: ReactNode }) {
+  const [dialog, setDialog] = useState<{ kind: QuickKind; defaultStage?: LeadStage } | null>(null);
+
+  const open = (kind: QuickKind, defaultStage?: LeadStage) => {
+    setDialog({ kind, defaultStage });
+  };
+
+  const contextValue: QuickActionsContextValue = { openDialog: open };
+
+  return (
+    <QuickActionsContext.Provider value={contextValue}>
+      {children}
+      {dialog &&
+        createPortal(
+          <QuickDialog
+            kind={dialog.kind}
+            defaultStage={dialog.defaultStage}
+            onClose={() => setDialog(null)}
+          />,
+          document.body,
+        )}
+    </QuickActionsContext.Provider>
+  );
+}
+
+export function QuickActionsButton() {
+  const { openDialog } = useQuickActions();
   const [openMenu, setOpenMenu] = useState(false);
   const [openCmd, setOpenCmd] = useState(false);
-  const [dialog, setDialog] = useState<{ kind: QuickKind; defaultStage?: LeadStage } | null>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
 
@@ -86,15 +111,13 @@ export function QuickActions() {
   };
 
   const open = (kind: QuickKind, defaultStage?: LeadStage) => {
-    setDialog({ kind, defaultStage });
+    openDialog(kind, defaultStage);
     setOpenMenu(false);
     setOpenCmd(false);
   };
 
-  const contextValue: QuickActionsContextValue = { openDialog: open };
-
   return (
-    <QuickActionsContext.Provider value={contextValue}>
+    <>
       <div className="relative">
         <button
           ref={buttonRef}
@@ -154,18 +177,7 @@ export function QuickActions() {
           <CommandPalette onClose={() => setOpenCmd(false)} onCreate={open} />,
           document.body,
         )}
-
-      {/* Quick Dialog — portal to body */}
-      {dialog &&
-        createPortal(
-          <QuickDialog
-            kind={dialog.kind}
-            defaultStage={dialog.defaultStage}
-            onClose={() => setDialog(null)}
-          />,
-          document.body,
-        )}
-    </QuickActionsContext.Provider>
+    </>
   );
 }
 
