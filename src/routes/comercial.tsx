@@ -48,7 +48,8 @@ const stageBorderColors: Record<LeadStage, string> = {
 };
 
 const potencialStyles: Record<LeadPotential, { label: string; chip: string; dot: string }> = {
-  alto: { label: "Alto", chip: "bg-primary/15 text-primary border-primary/30", dot: "bg-primary" },
+  alto: { label: "Alto", chip: "bg-brand-deep/15 text-brand-deep border-brand-deep/30", dot: "bg-brand-deep" },, chip: "bg-primary/15 text-primary border-primary/30", dot: "bg-primary"
+},
   medio: { label: "Médio", chip: "bg-info/15 text-info border-info/30", dot: "bg-info" },
   baixo: { label: "Baixo", chip: "bg-muted text-muted-foreground border-border", dot: "bg-muted-foreground" },
 };

@@ -241,7 +241,7 @@ function DRE() {
                   <XAxis dataKey="month" stroke="oklch(0.68 0.02 155)" fontSize={11} tickLine={false} axisLine={false} />
                   <YAxis stroke="oklch(0.68 0.02 155)" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `${v / 1000}k`} />
                   <Tooltip contentStyle={{ background: "oklch(0.14 0.008 155)", border: "1px solid oklch(0.22 0.010 155)", borderRadius: 8, fontSize: 12 }} formatter={(v: unknown) => formatBRL(Number(v))} />
-                  <Bar dataKey="receita" fill="oklch(0.72 0.19 155)" radius={[6, 6, 0, 0]} />
+                  <Bar dataKey="receita" fill="oklch(0.66 0.15 150)" radius={[6, 6, 0, 0]} />
                   <Bar dataKey="meta" fill="oklch(0.35 0.03 155)" radius={[6, 6, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
@@ -260,7 +260,7 @@ function DRE() {
                   <XAxis dataKey="month" stroke="oklch(0.68 0.02 155)" fontSize={11} tickLine={false} axisLine={false} />
                   <YAxis stroke="oklch(0.68 0.02 155)" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `${v}%`} />
                   <Tooltip contentStyle={{ background: "oklch(0.14 0.008 155)", border: "1px solid oklch(0.22 0.010 155)", borderRadius: 8, fontSize: 12 }} formatter={(v: unknown) => `${Number(v).toFixed(1)}%`} />
-                  <Line type="monotone" dataKey="margem" stroke="oklch(0.72 0.19 155)" strokeWidth={2} dot={{ r: 3, fill: "oklch(0.72 0.19 155)" }} />
+                  <Line type="monotone" dataKey="margem" stroke="oklch(0.66 0.15 150)" strokeWidth={2} dot={{ r: 3, fill: "oklch(0.66 0.15 150)" }} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -283,15 +283,15 @@ function DRE() {
               <AreaChart data={fluxoProjetado}>
                 <defs>
                   <linearGradient id="g-saldo" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="oklch(0.72 0.19 155)" stopOpacity={0.5} />
-                    <stop offset="100%" stopColor="oklch(0.72 0.19 155)" stopOpacity={0} />
+                    <stop offset="0%" stopColor="oklch(0.66 0.15 150)" stopOpacity={0.5} />
+                    <stop offset="100%" stopColor="oklch(0.66 0.15 150)" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.22 0.010 155)" />
                 <XAxis dataKey="mes" stroke="oklch(0.68 0.02 155)" fontSize={11} tickLine={false} axisLine={false} />
                 <YAxis stroke="oklch(0.68 0.02 155)" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `${v / 1000}k`} />
                 <Tooltip contentStyle={{ background: "oklch(0.14 0.008 155)", border: "1px solid oklch(0.22 0.010 155)", borderRadius: 8, fontSize: 12 }} formatter={(v: unknown) => formatBRL(Number(v))} />
-                <Area type="monotone" dataKey="entrada" stroke="oklch(0.72 0.19 155)" fill="url(#g-saldo)" strokeWidth={2} />
+                <Area type="monotone" dataKey="entrada" stroke="oklch(0.66 0.15 150)" fill="url(#g-saldo)" strokeWidth={2} />
                 <Area type="monotone" dataKey="saida" stroke="oklch(0.65 0.20 25)" fill="transparent" strokeWidth={2} />
                 <Area type="monotone" dataKey="saldo" stroke="oklch(0.75 0.15 220)" strokeDasharray="4 4" fill="transparent" strokeWidth={2} />
               </AreaChart>

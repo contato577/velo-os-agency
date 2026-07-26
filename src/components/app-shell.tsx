@@ -118,7 +118,7 @@ export function AppShell({
                 title={collapsed ? item.label : undefined}
               >
                 {active && (
-                  <span className="absolute left-0 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-r bg-primary" />
+                  <span className="absolute left-0 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-r bg-brand-deep" />
                 )}
                 <Icon className={cn("h-4 w-4 shrink-0", active ? "text-primary" : "")} />
                 {!collapsed && (

@@ -249,8 +249,8 @@ function MetaCard({ vendas }: { vendas: number }) {
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/15">
-              <Target className="h-3.5 w-3.5 text-primary" />
+            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-brand-deep/15">
+              <Target className="h-3.5 w-3.5 text-brand-deep" />
             </div>
             <h3 className="text-sm font-semibold tracking-tight">Meta do mês</h3>
           </div>
