@@ -115,7 +115,7 @@ export interface Client {
   etapaJornada?: string;
   timeline?: { id: string; time: string; user: string; text: string }[];
 }
-}
+
 
 export const clients: Client[] = [
   { id: "c-1", name: "André Pereira", company: "Pereira Ortopedia", plan: "Growth", monthlyValue: 8500, paymentDay: 5, renewalDate: "2026-11-15", owner: "Rafael Souza", status: "ativo", since: "2025-01-15", services: ["Tráfego Pago", "Landing Page"] },
