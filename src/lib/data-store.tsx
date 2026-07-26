@@ -4,14 +4,17 @@ import {
   tasks as seedTasks,
   clients as seedClients,
   financeEntries as seedExpenses,
+  projects as seedProjects,
   agendaEvents as seedAgenda,
   dashboardKPIs,
   type Lead,
   type Task,
   type Client,
   type FinanceEntry,
+  type Project,
   type LeadStage,
 } from "./mock-data";
+import { serviceTemplates, type ServiceTemplate } from "./service-templates";
 import { gerarInsights, type Insight } from "./ai-engine";
 
 interface DataStoreContextValue {
@@ -19,10 +22,12 @@ interface DataStoreContextValue {
   tasks: Task[];
   clients: Client[];
   expenses: FinanceEntry[];
+  projects: Project[];
   insights: Insight[];
   addLead: (partial: Omit<Lead, "id" | "createdAt" | "lastActivity"> & { stage?: LeadStage }) => Lead;
   updateLeadStage: (id: string, stage: LeadStage) => void;
   addTask: (partial: Omit<Task, "id">) => Task;
+  criarClienteDeVenda: (lead: Lead, servicos: string[]) => Client;
 }
 
 const DataStoreContext = createContext<DataStoreContextValue | null>(null);
@@ -30,8 +35,9 @@ const DataStoreContext = createContext<DataStoreContextValue | null>(null);
 export function DataStoreProvider({ children }: { children: ReactNode }) {
   const [leads, setLeads] = useState<Lead[]>(seedLeads);
   const [tasks, setTasks] = useState<Task[]>(seedTasks);
-  const [clients] = useState<Client[]>(seedClients);
-  const [expenses] = useState<FinanceEntry[]>(seedExpenses);
+  const [clients, setClients] = useState<Client[]>(seedClients);
+  const [expenses, setExpenses] = useState<FinanceEntry[]>(seedExpenses);
+  const [projects, setProjects] = useState<Project[]>(seedProjects);
 
   const insights = useMemo(
     () =>
@@ -91,9 +97,145 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
     return task;
   };
 
+  const criarClienteDeVenda = (lead: Lead, servicos: string[]): Client => {
+    const hoje = new Date();
+    const dataInicioJornada = hoje.toISOString().slice(0, 10);
+
+    // 2. MAIOR defaultDeadlineDays entre todos os serviços vendidos (service-templates.ts)
+    const matchedTemplates = servicos
+      .map((s) => serviceTemplates.find((t) => t.name === s || t.id === s))
+      .filter((t): t is ServiceTemplate => Boolean(t));
+
+    const prazoJornadaDias = matchedTemplates.length > 0
+      ? Math.max(...matchedTemplates.map((t) => t.defaultDeadlineDays))
+      : 15;
+
+    // 3. Define dataInicioJornada (hoje) e dataPrevistaFimOnboarding (hoje + prazoJornadaDias)
+    const fimDate = new Date(hoje.getTime() + prazoJornadaDias * 24 * 60 * 60 * 1000);
+    const dataPrevistaFimOnboarding = fimDate.toISOString().slice(0, 10);
+
+    // 4. Define etapaJornada inicial como o primeiro item do array stages do primeiro template vendido
+    const etapaJornada = matchedTemplates[0]?.stages[0] ?? "Briefing";
+
+    const plan: Client["plan"] =
+      lead.value >= 15000 ? "Enterprise" : lead.value >= 10000 ? "Scale" : lead.value >= 5000 ? "Growth" : "Starter";
+
+    // 7. Registra a primeira entrada da timeline do cliente
+    const timelineEntry = {
+      id: `tl-${Date.now()}`,
+      time: "Agora",
+      user: lead.owner || "Sistema",
+      text: `Cliente criado a partir da venda fechada no CRM (${servicos.join(", ")})`,
+    };
+
+    // 1. Cria um novo Client a partir dos dados do lead, status "onboarding"
+    const clientId = `c-${Date.now()}`;
+    const newClient: Client = {
+      id: clientId,
+      name: lead.name,
+      company: lead.company,
+      plan,
+      monthlyValue: lead.value,
+      paymentDay: 5,
+      renewalDate: new Date(hoje.getTime() + 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+      owner: lead.owner,
+      status: "onboarding",
+      since: dataInicioJornada,
+      services: servicos,
+      prazoJornadaDias,
+      dataInicioJornada,
+      dataPrevistaFimOnboarding,
+      etapaJornada,
+      timeline: [timelineEntry],
+    };
+
+    // 5. Para cada serviço, cria um Projeto vinculado ao cliente, aplicando checklist e tarefas
+    const newProjects: Project[] = [];
+    const newTasks: Task[] = [];
+
+    servicos.forEach((s, idx) => {
+      const tpl = serviceTemplates.find((t) => t.name === s || t.id === s);
+      const deadlineDays = tpl?.defaultDeadlineDays ?? 15;
+      const projDeadline = new Date(hoje.getTime() + deadlineDays * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+      const projId = `p-${Date.now()}-${idx}`;
+
+      let type: Project["type"] = "Tráfego";
+      const sLower = s.toLowerCase();
+      if (sLower.includes("landing")) type = "Landing Page";
+      else if (sLower.includes("site")) type = "Site";
+      else if (sLower.includes("consultoria")) type = "Consultoria";
+      else if (sLower.includes("criativos")) type = "Criativos";
+      else if (sLower.includes("automação") || sLower.includes("automacao")) type = "Automação";
+
+      newProjects.push({
+        id: projId,
+        clientId: newClient.id,
+        clientName: newClient.company,
+        name: `${s} — ${newClient.company}`,
+        type,
+        status: "briefing",
+        progress: 0,
+        deadline: projDeadline,
+        owner: lead.owner,
+        checklist: tpl?.checklist ? tpl.checklist.map((item, i) => ({ id: `chk-${projId}-${i}`, text: item, done: false })) : [],
+      });
+
+      if (tpl?.tasks) {
+        tpl.tasks.forEach((t, taskIdx) => {
+          const taskDue = new Date(hoje.getTime() + t.dueOffsetDays * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+          newTasks.push({
+            id: `t-${Date.now()}-${idx}-${taskIdx}`,
+            title: `${t.title} (${newClient.company})`,
+            owner: lead.owner,
+            priority: t.priority,
+            status: "hoje",
+            dueDate: taskDue,
+            clientId: newClient.id,
+            projectId: projId,
+            labels: ["Onboarding", s],
+          });
+        });
+      }
+    });
+
+    // 6. Cria o primeiro registro de cobrança (mensalidade), vencimento em 30 dias
+    const vencimento30d = new Date(hoje.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const newFinanceEntry: FinanceEntry = {
+      id: `f-${Date.now()}`,
+      date: vencimento30d,
+      description: `Primeira Mensalidade — ${lead.company}`,
+      category: "Mensalidade",
+      costCenter: "Receita",
+      type: "entrada",
+      amount: lead.value,
+      client: lead.company,
+      recurring: true,
+    };
+
+    // Atualiza o estado global
+    setClients((prev) => [newClient, ...prev]);
+    if (newProjects.length > 0) setProjects((prev) => [...newProjects, ...prev]);
+    if (newTasks.length > 0) setTasks((prev) => [...newTasks, ...prev]);
+    setExpenses((prev) => [newFinanceEntry, ...prev]);
+
+    // 8. Retorna o cliente criado
+    return newClient;
+  };
+
   return (
     <DataStoreContext.Provider
-      value={{ leads, tasks, clients, expenses, insights, addLead, updateLeadStage, addTask }}
+      value={{
+        leads,
+        tasks,
+        clients,
+        expenses,
+        projects,
+        insights,
+        addLead,
+        updateLeadStage,
+        addTask,
+        criarClienteDeVenda,
+      }}
     >
       {children}
     </DataStoreContext.Provider>

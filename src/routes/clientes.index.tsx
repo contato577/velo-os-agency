@@ -1,7 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Plus, Search, Filter, Calendar, ChevronRight } from "lucide-react";
 import { AppShell, PageHeader } from "@/components/app-shell";
-import { clients, formatBRL } from "@/lib/mock-data";
+import { formatBRL } from "@/lib/mock-data";
+import { useDataStore } from "@/lib/data-store";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/clientes/")({
@@ -22,6 +23,7 @@ const statusColor = {
 };
 
 function ClientesList() {
+  const { clients } = useDataStore();
   const mrr = clients.filter((c) => c.status === "ativo").reduce((s, c) => s + c.monthlyValue, 0);
 
   return (

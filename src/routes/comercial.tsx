@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import {
   DndContext,
@@ -11,7 +11,7 @@ import {
 } from "@dnd-kit/core";
 import { Plus, Filter, Search, MoreHorizontal, Phone, Instagram, Globe, MapPin, X, Clock, Building2, Flame, CheckCircle2 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
-import { stageOrder, stageLabels, formatBRL, type Lead, type LeadStage, type LeadPotential } from "@/lib/mock-data";
+import { stageOrder, stageLabels, formatBRL, type Lead, type LeadStage, type LeadPotential, type Client } from "@/lib/mock-data";
 import { useDataStore } from "@/lib/data-store";
 import { cn } from "@/lib/utils";
 
@@ -315,7 +315,7 @@ function VendaConfirmDialog({
 }
 
 function Comercial() {
-  const { leads, updateLeadStage } = useDataStore();
+  const { leads, updateLeadStage, criarClienteDeVenda } = useDataStore();
   const [selected, setSelected] = useState<Lead | null>(null);
   const [query, setQuery] = useState("");
   const [filterOpen, setFilterOpen] = useState(false);
@@ -323,7 +323,7 @@ function Comercial() {
   const [ownerFilter, setOwnerFilter] = useState<string>("");
   const [justMovedId, setJustMovedId] = useState<string | null>(null);
   const [pendingWin, setPendingWin] = useState<Lead | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
+  const [createdClient, setCreatedClient] = useState<Client | null>(null);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
@@ -376,12 +376,18 @@ function Comercial() {
 
   const confirmarVenda = (servicos: string[]) => {
     if (!pendingWin) return;
+    // 1. Criar o cliente com prazo, datas, etapa, projetos, checklist, cobrança e timeline
+    const client = criarClienteDeVenda(pendingWin, servicos);
+
+    // 2. Atualizar estágio do lead para fechado
     updateLeadStage(pendingWin.id, "fechado");
     setJustMovedId(pendingWin.id);
-    setToast(`Venda fechada — cliente, ${servicos.length} projeto(s), checklist e cobrança criados.`);
+
+    // 3. Exibir notificação de sucesso com o link "Ver cliente →" apenas após a criação real
+    setCreatedClient(client);
     setPendingWin(null);
+
     setTimeout(() => setJustMovedId(null), 1500);
-    setTimeout(() => setToast(null), 4200);
   };
 
   return (
@@ -492,10 +498,28 @@ function Comercial() {
           onCancel={() => setPendingWin(null)}
         />
       )}
-      {toast && (
-        <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-md border border-success/40 bg-success/10 px-4 py-2 text-[12px] font-medium text-success shadow-elegant">
-          <CheckCircle2 className="mr-1.5 inline h-3.5 w-3.5" />
-          {toast}
+      {createdClient && (
+        <div className="fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-lg border border-success/40 bg-card p-3 shadow-elegant">
+          <CheckCircle2 className="h-4 w-4 shrink-0 text-success" />
+          <div className="text-[12px]">
+            <span className="font-semibold text-foreground">Venda fechada com sucesso!</span>
+            <span className="ml-1.5 text-muted-foreground">
+              Cliente <strong>{createdClient.company}</strong> criado.
+            </span>
+          </div>
+          <Link
+            to="/clientes/$clientId"
+            params={{ clientId: createdClient.id }}
+            className="ml-2 inline-flex shrink-0 items-center gap-1 rounded bg-primary px-2.5 py-1 text-[11px] font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+          >
+            Ver cliente →
+          </Link>
+          <button
+            onClick={() => setCreatedClient(null)}
+            className="ml-1 rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
         </div>
       )}
     </AppShell>

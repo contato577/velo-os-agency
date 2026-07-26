@@ -30,7 +30,8 @@ import {
 } from "lucide-react";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { NewTaskButton } from "@/components/quick-actions";
-import { clients, projects, tasks, formatBRL, type Client } from "@/lib/mock-data";
+import { formatBRL, type Client } from "@/lib/mock-data";
+import { useDataStore } from "@/lib/data-store";
 import { gerarResumoCliente, exportarRelatorioPDF, linkWhatsApp } from "@/lib/client-report";
 import { cn } from "@/lib/utils";
 
@@ -56,6 +57,7 @@ const tabsList: { key: Tab; label: string; icon: typeof User }[] = [
 ];
 
 function ClienteDetalhe() {
+  const { clients } = useDataStore();
   const { clientId } = useParams({ from: "/clientes/$clientId" });
   const client = clients.find((c) => c.id === clientId) ?? clients[0];
   const [tab, setTab] = useState<Tab>("geral");
@@ -444,6 +446,7 @@ function TabDocumentos() {
 
 // ─── OPERAÇÃO ────────────────────────────────────────────────────────────────
 function TabOperacao({ clientId }: { clientId: string }) {
+  const { clients, projects, tasks } = useDataStore();
   const client = clients.find((c) => c.id === clientId) ?? clients[0];
   const clientProjects = projects.filter((p) => p.clientId === clientId);
   const clientTasks = tasks.filter((t) => t.clientId === clientId);
@@ -652,15 +655,19 @@ function TabFinanceiro({ client }: { client: (typeof clients)[number] }) {
 }
 
 // ─── HISTÓRICO ───────────────────────────────────────────────────────────────
-function TabHistorico({ client }: { client: (typeof clients)[number] }) {
-  const timeline = [
+function TabHistorico({ client }: { client: Client }) {
+  const customEntries = (client.timeline ?? []).map((t) => ({
+    time: t.time,
+    user: t.user,
+    text: t.text,
+  }));
+  const defaultEntries = [
     { time: "há 2h", user: client.owner, text: `Reunião de resultados realizada com ${client.name}` },
     { time: "há 3d", user: "Sistema", text: "Fatura de julho gerada automaticamente" },
-    { time: "há 1s", user: "Camila Torres", text: "Criativos aprovados e veiculação iniciada" },
     { time: "há 2s", user: "Sistema", text: `Contrato renovado até ${new Date(client.renewalDate).toLocaleDateString("pt-BR")}` },
-    { time: "há 1m", user: client.owner, text: "Cliente elogiou os resultados da campanha anterior" },
-    { time: "há 3m", user: "Sistema", text: `Cliente criado a partir da venda fechada no CRM` },
   ];
+  const timeline = [...customEntries, ...defaultEntries];
+
   return (
     <div className="rounded-xl border bg-card p-5">
       <h3 className="mb-4 text-sm font-semibold tracking-tight">Timeline completa</h3>

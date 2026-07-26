@@ -122,6 +122,12 @@ export const clients: Client[] = [
   { id: "c-8", name: "Camila Reis", company: "Reis Nutrição", plan: "Starter", monthlyValue: 3200, paymentDay: 12, renewalDate: "2026-08-12", owner: "Ana Prado", status: "pausado", since: "2025-02-12", services: ["Consultoria"] },
 ];
 
+export interface ProjectChecklistItem {
+  id: string;
+  text: string;
+  done: boolean;
+}
+
 export interface Project {
   id: string;
   clientId: string;
@@ -132,6 +138,7 @@ export interface Project {
   progress: number;
   deadline: string;
   owner: string;
+  checklist?: ProjectChecklistItem[];
 }
 
 export const projects: Project[] = [
