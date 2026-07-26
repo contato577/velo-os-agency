@@ -109,6 +109,12 @@ export interface Client {
   status: "ativo" | "onboarding" | "pausado" | "cancelado";
   since: string;
   services: string[];
+  prazoJornadaDias?: number;
+  dataInicioJornada?: string;
+  dataPrevistaFimOnboarding?: string;
+  etapaJornada?: string;
+  timeline?: { id: string; time: string; user: string; text: string }[];
+}
 }
 
 export const clients: Client[] = [
@@ -188,7 +194,7 @@ export interface AgendaEvent {
 export const agendaEvents: AgendaEvent[] = [
   { id: "e-1", title: "Reunião kickoff Reis Nutrição", type: "reuniao", date: "2026-07-03", time: "10:00", with: "Camila Reis" },
   { id: "e-2", title: "Follow-up Ribeiro Motors", type: "followup", date: "2026-07-03", time: "14:00", with: "Gustavo Ribeiro" },
-  { id: "e-3", title: "Pagamento Pereira Ortopedia", type: "pagamento", date: "2026-07-05" , time: "09:00"},
+  { id: "e-3", title: "Pagamento Pereira Ortopedia", type: "pagamento", date: "2026-07-05", time: "09:00" },
   { id: "e-4", title: "Renovação Vanessa Lopes", type: "renovacao", date: "2026-08-01", time: "—" },
   { id: "e-5", title: "Diagnóstico Fernanda Rocha", type: "reuniao", date: "2026-07-04", time: "16:30", with: "Fernanda Rocha" },
   { id: "e-6", title: "Follow-up Larissa Melo", type: "followup", date: "2026-07-04", time: "11:00", with: "Larissa Melo" },

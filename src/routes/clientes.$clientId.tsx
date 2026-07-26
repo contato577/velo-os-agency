@@ -120,7 +120,7 @@ function ClienteDetalhe() {
 }
 
 // ─── GERAL ───────────────────────────────────────────────────────────────────
-function TabGeral({ client }: { client: (typeof clients)[number] }) {
+function TabGeral({ client }: { client: Client }) {
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
       <div className="rounded-xl border bg-card p-5 lg:col-span-2">
@@ -193,6 +193,7 @@ const integrations = [
 ];
 
 function TabPerformance({ client }: { client: Client }) {
+  const { projects } = useDataStore();
   const [exporting, setExporting] = useState(false);
   const clientProjects = projects.filter((p) => p.clientId === client.id);
   const relatorio = useMemo(() => gerarResumoCliente(client, clientProjects), [client, clientProjects]);
@@ -615,7 +616,7 @@ function TabOperacao({ clientId }: { clientId: string }) {
 }
 
 // ─── FINANCEIRO ──────────────────────────────────────────────────────────────
-function TabFinanceiro({ client }: { client: (typeof clients)[number] }) {
+function TabFinanceiro({ client }: { client: Client }) {
   const pagamentos = Array.from({ length: 6 }, (_, i) => ({
     id: `pg-${i}`,
     date: new Date(2026, 6 - i, client.paymentDay).toLocaleDateString("pt-BR"),
