@@ -456,12 +456,6 @@ function Comercial() {
                 </>
               )}
             </div>
-            <button
-              onClick={() => openDialog("lead")}
-              className="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary/90"
-            >
-              <Plus className="h-3.5 w-3.5" /> Novo Lead
-            </button>
           </div>
         </div>
 
