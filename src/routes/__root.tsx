@@ -13,6 +13,7 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { ThemeProvider } from "../lib/theme";
 import { DataStoreProvider } from "../lib/data-store";
+import { QuickActionsProvider } from "../components/quick-actions";
 
 function NotFoundComponent() {
   return (
@@ -131,7 +132,9 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <DataStoreProvider>
-          <Outlet />
+          <QuickActionsProvider>
+            <Outlet />
+          </QuickActionsProvider>
         </DataStoreProvider>
       </ThemeProvider>
     </QueryClientProvider>
