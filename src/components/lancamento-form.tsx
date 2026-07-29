@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from "react";
-import { Paperclip, ArrowUp, ArrowDown } from "lucide-react";
+import { ArrowUp, ArrowDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useDataStore } from "@/lib/data-store";
 
 export type LancamentoTipo = "entrada" | "saida" | null;
 
@@ -36,7 +37,14 @@ export function LancamentoForm({
   onSubmit?: (data: unknown) => void;
   onCancel?: () => void;
 }) {
+  const { addExpense } = useDataStore();
   const [tipo, setTipo] = useState<LancamentoTipo>(null);
+  const [descricao, setDescricao] = useState("");
+  const [categoria, setCategoria] = useState("");
+  const [contraparte, setContraparte] = useState("");
+  const [valor, setValor] = useState("");
+  const [data, setData] = useState("");
+  const [recorrente, setRecorrente] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -47,6 +55,16 @@ export function LancamentoForm({
     if (!tipo) return;
     setSaving(true);
     setTimeout(() => {
+      addExpense({
+        date: data,
+        description: descricao,
+        category: categoria || (tipo === "entrada" ? "Mensalidade" : "Operacional"),
+        costCenter: tipo === "entrada" ? "Receita" : (categoria || "Operacional") as any,
+        type: tipo,
+        amount: Number(valor) || 0,
+        client: contraparte || undefined,
+        recurring: recorrente,
+      });
       setSaving(false);
       setSaved(true);
       onSubmit?.({ tipo });
@@ -64,7 +82,7 @@ export function LancamentoForm({
           {tipo === "entrada" ? "Entrada" : "Saída"} registrada
         </div>
         <div className="text-[12px] text-muted-foreground">
-          Refletida automaticamente no DRE.
+          Salva no sistema financeiro.
         </div>
       </div>
     );
@@ -108,54 +126,62 @@ export function LancamentoForm({
 
       <fieldset disabled={!tipo} className={cn("space-y-3", !tipo && "opacity-50 pointer-events-none")}>
         <F label="Descrição">
-          <input required placeholder="Ex: Mensalidade Pereira Ortopedia" className={inputCls} />
+          <input
+            required
+            placeholder="Ex: Mensalidade Pereira Ortopedia"
+            className={inputCls}
+            value={descricao}
+            onChange={(e) => setDescricao(e.target.value)}
+          />
         </F>
         <div className="grid grid-cols-2 gap-3">
           <F label="Categoria">
-            <select className={inputCls}>
+            <select className={inputCls} value={categoria} onChange={(e) => setCategoria(e.target.value)}>
               {categorias.map((c) => (
                 <option key={c}>{c}</option>
               ))}
             </select>
           </F>
           <F label={tipo === "entrada" ? "Cliente" : "Fornecedor"}>
-            <input placeholder="Nome" className={inputCls} />
+            <input
+              placeholder="Nome"
+              className={inputCls}
+              value={contraparte}
+              onChange={(e) => setContraparte(e.target.value)}
+            />
           </F>
         </div>
         <div className="grid grid-cols-2 gap-3">
           <F label="Valor (R$)">
-            <input type="number" min="0" step="0.01" required placeholder="0,00" className={inputCls} />
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              required
+              placeholder="0,00"
+              className={inputCls}
+              value={valor}
+              onChange={(e) => setValor(e.target.value)}
+            />
           </F>
           <F label="Data">
-            <input type="date" required className={inputCls} />
+            <input
+              type="date"
+              required
+              className={inputCls}
+              value={data}
+              onChange={(e) => setData(e.target.value)}
+            />
           </F>
         </div>
-        <div className="grid grid-cols-2 gap-3">
-          <F label="Forma de pagamento">
-            <select className={inputCls}>
-              <option>PIX</option>
-              <option>Boleto</option>
-              <option>Cartão de crédito</option>
-              <option>Transferência</option>
-              <option>Dinheiro</option>
-            </select>
-          </F>
-          <F label="Recorrente?">
-            <select className={inputCls}>
-              <option>Não</option>
-              <option>Mensal</option>
-              <option>Trimestral</option>
-              <option>Anual</option>
-            </select>
-          </F>
-        </div>
-        <F label="Observações">
-          <textarea rows={2} className={inputCls} placeholder="Notas internas…" />
-        </F>
-        <label className="flex cursor-pointer items-center gap-2 rounded-md border border-dashed p-2.5 text-[12px] text-muted-foreground hover:bg-accent">
-          <Paperclip className="h-3.5 w-3.5" />
-          <span>Anexar comprovante (opcional)</span>
-          <input type="file" className="hidden" />
+        <label className="flex cursor-pointer items-center gap-2 text-[12px] text-muted-foreground">
+          <input
+            type="checkbox"
+            className="h-3.5 w-3.5 accent-primary"
+            checked={recorrente}
+            onChange={(e) => setRecorrente(e.target.checked)}
+          />
+          Lançamento recorrente (mensal)
         </label>
       </fieldset>
 

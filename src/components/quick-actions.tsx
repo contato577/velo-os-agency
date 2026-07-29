@@ -10,11 +10,11 @@ import {
   Search,
   ArrowRight,
   X,
-  Paperclip,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { leads, clients } from "@/lib/mock-data";
-import type { LeadStage } from "@/lib/mock-data";
+import { leads, clients, owners } from "@/lib/mock-data";
+import type { LeadStage, LeadPotential } from "@/lib/mock-data";
+import { useDataStore } from "@/lib/data-store";
 
 export type QuickKind = "lead" | "cliente" | "venda" | "despesa" | "tarefa";
 
@@ -266,7 +266,7 @@ const kindMeta: Record<QuickKind, { title: string; desc: string }> = {
   lead: { title: "Novo Lead", desc: "Adicionar oportunidade ao CRM" },
   cliente: { title: "Novo Cliente", desc: "Cadastrar cliente diretamente" },
   venda: { title: "Nova Venda", desc: "Registrar venda fechada — cria cliente, projeto e primeira cobrança" },
-  despesa: { title: "Nova Despesa", desc: "Lançamento é refletido no DRE automaticamente" },
+  despesa: { title: "Nova Despesa", desc: "Salva no financeiro (ainda não entra nos gráficos do DRE)" },
   tarefa: { title: "Nova Tarefa", desc: "Adicionar item à sua lista de execução" },
 };
 
@@ -281,18 +281,63 @@ function QuickDialog({
   defaultContext?: TarefaDefaultContext;
   defaultStage?: LeadStage;
 }) {
+  const { addLead, addTask, addExpense } = useDataStore();
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const meta = kindMeta[kind];
 
+  const [leadData, setLeadData] = useState<LeadFormData>(emptyLeadForm);
+  const [tarefaData, setTarefaData] = useState<TarefaFormData>(emptyTarefaForm);
+  const [despesaData, setDespesaData] = useState<DespesaFormData>(emptyDespesaForm);
+
+  const isReal = kind === "lead" || kind === "tarefa" || kind === "despesa";
+
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
+
+    if (kind === "lead") {
+      addLead({
+        name: leadData.name,
+        company: leadData.company,
+        phone: leadData.phone,
+        instagram: leadData.instagram || undefined,
+        city: leadData.city,
+        owner: leadData.owner,
+        origin: leadData.origin,
+        value: Number(leadData.value) || 0,
+        potencial: leadData.potencial,
+        stage: defaultStage ?? "novo",
+      });
+    } else if (kind === "tarefa") {
+      addTask({
+        title: tarefaData.title,
+        description: tarefaData.description || undefined,
+        owner: tarefaData.owner,
+        priority: tarefaData.priority,
+        status: "backlog",
+        dueDate: tarefaData.dueDate,
+        clientId: defaultContext?.type === "cliente" ? defaultContext.id : undefined,
+        projectId: defaultContext?.type === "projeto" ? defaultContext.id : undefined,
+      });
+    } else if (kind === "despesa") {
+      addExpense({
+        date: despesaData.date,
+        description: despesaData.description,
+        category: despesaData.costCenter,
+        costCenter: despesaData.costCenter,
+        type: "saida",
+        amount: Number(despesaData.amount) || 0,
+        client: despesaData.fornecedor || undefined,
+        recurring: despesaData.recurring,
+      });
+    }
+
     setTimeout(() => {
       setSaving(false);
       setSaved(true);
       setTimeout(onClose, 900);
-    }, 500);
+    }, 400);
   };
 
   return (
@@ -312,6 +357,12 @@ function QuickDialog({
           </button>
         </div>
 
+        {!isReal && (
+          <div className="mx-4 mt-3 flex items-center gap-2 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-[11px] text-warning">
+            Este formulário ainda não salva de verdade — em desenvolvimento.
+          </div>
+        )}
+
         {saved ? (
           <div className="flex flex-col items-center gap-2 px-6 py-10 text-center">
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-success/15 text-success">
@@ -326,11 +377,15 @@ function QuickDialog({
           </div>
         ) : (
           <form onSubmit={submit} className="max-h-[70vh] space-y-3 overflow-y-auto p-4">
-            {kind === "lead" && <LeadForm defaultStage={defaultStage} />}
+            {kind === "lead" && (
+              <LeadForm data={leadData} onChange={setLeadData} defaultStage={defaultStage} />
+            )}
             {kind === "cliente" && <ClienteForm />}
             {kind === "venda" && <VendaForm />}
-            {kind === "despesa" && <DespesaForm />}
-            {kind === "tarefa" && <TarefaForm defaultContext={defaultContext} />}
+            {kind === "despesa" && <DespesaForm data={despesaData} onChange={setDespesaData} />}
+            {kind === "tarefa" && (
+              <TarefaForm data={tarefaData} onChange={setTarefaData} defaultContext={defaultContext} />
+            )}
 
             <div className="flex items-center justify-end gap-2 border-t pt-3">
               <button
@@ -374,32 +429,132 @@ function F({ label, children }: { label: string; children: React.ReactNode }) {
 
 import { stageLabels } from "@/lib/mock-data";
 
-function LeadForm({ defaultStage }: { defaultStage?: LeadStage }) {
+export interface LeadFormData {
+  name: string;
+  company: string;
+  phone: string;
+  instagram: string;
+  city: string;
+  owner: string;
+  origin: "Instagram" | "Indicação" | "Google Ads" | "LinkedIn" | "Site" | "Outbound";
+  value: string;
+  potencial: LeadPotential;
+}
+
+export const emptyLeadForm: LeadFormData = {
+  name: "",
+  company: "",
+  phone: "",
+  instagram: "",
+  city: "",
+  owner: owners[0],
+  origin: "Instagram",
+  value: "",
+  potencial: "medio",
+};
+
+function LeadForm({
+  data,
+  onChange,
+  defaultStage,
+}: {
+  data: LeadFormData;
+  onChange: (data: LeadFormData) => void;
+  defaultStage?: LeadStage;
+}) {
+  const set = <K extends keyof LeadFormData>(key: K, value: LeadFormData[K]) =>
+    onChange({ ...data, [key]: value });
+
   return (
     <>
       <Row2>
-        <F label="Nome"><input required placeholder="Marina Costa" className={cls} /></F>
-        <F label="Empresa"><input placeholder="Studio Marina" className={cls} /></F>
+        <F label="Nome">
+          <input
+            required
+            placeholder="Marina Costa"
+            className={cls}
+            value={data.name}
+            onChange={(e) => set("name", e.target.value)}
+          />
+        </F>
+        <F label="Empresa">
+          <input
+            placeholder="Studio Marina"
+            className={cls}
+            value={data.company}
+            onChange={(e) => set("company", e.target.value)}
+          />
+        </F>
       </Row2>
       <Row2>
-        <F label="Telefone"><input placeholder="(11) 9…" className={cls} /></F>
-        <F label="WhatsApp"><input placeholder="(11) 9…" className={cls} /></F>
+        <F label="Telefone">
+          <input
+            placeholder="(11) 9…"
+            className={cls}
+            value={data.phone}
+            onChange={(e) => set("phone", e.target.value)}
+          />
+        </F>
+        <F label="Cidade">
+          <input
+            required
+            placeholder="São Paulo"
+            className={cls}
+            value={data.city}
+            onChange={(e) => set("city", e.target.value)}
+          />
+        </F>
       </Row2>
       <Row2>
-        <F label="Instagram"><input placeholder="@…" className={cls} /></F>
+        <F label="Instagram">
+          <input
+            placeholder="@…"
+            className={cls}
+            value={data.instagram}
+            onChange={(e) => set("instagram", e.target.value)}
+          />
+        </F>
         <F label="Origem">
-          <select className={cls}>
+          <select
+            className={cls}
+            value={data.origin}
+            onChange={(e) => set("origin", e.target.value as LeadFormData["origin"])}
+          >
             <option>Instagram</option><option>Indicação</option><option>Google Ads</option>
             <option>LinkedIn</option><option>Site</option><option>Outbound</option>
           </select>
         </F>
       </Row2>
       <Row2>
-        <F label="Valor estimado (R$)"><input type="number" min="0" placeholder="0" className={cls} /></F>
+        <F label="Valor estimado (R$)">
+          <input
+            type="number"
+            min="0"
+            placeholder="0"
+            className={cls}
+            value={data.value}
+            onChange={(e) => set("value", e.target.value)}
+          />
+        </F>
         <F label="Potencial">
-          <select className={cls}><option>Alto</option><option>Médio</option><option>Baixo</option></select>
+          <select
+            className={cls}
+            value={data.potencial}
+            onChange={(e) => set("potencial", e.target.value as LeadPotential)}
+          >
+            <option value="alto">Alto</option>
+            <option value="medio">Médio</option>
+            <option value="baixo">Baixo</option>
+          </select>
         </F>
       </Row2>
+      <F label="Responsável">
+        <select className={cls} value={data.owner} onChange={(e) => set("owner", e.target.value)}>
+          {owners.map((o) => (
+            <option key={o}>{o}</option>
+          ))}
+        </select>
+      </F>
       {defaultStage && (
         <F label="Estágio inicial">
           <div className="flex items-center gap-2 rounded-md border bg-surface/60 px-3 py-1.5 text-[13px]">
@@ -410,10 +565,6 @@ function LeadForm({ defaultStage }: { defaultStage?: LeadStage }) {
           </div>
         </F>
       )}
-      <F label="Próxima ação">
-        <input placeholder="Ex: Ligar amanhã 14h" className={cls} />
-      </F>
-      <F label="Observações"><textarea rows={2} className={cls} placeholder="Contexto do lead…" /></F>
     </>
   );
 }
@@ -464,36 +615,92 @@ function VendaForm() {
   );
 }
 
-function DespesaForm() {
+export interface DespesaFormData {
+  description: string;
+  costCenter: "Marketing" | "Ferramentas" | "Equipe" | "Impostos" | "Operacional" | "Administrativo" | "Investimentos";
+  fornecedor: string;
+  amount: string;
+  date: string;
+  recurring: boolean;
+}
+
+export const emptyDespesaForm: DespesaFormData = {
+  description: "",
+  costCenter: "Ferramentas",
+  fornecedor: "",
+  amount: "",
+  date: "",
+  recurring: false,
+};
+
+function DespesaForm({ data, onChange }: { data: DespesaFormData; onChange: (data: DespesaFormData) => void }) {
+  const set = <K extends keyof DespesaFormData>(key: K, value: DespesaFormData[K]) =>
+    onChange({ ...data, [key]: value });
+
   return (
     <>
-      <F label="Descrição"><input required placeholder="Ex: Meta Ads Manager" className={cls} /></F>
+      <F label="Descrição">
+        <input
+          required
+          placeholder="Ex: Meta Ads Manager"
+          className={cls}
+          value={data.description}
+          onChange={(e) => set("description", e.target.value)}
+        />
+      </F>
       <Row2>
         <F label="Categoria">
-          <select className={cls}>
-            <option>Ferramentas</option><option>Marketing</option><option>Equipe</option>
-            <option>Impostos</option><option>Operacional</option><option>Outro</option>
+          <select
+            className={cls}
+            value={data.costCenter}
+            onChange={(e) => set("costCenter", e.target.value as DespesaFormData["costCenter"])}
+          >
+            <option value="Ferramentas">Ferramentas</option>
+            <option value="Marketing">Marketing</option>
+            <option value="Equipe">Equipe</option>
+            <option value="Impostos">Impostos</option>
+            <option value="Operacional">Operacional</option>
+            <option value="Administrativo">Administrativo</option>
+            <option value="Investimentos">Investimentos</option>
           </select>
         </F>
-        <F label="Fornecedor"><input placeholder="Nome" className={cls} /></F>
-      </Row2>
-      <Row2>
-        <F label="Valor (R$)"><input type="number" required className={cls} /></F>
-        <F label="Data"><input type="date" required className={cls} /></F>
-      </Row2>
-      <Row2>
-        <F label="Forma de pagamento">
-          <select className={cls}><option>PIX</option><option>Boleto</option><option>Cartão</option><option>Transferência</option></select>
-        </F>
-        <F label="Recorrente?">
-          <select className={cls}><option>Não</option><option>Mensal</option><option>Anual</option></select>
+        <F label="Fornecedor">
+          <input
+            placeholder="Nome"
+            className={cls}
+            value={data.fornecedor}
+            onChange={(e) => set("fornecedor", e.target.value)}
+          />
         </F>
       </Row2>
-      <F label="Observações"><textarea rows={2} className={cls} /></F>
-      <label className="flex cursor-pointer items-center gap-2 rounded-md border border-dashed p-2.5 text-[12px] text-muted-foreground hover:bg-accent">
-        <Paperclip className="h-3.5 w-3.5" />
-        <span>Anexar comprovante (opcional)</span>
-        <input type="file" className="hidden" />
+      <Row2>
+        <F label="Valor (R$)">
+          <input
+            type="number"
+            required
+            className={cls}
+            value={data.amount}
+            onChange={(e) => set("amount", e.target.value)}
+          />
+        </F>
+        <F label="Data">
+          <input
+            type="date"
+            required
+            className={cls}
+            value={data.date}
+            onChange={(e) => set("date", e.target.value)}
+          />
+        </F>
+      </Row2>
+      <label className="flex items-center gap-2 text-[12px] text-muted-foreground">
+        <input
+          type="checkbox"
+          className="h-3.5 w-3.5 accent-primary"
+          checked={data.recurring}
+          onChange={(e) => set("recurring", e.target.checked)}
+        />
+        Despesa recorrente (mensal)
       </label>
     </>
   );
@@ -501,31 +708,94 @@ function DespesaForm() {
 
 export type TarefaDefaultContext = { type: "cliente" | "projeto"; id: string; label: string };
 
-function TarefaForm({ defaultContext }: { defaultContext?: TarefaDefaultContext }) {
+export interface TarefaFormData {
+  title: string;
+  dueDate: string;
+  priority: "baixa" | "media" | "alta" | "urgente";
+  owner: string;
+  description: string;
+}
+
+export const emptyTarefaForm: TarefaFormData = {
+  title: "",
+  dueDate: "",
+  priority: "media",
+  owner: owners[0],
+  description: "",
+};
+
+function TarefaForm({
+  data,
+  onChange,
+  defaultContext,
+}: {
+  data: TarefaFormData;
+  onChange: (data: TarefaFormData) => void;
+  defaultContext?: TarefaDefaultContext;
+}) {
+  const set = <K extends keyof TarefaFormData>(key: K, value: TarefaFormData[K]) =>
+    onChange({ ...data, [key]: value });
+
   return (
     <>
-      <F label="Título"><input required placeholder="Ex: Ligar para Marina" className={cls} /></F>
+      <F label="Título">
+        <input
+          required
+          placeholder="Ex: Ligar para Marina"
+          className={cls}
+          value={data.title}
+          onChange={(e) => set("title", e.target.value)}
+        />
+      </F>
       <Row2>
-        <F label="Prazo"><input type="date" required className={cls} /></F>
+        <F label="Prazo">
+          <input
+            type="date"
+            required
+            className={cls}
+            value={data.dueDate}
+            onChange={(e) => set("dueDate", e.target.value)}
+          />
+        </F>
         <F label="Prioridade">
-          <select className={cls}><option>Baixa</option><option>Média</option><option>Alta</option><option>Urgente</option></select>
+          <select
+            className={cls}
+            value={data.priority}
+            onChange={(e) => set("priority", e.target.value as TarefaFormData["priority"])}
+          >
+            <option value="baixa">Baixa</option>
+            <option value="media">Média</option>
+            <option value="alta">Alta</option>
+            <option value="urgente">Urgente</option>
+          </select>
         </F>
       </Row2>
-      <F label={defaultContext ? `Vinculado a ${defaultContext.type}` : "Vincular a cliente / projeto (opcional)"}>
-        {defaultContext ? (
+      <F label="Responsável">
+        <select className={cls} value={data.owner} onChange={(e) => set("owner", e.target.value)}>
+          {owners.map((o) => (
+            <option key={o}>{o}</option>
+          ))}
+        </select>
+      </F>
+      {defaultContext && (
+        <F label={`Vinculado a ${defaultContext.type}`}>
           <div className="flex items-center gap-2 rounded-md border bg-surface/60 px-3 py-1.5 text-[13px]">
             <span className="inline-flex h-5 items-center rounded-full bg-primary/10 px-2 text-[10px] font-medium uppercase tracking-widest text-primary">
               {defaultContext.type}
             </span>
             <span className="min-w-0 flex-1 truncate">{defaultContext.label}</span>
             <span className="text-[10px] text-muted-foreground">travado</span>
-            <input type="hidden" value={defaultContext.id} readOnly />
           </div>
-        ) : (
-          <input placeholder="Buscar…" className={cls} />
-        )}
+        </F>
+      )}
+      <F label="Observações">
+        <textarea
+          rows={2}
+          className={cls}
+          value={data.description}
+          onChange={(e) => set("description", e.target.value)}
+        />
       </F>
-      <F label="Observações"><textarea rows={2} className={cls} /></F>
     </>
   );
 }

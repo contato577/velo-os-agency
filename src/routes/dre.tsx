@@ -106,7 +106,7 @@ function DRE() {
   }));
 
   // Insights de IA vindos da mesma engine central, filtrados por Financeiro
-  const { insights: aiInsights } = useDataStore();
+  const { insights: aiInsights, expenses } = useDataStore();
   const insights = useMemo(() => {
     const financeiros = aiInsights.filter((i) => i.area === "Financeiro");
     // Fallback: garantir 2 insights positivos junto aos alertas
@@ -367,6 +367,42 @@ function DRE() {
             <FinIndicator label="Burn multiple" value="0.4x" tone="success" />
             <FinIndicator label="Runway" value="18 meses" tone="success" />
           </div>
+        </div>
+        {/* Lançamentos manuais recentes */}
+        <div className="mt-4 rounded-lg border bg-card p-4">
+          <div className="mb-3 flex items-center justify-between">
+            <h3 className="text-sm font-semibold tracking-tight">Lançamentos recentes</h3>
+            <span className="text-[10px] uppercase tracking-widest text-muted-foreground">
+              Registrados manualmente
+            </span>
+          </div>
+          {expenses.length === 0 ? (
+            <p className="text-[12px] text-muted-foreground">Nenhum lançamento manual ainda.</p>
+          ) : (
+            <div className="space-y-1.5">
+              {expenses.slice(0, 8).map((e) => (
+                <div
+                  key={e.id}
+                  className="flex items-center justify-between rounded-md border bg-surface/40 px-3 py-2 text-[12px]"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate font-medium">{e.description}</div>
+                    <div className="text-[10px] text-muted-foreground">
+                      {e.category} {e.client ? `· ${e.client}` : ""} {e.date ? `· ${e.date}` : ""}
+                    </div>
+                  </div>
+                  <span
+                    className={cn(
+                      "font-mono",
+                      e.type === "entrada" ? "text-success" : "text-destructive",
+                    )}
+                  >
+                    {e.type === "entrada" ? "+" : "−"} {formatBRL(e.amount)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </AppShell>
