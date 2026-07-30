@@ -1,13 +1,15 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "@tanstack/react-router";
 import {
+  Plus,
   UserPlus,
   Building2,
   DollarSign,
   Receipt,
   CheckSquare,
   Search,
+  Command as CommandIcon,
   ArrowRight,
   X,
 } from "lucide-react";
@@ -40,12 +42,13 @@ const items: {
   icon: typeof UserPlus;
   hint: string;
   shortcut: string;
+  real: boolean;
 }[] = [
-    { key: "lead", label: "Novo Lead", icon: UserPlus, hint: "Adicionar oportunidade ao CRM", shortcut: "L" },
-    { key: "cliente", label: "Novo Cliente", icon: Building2, hint: "Cadastrar cliente diretamente", shortcut: "C" },
-    { key: "venda", label: "Nova Venda", icon: DollarSign, hint: "Registrar venda fechada", shortcut: "V" },
-    { key: "despesa", label: "Nova Despesa", icon: Receipt, hint: "Lançar despesa no DRE", shortcut: "D" },
-    { key: "tarefa", label: "Nova Tarefa", icon: CheckSquare, hint: "Criar tarefa rápida", shortcut: "T" },
+    { key: "lead", label: "Novo Lead", icon: UserPlus, hint: "Adicionar oportunidade ao CRM", shortcut: "L", real: true },
+    { key: "tarefa", label: "Nova Tarefa", icon: CheckSquare, hint: "Criar tarefa rápida", shortcut: "T", real: true },
+    { key: "despesa", label: "Nova Despesa", icon: Receipt, hint: "Lançar despesa no financeiro", shortcut: "D", real: true },
+    { key: "cliente", label: "Novo Cliente", icon: Building2, hint: "Em breve — use o Kanban do CRM", shortcut: "C", real: false },
+    { key: "venda", label: "Nova Venda", icon: DollarSign, hint: "Em breve — feche pelo Kanban do CRM", shortcut: "V", real: false },
   ];
 
 // ─── Main Component ──────────────────────────────────────────────────────────
@@ -77,7 +80,10 @@ export function QuickActionsProvider({ children }: { children: ReactNode }) {
 
 export function QuickActionsButton() {
   const { openDialog } = useQuickActions();
+  const [openMenu, setOpenMenu] = useState(false);
   const [openCmd, setOpenCmd] = useState(false);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -87,19 +93,97 @@ export function QuickActionsButton() {
       }
       if (e.key === "Escape") {
         setOpenCmd(false);
+        setOpenMenu(false);
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
+  const handleMenuToggle = () => {
+    if (!openMenu && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setMenuPos({
+        top: rect.bottom + 8,
+        right: window.innerWidth - rect.right,
+      });
+    }
+    setOpenMenu((v) => !v);
+  };
+
   const open = (kind: QuickKind, defaultStage?: LeadStage) => {
     openDialog(kind, defaultStage);
+    setOpenMenu(false);
     setOpenCmd(false);
   };
 
   return (
     <>
+      <div className="relative">
+        <button
+          ref={buttonRef}
+          onClick={handleMenuToggle}
+          className="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground shadow-sm hover:bg-primary/90"
+        >
+          <Plus className="h-3.5 w-3.5" /> Novo
+          <kbd className="ml-1 hidden items-center gap-0.5 rounded border border-primary-foreground/20 bg-primary-foreground/10 px-1 py-0.5 font-mono text-[9px] md:inline-flex">
+            <CommandIcon className="h-2 w-2" />K
+          </kbd>
+        </button>
+      </div>
+
+      {/* Dropdown menu — portal to body */}
+      {openMenu &&
+        createPortal(
+          <>
+            <div className="fixed inset-0 z-40" onClick={() => setOpenMenu(false)} />
+            <div
+              className="fixed z-50 w-72 overflow-hidden rounded-lg border bg-popover shadow-elegant"
+              style={{ top: menuPos.top, right: menuPos.right }}
+            >
+              <div className="border-b bg-surface/50 px-3 py-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                Criar rapidamente
+              </div>
+              <div className="p-1">
+                {items.map((it) => {
+                  const Icon = it.icon;
+                  return (
+                    <button
+                      key={it.key}
+                      onClick={() => open(it.key)}
+                      className="flex w-full items-center gap-2.5 rounded-md p-2 text-left text-[13px] transition-colors hover:bg-accent"
+                    >
+                      <div
+                        className={cn(
+                          "flex h-7 w-7 items-center justify-center rounded-md",
+                          it.real ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground",
+                        )}
+                      >
+                        <Icon className="h-3.5 w-3.5" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 font-medium">
+                          {it.label}
+                          {!it.real && (
+                            <span className="rounded-full bg-muted px-1.5 py-0.5 text-[9px] font-normal uppercase tracking-wide text-muted-foreground">
+                              em breve
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[10px] text-muted-foreground">{it.hint}</div>
+                      </div>
+                      <kbd className="rounded border bg-surface px-1 py-0.5 font-mono text-[9px] text-muted-foreground">
+                        {it.shortcut}
+                      </kbd>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </>,
+          document.body,
+        )}
+
       {/* Command Palette — portal to body */}
       {openCmd &&
         createPortal(
