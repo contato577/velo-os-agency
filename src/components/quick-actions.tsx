@@ -403,6 +403,7 @@ function QuickDialog({
         dueDate: tarefaData.dueDate,
         clientId: defaultContext?.type === "cliente" ? defaultContext.id : undefined,
         projectId: defaultContext?.type === "projeto" ? defaultContext.id : undefined,
+        leadId: defaultContext?.type === "lead" ? defaultContext.id : undefined,
       });
     } else if (kind === "despesa") {
       addExpense({
@@ -790,7 +791,7 @@ function DespesaForm({ data, onChange }: { data: DespesaFormData; onChange: (dat
   );
 }
 
-export type TarefaDefaultContext = { type: "cliente" | "projeto"; id: string; label: string };
+export type TarefaDefaultContext = { type: "cliente" | "projeto" | "lead"; id: string; label: string };
 
 export interface TarefaFormData {
   title: string;

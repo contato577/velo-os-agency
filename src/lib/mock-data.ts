@@ -167,6 +167,7 @@ export interface Task {
   dueDate: string;
   clientId?: string;
   projectId?: string;
+  leadId?: string;
   labels?: string[];
 }
 

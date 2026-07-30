@@ -13,7 +13,7 @@ import { Plus, Filter, Search, MoreHorizontal, Phone, Instagram, Globe, MapPin, 
 import { AppShell } from "@/components/app-shell";
 import { stageOrder, stageLabels, formatBRL, type Lead, type LeadStage, type LeadPotential, type Client } from "@/lib/mock-data";
 import { useDataStore } from "@/lib/data-store";
-import { useQuickActions } from "@/components/quick-actions";
+import { useQuickActions, NewTaskButton } from "@/components/quick-actions";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/comercial")({
@@ -222,10 +222,11 @@ function LeadDetailPanel({ lead, onClose }: { lead: Lead; onClose: () => void })
 
         <div className="border-t p-3">
           <div className="flex gap-2">
-            <button className="flex-1 rounded-md bg-primary px-3 py-2 text-xs font-medium text-primary-foreground hover:bg-primary/90">
-              Registrar contato
-            </button>
-            <button className="rounded-md border px-3 py-2 text-xs font-medium hover:bg-accent">Editar</button>
+            <NewTaskButton
+              defaultContext={{ type: "lead", id: lead.id, label: `${lead.name} (${lead.company})` }}
+              label="+ Nova tarefa"
+              className="flex-1 justify-center"
+            />
           </div>
         </div>
       </aside>

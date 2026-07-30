@@ -1,7 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import {
-  Plus,
   FolderKanban,
   CheckSquare,
   Calendar as CalendarIcon,
@@ -11,9 +10,15 @@ import {
   Clock,
   Flame,
   ArrowRight,
+  Check,
+  LayoutGrid,
+  User,
 } from "lucide-react";
 import { AppShell, PageHeader } from "@/components/app-shell";
-import { projects, tasks, agendaEvents } from "@/lib/mock-data";
+import { projects, agendaEvents } from "@/lib/mock-data";
+import type { Task, Client, Lead } from "@/lib/mock-data";
+import { useDataStore } from "@/lib/data-store";
+import { NewTaskButton } from "@/components/quick-actions";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/operacao")({
@@ -46,7 +51,8 @@ const projStatus = {
 
 function Operacao() {
   const search = Route.useSearch();
-  const [tab, setTab] = useState<Tab>(search.tab ?? "projetos");
+  const [tab, setTab] = useState<Tab>(search.tab ?? "tarefas");
+  const { tasks } = useDataStore();
 
   const tarefasAtrasadas = tasks.filter(
     (t) => t.status !== "concluida" && new Date(t.dueDate) < new Date(HOJE),
@@ -58,8 +64,8 @@ function Operacao() {
   const reunioesHoje = agendaEvents.filter((e) => e.date === HOJE && e.type === "reuniao");
 
   const tabsList: { key: Tab; label: string; icon: typeof FolderKanban; count: number }[] = [
+    { key: "tarefas", label: "Minha Semana", icon: CheckSquare, count: tasks.filter((t) => t.status !== "concluida").length },
     { key: "projetos", label: "Projetos", icon: FolderKanban, count: projects.length },
-    { key: "tarefas", label: "Tarefas", icon: CheckSquare, count: tasks.filter((t) => t.status !== "concluida").length },
     { key: "agenda", label: "Agenda", icon: CalendarIcon, count: agendaEvents.length },
   ];
 
@@ -67,9 +73,7 @@ function Operacao() {
     <AppShell title="Operação" subtitle="Projetos, tarefas e agenda">
       <div className="px-4 py-6 md:px-6">
         <PageHeader title="Operação" subtitle="Toda a execução da agência em um só lugar">
-          <button className="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary/90">
-            <Plus className="h-3.5 w-3.5" /> Novo
-          </button>
+          <NewTaskButton label="+ Nova tarefa" />
         </PageHeader>
 
         {/* Pulso operacional */}
@@ -128,8 +132,8 @@ function Operacao() {
           })}
         </div>
 
+        {tab === "tarefas" && <SemanaPanel />}
         {tab === "projetos" && <ProjetosPanel />}
-        {tab === "tarefas" && <TarefasPanel />}
         {tab === "agenda" && <AgendaPanel />}
       </div>
     </AppShell>
@@ -224,43 +228,207 @@ function ProjetosPanel() {
   );
 }
 
-function TarefasPanel() {
-  const byStatus = ["hoje", "andamento", "backlog", "concluida"] as const;
-  const label = { hoje: "Hoje", andamento: "Em andamento", backlog: "Backlog", concluida: "Concluídas" };
+function getWeekDays(hojeStr: string): string[] {
+  const hoje = new Date(hojeStr + "T00:00:00");
+  const dayOfWeek = hoje.getDay(); // 0 = domingo
+  const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+  const monday = new Date(hoje);
+  monday.setDate(hoje.getDate() + diffToMonday);
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    return d.toISOString().slice(0, 10);
+  });
+}
+
+const weekdayLabels = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"];
+
+function taskLink(task: Task, clients: Client[], leads: Lead[]): { label: string; kind: "cliente" | "lead" | "geral" } {
+  if (task.clientId) {
+    const c = clients.find((c) => c.id === task.clientId);
+    if (c) return { label: c.company, kind: "cliente" };
+  }
+  if (task.leadId) {
+    const l = leads.find((l) => l.id === task.leadId);
+    if (l) return { label: l.name, kind: "lead" };
+  }
+  return { label: "Geral", kind: "geral" };
+}
+
+function TaskCard({ task, clients, leads, onToggle }: { task: Task; clients: Client[]; leads: Lead[]; onToggle: () => void }) {
+  const link = taskLink(task, clients, leads);
+  const done = task.status === "concluida";
   return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-      {byStatus.map((s) => {
-        const list = tasks.filter((t) => t.status === s);
-        return (
-          <div key={s} className="rounded-xl border bg-surface/40 p-3">
-            <div className="mb-3 flex items-center justify-between">
-              <span className="text-[11px] font-semibold uppercase tracking-wider">{label[s]}</span>
-              <span className="font-mono text-[10px] text-muted-foreground">{list.length}</span>
-            </div>
-            <div className="space-y-2">
-              {list.map((t) => (
-                <div key={t.id} className="rounded-md border bg-card p-2.5">
-                  <div className="flex items-start gap-2">
-                    <span
-                      className={cn(
-                        "mt-1 h-1.5 w-1.5 shrink-0 rounded-full",
-                        t.priority === "urgente" && "bg-destructive",
-                        t.priority === "alta" && "bg-warning",
-                        t.priority === "media" && "bg-info",
-                        t.priority === "baixa" && "bg-muted-foreground",
-                      )}
-                    />
-                    <div className="min-w-0">
-                      <div className="text-[13px] font-medium">{t.title}</div>
-                      <div className="mt-0.5 text-[10px] text-muted-foreground">{t.owner.split(" ")[0]} · {new Date(t.dueDate).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}</div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+    <div className={cn("rounded-md border bg-card p-2.5", done && "opacity-50")}>
+      <div className="flex items-start gap-2">
+        <button
+          onClick={onToggle}
+          className={cn(
+            "mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors",
+            done ? "border-success bg-success text-success-foreground" : "border-muted-foreground/40 hover:border-primary",
+          )}
+        >
+          {done && <Check className="h-3 w-3" />}
+        </button>
+        <div className="min-w-0 flex-1">
+          <div className={cn("text-[13px] font-medium", done && "line-through")}>{task.title}</div>
+          <div className="mt-1 flex flex-wrap items-center gap-1.5">
+            <span
+              className={cn(
+                "rounded px-1.5 py-0.5 text-[10px] font-medium",
+                link.kind === "cliente" && "bg-primary/10 text-primary",
+                link.kind === "lead" && "bg-info/10 text-info",
+                link.kind === "geral" && "bg-muted text-muted-foreground",
+              )}
+            >
+              {link.label}
+            </span>
+            <span
+              className={cn(
+                "h-1.5 w-1.5 rounded-full",
+                task.priority === "urgente" && "bg-destructive",
+                task.priority === "alta" && "bg-warning",
+                task.priority === "media" && "bg-info",
+                task.priority === "baixa" && "bg-muted-foreground",
+              )}
+            />
+            <span className="text-[10px] text-muted-foreground">{task.owner.split(" ")[0]}</span>
           </div>
-        );
-      })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SemanaPanel() {
+  const { tasks, clients, leads, toggleTaskDone } = useDataStore();
+  const [view, setView] = useState<"dia" | "cliente">("dia");
+  const weekDays = getWeekDays(HOJE);
+
+  const atrasadas = tasks.filter((t) => t.status !== "concluida" && t.dueDate < weekDays[0]);
+  const daSemana = tasks.filter((t) => weekDays.includes(t.dueDate));
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="inline-flex rounded-md border bg-surface p-0.5">
+          <button
+            onClick={() => setView("dia")}
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded px-2.5 py-1 text-[12px] font-medium transition-colors",
+              view === "dia" ? "bg-card shadow-sm" : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            <LayoutGrid className="h-3 w-3" /> Por dia
+          </button>
+          <button
+            onClick={() => setView("cliente")}
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded px-2.5 py-1 text-[12px] font-medium transition-colors",
+              view === "cliente" ? "bg-card shadow-sm" : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            <User className="h-3 w-3" /> Por cliente
+          </button>
+        </div>
+        <NewTaskButton label="+ Nova tarefa" />
+      </div>
+
+      {atrasadas.length > 0 && (
+        <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-3">
+          <div className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-destructive">
+            <AlertTriangle className="h-3.5 w-3.5" /> Atrasadas ({atrasadas.length})
+          </div>
+          <div className="space-y-1.5">
+            {atrasadas.map((t) => (
+              <TaskCard key={t.id} task={t} clients={clients} leads={leads} onToggle={() => toggleTaskDone(t.id)} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {view === "dia" ? (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
+          {weekDays.map((date, i) => {
+            const list = daSemana.filter((t) => t.dueDate === date);
+            const isToday = date === HOJE;
+            return (
+              <div
+                key={date}
+                className={cn("rounded-xl border bg-surface/40 p-3", isToday && "border-primary/50 bg-primary/5")}
+              >
+                <div className="mb-3 flex items-center justify-between">
+                  <span className="text-[11px] font-semibold uppercase tracking-wider">
+                    {weekdayLabels[i]}
+                    {isToday && <span className="ml-1 text-primary">· hoje</span>}
+                  </span>
+                  <span className="font-mono text-[10px] text-muted-foreground">
+                    {new Date(date + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}
+                  </span>
+                </div>
+                <div className="space-y-2">
+                  {list.length === 0 ? (
+                    <p className="text-[11px] text-muted-foreground">—</p>
+                  ) : (
+                    list.map((t) => (
+                      <TaskCard key={t.id} task={t} clients={clients} leads={leads} onToggle={() => toggleTaskDone(t.id)} />
+                    ))
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <ClienteView tasks={daSemana} clients={clients} leads={leads} toggleTaskDone={toggleTaskDone} />
+      )}
+    </div>
+  );
+}
+
+function ClienteView({
+  tasks,
+  clients,
+  leads,
+  toggleTaskDone,
+}: {
+  tasks: Task[];
+  clients: Client[];
+  leads: Lead[];
+  toggleTaskDone: (id: string) => void;
+}) {
+  const groups = new Map<string, { label: string; kind: "cliente" | "lead" | "geral"; tasks: Task[] }>();
+  for (const t of tasks) {
+    const link = taskLink(t, clients, leads);
+    const key = `${link.kind}-${link.label}`;
+    if (!groups.has(key)) groups.set(key, { label: link.label, kind: link.kind, tasks: [] });
+    groups.get(key)!.tasks.push(t);
+  }
+  const sorted = Array.from(groups.values()).sort((a, b) => {
+    if (a.kind === "geral") return 1;
+    if (b.kind === "geral") return -1;
+    return a.label.localeCompare(b.label);
+  });
+
+  if (sorted.length === 0) {
+    return <p className="text-[12px] text-muted-foreground">Nenhuma tarefa nessa semana.</p>;
+  }
+
+  return (
+    <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+      {sorted.map((g) => (
+        <div key={g.label} className="rounded-xl border bg-surface/40 p-3">
+          <div className="mb-3 flex items-center justify-between">
+            <span className="text-[12px] font-semibold">{g.label}</span>
+            <span className="font-mono text-[10px] text-muted-foreground">{g.tasks.length}</span>
+          </div>
+          <div className="space-y-2">
+            {g.tasks.map((t) => (
+              <TaskCard key={t.id} task={t} clients={clients} leads={leads} onToggle={() => toggleTaskDone(t.id)} />
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

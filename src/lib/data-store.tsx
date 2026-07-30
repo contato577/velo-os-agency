@@ -28,6 +28,7 @@ interface DataStoreContextValue {
   updateLeadStage: (id: string, stage: LeadStage) => void;
   addTask: (partial: Omit<Task, "id">) => Task;
   addExpense: (partial: Omit<FinanceEntry, "id">) => FinanceEntry;
+  toggleTaskDone: (taskId: string) => void;
   criarClienteDeVenda: (lead: Lead, servicos: string[]) => Client;
   toggleChecklistItem: (projectId: string, itemId: string) => void;
 }
@@ -103,6 +104,12 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
     const entry: FinanceEntry = { id: `fe-${Date.now()}`, ...partial };
     setExpenses((prev) => [entry, ...prev]);
     return entry;
+  };
+
+  const toggleTaskDone: DataStoreContextValue["toggleTaskDone"] = (taskId) => {
+    setTasks((prev) =>
+      prev.map((t) => (t.id === taskId ? { ...t, status: t.status === "concluida" ? "hoje" : "concluida" } : t)),
+    );
   };
 
   const criarClienteDeVenda = (lead: Lead, servicos: string[]): Client => {
@@ -314,6 +321,7 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
         updateLeadStage,
         addTask,
         addExpense,
+        toggleTaskDone,
         criarClienteDeVenda,
         toggleChecklistItem,
       }}
