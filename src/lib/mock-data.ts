@@ -53,7 +53,7 @@ export interface Lead {
   tags?: string[];
 }
 
-const owners = ["Rafael Souza", "Camila Torres", "Bruno Lima", "Ana Prado"];
+export const owners = ["Rafael Souza", "Camila Torres", "Bruno Lima", "Ana Prado"];
 const cities = ["São Paulo", "Rio de Janeiro", "Curitiba", "Belo Horizonte", "Florianópolis", "Porto Alegre"];
 const origins: Lead["origin"][] = ["Instagram", "Indicação", "Google Ads", "LinkedIn", "Site", "Outbound"];
 const potenciais: LeadPotential[] = ["alto", "medio", "baixo"];
