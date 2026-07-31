@@ -190,40 +190,45 @@ void Link;
 function ProjetosPanel() {
   const groups = ["briefing", "producao", "revisao", "entregue"] as const;
   return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-      {groups.map((g) => {
-        const list = projects.filter((p) => p.status === g);
-        return (
-          <div key={g} className="rounded-xl border bg-surface/40 p-3">
-            <div className="mb-3 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className={cn("rounded px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider", projStatus[g].color)}>
-                  {projStatus[g].label}
-                </span>
-                <span className="font-mono text-[10px] text-muted-foreground">{list.length}</span>
-              </div>
-              <MoreHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
-            </div>
-            <div className="space-y-2">
-              {list.map((p) => (
-                <div key={p.id} className="rounded-md border bg-card p-3">
-                  <div className="text-[13px] font-medium">{p.name}</div>
-                  <div className="mt-0.5 text-[11px] text-muted-foreground">{p.clientName}</div>
-                  <div className="mt-2 flex items-center justify-between text-[10px] text-muted-foreground">
-                    <span className="flex items-center gap-1">
-                      <Users className="h-2.5 w-2.5" /> {p.owner.split(" ")[0]}
-                    </span>
-                    <span className="font-mono text-primary">{p.progress}%</span>
-                  </div>
-                  <div className="mt-1 h-1 overflow-hidden rounded bg-surface">
-                    <div className="h-full rounded bg-primary" style={{ width: `${p.progress}%` }} />
-                  </div>
+    <div className="space-y-3">
+      <div className="flex items-center gap-2 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-[12px] text-warning">
+        Essa aba ainda mostra dados de exemplo — os projetos criados de verdade (ao fechar venda no CRM) ainda não aparecem aqui. Em construção.
+      </div>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {groups.map((g) => {
+          const list = projects.filter((p) => p.status === g);
+          return (
+            <div key={g} className="rounded-xl border bg-surface/40 p-3">
+              <div className="mb-3 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className={cn("rounded px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider", projStatus[g].color)}>
+                    {projStatus[g].label}
+                  </span>
+                  <span className="font-mono text-[10px] text-muted-foreground">{list.length}</span>
                 </div>
-              ))}
+                <MoreHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
+              </div>
+              <div className="space-y-2">
+                {list.map((p) => (
+                  <div key={p.id} className="rounded-md border bg-card p-3">
+                    <div className="text-[13px] font-medium">{p.name}</div>
+                    <div className="mt-0.5 text-[11px] text-muted-foreground">{p.clientName}</div>
+                    <div className="mt-2 flex items-center justify-between text-[10px] text-muted-foreground">
+                      <span className="flex items-center gap-1">
+                        <Users className="h-2.5 w-2.5" /> {p.owner.split(" ")[0]}
+                      </span>
+                      <span className="font-mono text-primary">{p.progress}%</span>
+                    </div>
+                    <div className="mt-1 h-1 overflow-hidden rounded bg-surface">
+                      <div className="h-full rounded bg-primary" style={{ width: `${p.progress}%` }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -259,23 +264,26 @@ function TaskCard({ task, clients, leads, onToggle }: { task: Task; clients: Cli
   const link = taskLink(task, clients, leads);
   const done = task.status === "concluida";
   return (
-    <div className={cn("rounded-md border bg-card p-2.5", done && "opacity-50")}>
-      <div className="flex items-start gap-2">
+    <div className={cn("rounded-md border bg-card p-3", done && "opacity-50")}>
+      <div className="flex items-start gap-2.5">
         <button
           onClick={onToggle}
           className={cn(
-            "mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors",
+            "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-2 transition-colors",
             done ? "border-success bg-success text-success-foreground" : "border-muted-foreground/40 hover:border-primary",
           )}
         >
-          {done && <Check className="h-3 w-3" />}
+          {done && <Check className="h-3.5 w-3.5" />}
         </button>
         <div className="min-w-0 flex-1">
-          <div className={cn("text-[13px] font-medium", done && "line-through")}>{task.title}</div>
-          <div className="mt-1 flex flex-wrap items-center gap-1.5">
+          <div className={cn("text-[14px] font-semibold leading-snug", done && "line-through")}>{task.title}</div>
+          {task.description && (
+            <p className="mt-1 text-[12px] leading-snug text-muted-foreground">{task.description}</p>
+          )}
+          <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
             <span
               className={cn(
-                "rounded px-1.5 py-0.5 text-[10px] font-medium",
+                "rounded px-1.5 py-0.5 text-[11px] font-semibold",
                 link.kind === "cliente" && "bg-primary/10 text-primary",
                 link.kind === "lead" && "bg-info/10 text-info",
                 link.kind === "geral" && "bg-muted text-muted-foreground",
@@ -285,14 +293,14 @@ function TaskCard({ task, clients, leads, onToggle }: { task: Task; clients: Cli
             </span>
             <span
               className={cn(
-                "h-1.5 w-1.5 rounded-full",
+                "h-2 w-2 rounded-full",
                 task.priority === "urgente" && "bg-destructive",
                 task.priority === "alta" && "bg-warning",
                 task.priority === "media" && "bg-info",
                 task.priority === "baixa" && "bg-muted-foreground",
               )}
+              title={`Prioridade ${task.priority}`}
             />
-            <span className="text-[10px] text-muted-foreground">{task.owner.split(" ")[0]}</span>
           </div>
         </div>
       </div>
@@ -307,6 +315,9 @@ function SemanaPanel() {
 
   const atrasadas = tasks.filter((t) => t.status !== "concluida" && t.dueDate < weekDays[0]);
   const daSemana = tasks.filter((t) => weekDays.includes(t.dueDate));
+  const futuras = tasks
+    .filter((t) => t.status !== "concluida" && t.dueDate > weekDays[6])
+    .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
 
   return (
     <div className="space-y-4">
@@ -358,11 +369,11 @@ function SemanaPanel() {
                 className={cn("rounded-xl border bg-surface/40 p-3", isToday && "border-primary/50 bg-primary/5")}
               >
                 <div className="mb-3 flex items-center justify-between">
-                  <span className="text-[11px] font-semibold uppercase tracking-wider">
+                  <span className="text-[13px] font-bold uppercase tracking-wide">
                     {weekdayLabels[i]}
-                    {isToday && <span className="ml-1 text-primary">· hoje</span>}
+                    {isToday && <span className="ml-1.5 rounded bg-primary px-1.5 py-0.5 text-[9px] normal-case text-primary-foreground">hoje</span>}
                   </span>
-                  <span className="font-mono text-[10px] text-muted-foreground">
+                  <span className="font-mono text-[11px] font-medium text-muted-foreground">
                     {new Date(date + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}
                   </span>
                 </div>
@@ -381,6 +392,24 @@ function SemanaPanel() {
         </div>
       ) : (
         <ClienteView tasks={daSemana} clients={clients} leads={leads} toggleTaskDone={toggleTaskDone} />
+      )}
+
+      {futuras.length > 0 && (
+        <div className="rounded-lg border bg-surface/30 p-3">
+          <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Semanas seguintes ({futuras.length})
+          </div>
+          <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
+            {futuras.map((t) => (
+              <div key={t.id} className="flex items-center gap-2 rounded-md border bg-card px-2.5 py-1.5 text-[12px]">
+                <span className="font-mono text-[10px] text-muted-foreground">
+                  {new Date(t.dueDate + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}
+                </span>
+                <span className="min-w-0 flex-1 truncate font-medium">{t.title}</span>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
     </div>
   );
@@ -441,6 +470,9 @@ function AgendaPanel() {
   const dates = Object.keys(grouped).sort();
   return (
     <div className="space-y-4">
+      <div className="flex items-center gap-2 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-[12px] text-warning">
+        Essa aba ainda mostra dados de exemplo — reuniões/compromissos reais ainda não têm cadastro próprio. Em construção.
+      </div>
       {dates.map((d) => (
         <div key={d} className="rounded-xl border bg-card p-4">
           <div className="mb-3 flex items-center justify-between">

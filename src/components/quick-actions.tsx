@@ -365,7 +365,7 @@ function QuickDialog({
   defaultContext?: TarefaDefaultContext;
   defaultStage?: LeadStage;
 }) {
-  const { addLead, addTask, addExpense } = useDataStore();
+  const { addLead, addTask, addExpense, clients: realClients } = useDataStore();
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const meta = kindMeta[kind];
@@ -397,11 +397,11 @@ function QuickDialog({
       addTask({
         title: tarefaData.title,
         description: tarefaData.description || undefined,
-        owner: tarefaData.owner,
+        owner: owners[0],
         priority: tarefaData.priority,
         status: "backlog",
         dueDate: tarefaData.dueDate,
-        clientId: defaultContext?.type === "cliente" ? defaultContext.id : undefined,
+        clientId: defaultContext?.type === "cliente" ? defaultContext.id : (!defaultContext ? tarefaData.clientId || undefined : undefined),
         projectId: defaultContext?.type === "projeto" ? defaultContext.id : undefined,
         leadId: defaultContext?.type === "lead" ? defaultContext.id : undefined,
       });
@@ -469,7 +469,7 @@ function QuickDialog({
             {kind === "venda" && <VendaForm />}
             {kind === "despesa" && <DespesaForm data={despesaData} onChange={setDespesaData} />}
             {kind === "tarefa" && (
-              <TarefaForm data={tarefaData} onChange={setTarefaData} defaultContext={defaultContext} />
+              <TarefaForm data={tarefaData} onChange={setTarefaData} defaultContext={defaultContext} clients={realClients} />
             )}
 
             <div className="flex items-center justify-end gap-2 border-t pt-3">
@@ -797,7 +797,7 @@ export interface TarefaFormData {
   title: string;
   dueDate: string;
   priority: "baixa" | "media" | "alta" | "urgente";
-  owner: string;
+  clientId: string;
   description: string;
 }
 
@@ -805,7 +805,7 @@ export const emptyTarefaForm: TarefaFormData = {
   title: "",
   dueDate: "",
   priority: "media",
-  owner: owners[0],
+  clientId: "",
   description: "",
 };
 
@@ -813,10 +813,12 @@ function TarefaForm({
   data,
   onChange,
   defaultContext,
+  clients,
 }: {
   data: TarefaFormData;
   onChange: (data: TarefaFormData) => void;
   defaultContext?: TarefaDefaultContext;
+  clients: { id: string; company: string }[];
 }) {
   const set = <K extends keyof TarefaFormData>(key: K, value: TarefaFormData[K]) =>
     onChange({ ...data, [key]: value });
@@ -855,14 +857,7 @@ function TarefaForm({
           </select>
         </F>
       </Row2>
-      <F label="Responsável">
-        <select className={cls} value={data.owner} onChange={(e) => set("owner", e.target.value)}>
-          {owners.map((o) => (
-            <option key={o}>{o}</option>
-          ))}
-        </select>
-      </F>
-      {defaultContext && (
+      {defaultContext ? (
         <F label={`Vinculado a ${defaultContext.type}`}>
           <div className="flex items-center gap-2 rounded-md border bg-surface/60 px-3 py-1.5 text-[13px]">
             <span className="inline-flex h-5 items-center rounded-full bg-primary/10 px-2 text-[10px] font-medium uppercase tracking-widest text-primary">
@@ -871,6 +866,17 @@ function TarefaForm({
             <span className="min-w-0 flex-1 truncate">{defaultContext.label}</span>
             <span className="text-[10px] text-muted-foreground">travado</span>
           </div>
+        </F>
+      ) : (
+        <F label="Cliente">
+          <select className={cls} value={data.clientId} onChange={(e) => set("clientId", e.target.value)}>
+            <option value="">Geral (sem cliente)</option>
+            {clients.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.company}
+              </option>
+            ))}
+          </select>
         </F>
       )}
       <F label="Observações">
