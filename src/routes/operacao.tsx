@@ -278,7 +278,7 @@ function TaskCard({ task, clients, leads, onToggle }: { task: Task; clients: Cli
         <div className="min-w-0 flex-1">
           <div className={cn("text-[14px] font-semibold leading-snug", done && "line-through")}>{task.title}</div>
           {task.description && (
-            <p className="mt-1 text-[12px] leading-snug text-muted-foreground">{task.description}</p>
+            <p className="mt-1 line-clamp-2 break-words text-[12px] leading-snug text-muted-foreground">{task.description}</p>
           )}
           <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
             <span
@@ -350,7 +350,7 @@ function SemanaPanel() {
           <div className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-destructive">
             <AlertTriangle className="h-3.5 w-3.5" /> Atrasadas ({atrasadas.length})
           </div>
-          <div className="space-y-1.5">
+          <div className="grid max-h-[320px] grid-cols-1 gap-2 overflow-y-auto sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {atrasadas.map((t) => (
               <TaskCard key={t.id} task={t} clients={clients} leads={leads} onToggle={() => toggleTaskDone(t.id)} />
             ))}
