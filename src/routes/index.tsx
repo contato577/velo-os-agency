@@ -61,9 +61,10 @@ function Dashboard() {
   const leadsNovos = leads.filter((l) => l.stage === "novo").length;
   const leadsAguardando = leads.filter((l) => l.stage === "contato").length;
   const followupsPendentes = dashboardKPIs.followupsPendentes;
-  const reunioesHoje = agendaEvents.filter((e) => e.date === "2026-07-03" && e.type === "reuniao").length;
+  const hojeISO = new Date().toISOString().slice(0, 10);
+  const reunioesHoje = agendaEvents.filter((e) => e.date === hojeISO && e.type === "reuniao").length;
   const tarefasAtrasadas = tasks.filter(
-    (t) => t.status !== "concluida" && new Date(t.dueDate) < new Date("2026-07-03"),
+    (t) => t.status !== "concluida" && new Date(t.dueDate) < new Date(hojeISO),
   ).length;
   const cobrancasPendentes = clients.filter((c) => c.status === "ativo" && c.paymentDay <= DIA_ATUAL).length;
   const vendasMes = leads.filter((l) => l.stage === "fechado").length;
@@ -161,7 +162,11 @@ function Dashboard() {
             <div className="mb-3 flex items-center justify-between">
               <div>
                 <h3 className="text-sm font-semibold tracking-tight">Agenda de hoje</h3>
-                <p className="text-[11px] text-muted-foreground">03 jul 2026 · {agendaEvents.filter((e) => e.date === "2026-07-03").length} compromissos</p>
+                <p className="text-[11px] text-muted-foreground">
+                  {new Date(hojeISO + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" })}
+                  {" · "}
+                  {agendaEvents.filter((e) => e.date === hojeISO).length} compromissos
+                </p>
               </div>
               <Link to="/operacao" className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline">
                 Abrir agenda <ArrowRight className="h-3 w-3" />
@@ -169,7 +174,7 @@ function Dashboard() {
             </div>
             <ul className="space-y-1">
               {agendaEvents
-                .filter((e) => e.date === "2026-07-03")
+                .filter((e) => e.date === hojeISO)
                 .map((e) => (
                   <li
                     key={e.id}

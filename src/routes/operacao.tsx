@@ -40,7 +40,7 @@ export const Route = createFileRoute("/operacao")({
 
 type Tab = "projetos" | "tarefas" | "agenda";
 
-const HOJE = "2026-07-03";
+const HOJE = new Date().toISOString().slice(0, 10);
 
 const projStatus = {
   briefing: { label: "Briefing", color: "bg-info/15 text-info" },
@@ -59,7 +59,7 @@ function Operacao() {
   );
   const tarefasHoje = tasks.filter((t) => t.status === "hoje" || t.dueDate === HOJE);
   const projetosAtrasados = projects.filter(
-    (p) => p.status !== "entregue" && new Date(p.deadline) < new Date("2026-07-15"),
+    (p) => p.status !== "entregue" && new Date(p.deadline) < new Date(HOJE),
   );
   const reunioesHoje = agendaEvents.filter((e) => e.date === HOJE && e.type === "reuniao");
 

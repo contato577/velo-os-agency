@@ -36,7 +36,7 @@ export function sortByPriority(list: Insight[]): Insight[] {
   return [...list].sort((a, b) => priorityRank[a.prioridade] - priorityRank[b.prioridade]);
 }
 
-const HOJE = new Date("2026-07-03");
+const HOJE = new Date();
 const RENEWAL_ALERT_DAYS = 5; // dias de antecedência para alerta crítico de renovação
 const BRL = (n: number) =>
   n.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
@@ -216,7 +216,8 @@ export function gerarInsights(input: AIInputs): Insight[] {
     });
   }
 
-  const compHoje = agenda.filter((e) => e.date === "2026-07-03").length;
+  const hojeISO = HOJE.toISOString().slice(0, 10);
+  const compHoje = agenda.filter((e) => e.date === hojeISO).length;
   if (compHoje > 0) {
     insights.push({
       id: "d-agenda",
