@@ -296,9 +296,9 @@ function TaskCard({
           {done && <Check className="h-3.5 w-3.5" />}
         </button>
         <div className="min-w-0 flex-1">
-          <div className={cn("line-clamp-2 break-words text-[14px] font-semibold leading-snug", done && "line-through")}>{task.title}</div>
+          <div className={cn("line-clamp-2 break-all text-[14px] font-semibold leading-snug", done && "line-through")}>{task.title}</div>
           {task.description && (
-            <p className="mt-1 line-clamp-2 break-words text-[12px] leading-snug text-muted-foreground">{task.description}</p>
+            <p className="mt-1 line-clamp-3 break-all text-[12px] leading-snug text-muted-foreground">{task.description}</p>
           )}
           <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
             {overdue && !done && (
@@ -373,8 +373,8 @@ function SemanaPanel() {
   const [view, setView] = useState<"dia" | "cliente">("dia");
   const weekDays = getWeekDays(HOJE);
 
-  const atrasadas = tasks.filter((t) => t.status !== "concluida" && t.dueDate < HOJE);
-  const daSemana = tasks.filter((t) => weekDays.includes(t.dueDate) && t.dueDate >= HOJE);
+  const atrasadas = tasks.filter((t) => t.status !== "concluida" && t.dueDate < weekDays[0]);
+  const daSemana = tasks.filter((t) => weekDays.includes(t.dueDate));
   const futuras = tasks
     .filter((t) => t.status !== "concluida" && t.dueDate > weekDays[6])
     .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
@@ -405,7 +405,7 @@ function SemanaPanel() {
       </div>
 
       {view === "dia" ? (
-        <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
+        <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {weekDays.map((date, i) => {
             const isToday = date === HOJE;
             const list = daSemana.filter((t) => t.dueDate === date);
@@ -434,7 +434,14 @@ function SemanaPanel() {
                     <p className="text-[11px] text-muted-foreground">—</p>
                   ) : (
                     list.map((t) => (
-                      <TaskCard key={t.id} task={t} clients={clients} leads={leads} onToggle={() => toggleTaskDone(t.id)} />
+                      <TaskCard
+                        key={t.id}
+                        task={t}
+                        clients={clients}
+                        leads={leads}
+                        onToggle={() => toggleTaskDone(t.id)}
+                        overdue={t.dueDate < HOJE}
+                      />
                     ))
                   )}
                 </div>
