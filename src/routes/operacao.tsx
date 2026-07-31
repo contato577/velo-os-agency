@@ -332,6 +332,38 @@ function TaskCard({
   );
 }
 
+function OverdueMiniList({ tasks, onToggle }: { tasks: Task[]; onToggle: (id: string) => void }) {
+  const [expanded, setExpanded] = useState(false);
+  const visible = expanded ? tasks : tasks.slice(0, 3);
+  const hidden = tasks.length - visible.length;
+
+  return (
+    <div className="mb-2.5 space-y-1 border-b pb-2.5">
+      {visible.map((t) => (
+        <button
+          key={t.id}
+          onClick={() => onToggle(t.id)}
+          className="flex w-full items-center gap-1.5 rounded-md border border-destructive/30 bg-destructive/5 px-2 py-1.5 text-left transition-colors hover:bg-destructive/10"
+        >
+          <span className="h-3 w-3 shrink-0 rounded-sm border-2 border-destructive/50" />
+          <span className="min-w-0 flex-1 truncate text-[11.5px] font-medium text-foreground">{t.title}</span>
+          <span className="shrink-0 font-mono text-[9px] font-semibold text-destructive">
+            {new Date(t.dueDate + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}
+          </span>
+        </button>
+      ))}
+      {tasks.length > 3 && (
+        <button
+          onClick={() => setExpanded((v) => !v)}
+          className="flex w-full items-center justify-center gap-1 rounded-md px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-destructive hover:bg-destructive/10"
+        >
+          {expanded ? "Mostrar menos" : `+ ${hidden} atrasada${hidden > 1 ? "s" : ""}`}
+        </button>
+      )}
+    </div>
+  );
+}
+
 function SemanaPanel() {
   const { tasks, clients, leads, toggleTaskDone } = useDataStore();
   const [view, setView] = useState<"dia" | "cliente">("dia");
@@ -370,16 +402,15 @@ function SemanaPanel() {
       </div>
 
       {view === "dia" ? (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
           {weekDays.map((date, i) => {
             const isToday = date === HOJE;
             const list = daSemana.filter((t) => t.dueDate === date);
-            const combined = isToday ? [...atrasadas, ...list] : list;
             return (
               <div
                 key={date}
                 className={cn(
-                  "flex max-h-[420px] flex-col rounded-xl border bg-surface/40 p-3",
+                  "flex flex-col rounded-xl border bg-surface/40 p-3",
                   isToday && "border-primary/50 bg-primary/5",
                 )}
               >
@@ -392,19 +423,15 @@ function SemanaPanel() {
                     {new Date(date + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}
                   </span>
                 </div>
-                <div className="space-y-2 overflow-y-auto">
-                  {combined.length === 0 ? (
+
+                {isToday && atrasadas.length > 0 && <OverdueMiniList tasks={atrasadas} onToggle={toggleTaskDone} />}
+
+                <div className="space-y-2">
+                  {list.length === 0 ? (
                     <p className="text-[11px] text-muted-foreground">—</p>
                   ) : (
-                    combined.map((t) => (
-                      <TaskCard
-                        key={t.id}
-                        task={t}
-                        clients={clients}
-                        leads={leads}
-                        onToggle={() => toggleTaskDone(t.id)}
-                        overdue={t.dueDate < weekDays[0]}
-                      />
+                    list.map((t) => (
+                      <TaskCard key={t.id} task={t} clients={clients} leads={leads} onToggle={() => toggleTaskDone(t.id)} />
                     ))
                   )}
                 </div>
