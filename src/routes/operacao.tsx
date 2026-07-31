@@ -260,11 +260,29 @@ function taskLink(task: Task, clients: Client[], leads: Lead[]): { label: string
   return { label: "Geral", kind: "geral" };
 }
 
-function TaskCard({ task, clients, leads, onToggle }: { task: Task; clients: Client[]; leads: Lead[]; onToggle: () => void }) {
+function TaskCard({
+  task,
+  clients,
+  leads,
+  onToggle,
+  overdue,
+}: {
+  task: Task;
+  clients: Client[];
+  leads: Lead[];
+  onToggle: () => void;
+  overdue?: boolean;
+}) {
   const link = taskLink(task, clients, leads);
   const done = task.status === "concluida";
   return (
-    <div className={cn("rounded-md border bg-card p-3", done && "opacity-50")}>
+    <div
+      className={cn(
+        "rounded-md border bg-card p-3",
+        done && "opacity-50",
+        overdue && !done && "border-l-4 border-destructive bg-destructive/5",
+      )}
+    >
       <div className="flex items-start gap-2.5">
         <button
           onClick={onToggle}
@@ -281,6 +299,12 @@ function TaskCard({ task, clients, leads, onToggle }: { task: Task; clients: Cli
             <p className="mt-1 line-clamp-2 break-words text-[12px] leading-snug text-muted-foreground">{task.description}</p>
           )}
           <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+            {overdue && !done && (
+              <span className="inline-flex items-center gap-1 rounded bg-destructive px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-destructive-foreground">
+                <AlertTriangle className="h-2.5 w-2.5" />
+                Atrasada · {new Date(task.dueDate + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}
+              </span>
+            )}
             <span
               className={cn(
                 "rounded px-1.5 py-0.5 text-[11px] font-semibold",
@@ -345,28 +369,19 @@ function SemanaPanel() {
         <NewTaskButton label="+ Nova tarefa" />
       </div>
 
-      {atrasadas.length > 0 && (
-        <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-3">
-          <div className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-destructive">
-            <AlertTriangle className="h-3.5 w-3.5" /> Atrasadas ({atrasadas.length})
-          </div>
-          <div className="grid max-h-[320px] grid-cols-1 gap-2 overflow-y-auto sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {atrasadas.map((t) => (
-              <TaskCard key={t.id} task={t} clients={clients} leads={leads} onToggle={() => toggleTaskDone(t.id)} />
-            ))}
-          </div>
-        </div>
-      )}
-
       {view === "dia" ? (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {weekDays.map((date, i) => {
-            const list = daSemana.filter((t) => t.dueDate === date);
             const isToday = date === HOJE;
+            const list = daSemana.filter((t) => t.dueDate === date);
+            const combined = isToday ? [...atrasadas, ...list] : list;
             return (
               <div
                 key={date}
-                className={cn("rounded-xl border bg-surface/40 p-3", isToday && "border-primary/50 bg-primary/5")}
+                className={cn(
+                  "flex max-h-[420px] flex-col rounded-xl border bg-surface/40 p-3",
+                  isToday && "border-primary/50 bg-primary/5",
+                )}
               >
                 <div className="mb-3 flex items-center justify-between">
                   <span className="text-[13px] font-bold uppercase tracking-wide">
@@ -377,12 +392,19 @@ function SemanaPanel() {
                     {new Date(date + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}
                   </span>
                 </div>
-                <div className="space-y-2">
-                  {list.length === 0 ? (
+                <div className="space-y-2 overflow-y-auto">
+                  {combined.length === 0 ? (
                     <p className="text-[11px] text-muted-foreground">—</p>
                   ) : (
-                    list.map((t) => (
-                      <TaskCard key={t.id} task={t} clients={clients} leads={leads} onToggle={() => toggleTaskDone(t.id)} />
+                    combined.map((t) => (
+                      <TaskCard
+                        key={t.id}
+                        task={t}
+                        clients={clients}
+                        leads={leads}
+                        onToggle={() => toggleTaskDone(t.id)}
+                        overdue={t.dueDate < weekDays[0]}
+                      />
                     ))
                   )}
                 </div>
@@ -391,7 +413,7 @@ function SemanaPanel() {
           })}
         </div>
       ) : (
-        <ClienteView tasks={daSemana} clients={clients} leads={leads} toggleTaskDone={toggleTaskDone} />
+        <ClienteView tasks={[...atrasadas, ...daSemana]} clients={clients} leads={leads} toggleTaskDone={toggleTaskDone} weekStart={weekDays[0]} />
       )}
 
       {futuras.length > 0 && (
@@ -420,11 +442,13 @@ function ClienteView({
   clients,
   leads,
   toggleTaskDone,
+  weekStart,
 }: {
   tasks: Task[];
   clients: Client[];
   leads: Lead[];
   toggleTaskDone: (id: string) => void;
+  weekStart: string;
 }) {
   const groups = new Map<string, { label: string; kind: "cliente" | "lead" | "geral"; tasks: Task[] }>();
   for (const t of tasks) {
@@ -453,7 +477,14 @@ function ClienteView({
           </div>
           <div className="space-y-2">
             {g.tasks.map((t) => (
-              <TaskCard key={t.id} task={t} clients={clients} leads={leads} onToggle={() => toggleTaskDone(t.id)} />
+              <TaskCard
+                key={t.id}
+                task={t}
+                clients={clients}
+                leads={leads}
+                onToggle={() => toggleTaskDone(t.id)}
+                overdue={t.dueDate < weekStart}
+              />
             ))}
           </div>
         </div>
