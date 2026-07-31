@@ -282,7 +282,7 @@ function TaskCard({
       className={cn(
         "rounded-md border bg-card p-3",
         done && "opacity-50",
-        overdue && !done && "border-l-4 border-destructive bg-destructive/5",
+        overdue && !done && "border-l-4 border-l-destructive bg-destructive/5",
       )}
     >
       <div className="flex items-start gap-2.5">
@@ -302,7 +302,7 @@ function TaskCard({
           )}
           <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
             {overdue && !done && (
-              <span className="inline-flex items-center gap-1 rounded bg-destructive px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-destructive-foreground">
+              <span className="inline-flex items-center gap-1 rounded bg-destructive/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-destructive">
                 <AlertTriangle className="h-2.5 w-2.5" />
                 Atrasada · {new Date(task.dueDate + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}
               </span>
@@ -413,7 +413,7 @@ function SemanaPanel() {
               <div
                 key={date}
                 className={cn(
-                  "flex flex-col rounded-xl border bg-surface/40 p-3",
+                  "flex min-h-[240px] flex-col rounded-xl border bg-surface/40 p-3",
                   isToday && "border-primary/50 bg-primary/5",
                 )}
               >
