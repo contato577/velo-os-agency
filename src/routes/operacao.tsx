@@ -266,12 +266,14 @@ function TaskCard({
   leads,
   onToggle,
   overdue,
+  showLink = true,
 }: {
   task: Task;
   clients: Client[];
   leads: Lead[];
   onToggle: () => void;
   overdue?: boolean;
+  showLink?: boolean;
 }) {
   const link = taskLink(task, clients, leads);
   const done = task.status === "concluida";
@@ -294,7 +296,7 @@ function TaskCard({
           {done && <Check className="h-3.5 w-3.5" />}
         </button>
         <div className="min-w-0 flex-1">
-          <div className={cn("text-[14px] font-semibold leading-snug", done && "line-through")}>{task.title}</div>
+          <div className={cn("line-clamp-2 break-words text-[14px] font-semibold leading-snug", done && "line-through")}>{task.title}</div>
           {task.description && (
             <p className="mt-1 line-clamp-2 break-words text-[12px] leading-snug text-muted-foreground">{task.description}</p>
           )}
@@ -305,16 +307,18 @@ function TaskCard({
                 Atrasada · {new Date(task.dueDate + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}
               </span>
             )}
-            <span
-              className={cn(
-                "rounded px-1.5 py-0.5 text-[11px] font-semibold",
-                link.kind === "cliente" && "bg-primary/10 text-primary",
-                link.kind === "lead" && "bg-info/10 text-info",
-                link.kind === "geral" && "bg-muted text-muted-foreground",
-              )}
-            >
-              {link.label}
-            </span>
+            {showLink && (
+              <span
+                className={cn(
+                  "rounded px-1.5 py-0.5 text-[11px] font-semibold",
+                  link.kind === "cliente" && "bg-primary/10 text-primary",
+                  link.kind === "lead" && "bg-info/10 text-info",
+                  link.kind === "geral" && "bg-muted text-muted-foreground",
+                )}
+              >
+                {link.label}
+              </span>
+            )}
             <span
               className={cn(
                 "h-2 w-2 rounded-full",
@@ -369,8 +373,8 @@ function SemanaPanel() {
   const [view, setView] = useState<"dia" | "cliente">("dia");
   const weekDays = getWeekDays(HOJE);
 
-  const atrasadas = tasks.filter((t) => t.status !== "concluida" && t.dueDate < weekDays[0]);
-  const daSemana = tasks.filter((t) => weekDays.includes(t.dueDate));
+  const atrasadas = tasks.filter((t) => t.status !== "concluida" && t.dueDate < HOJE);
+  const daSemana = tasks.filter((t) => weekDays.includes(t.dueDate) && t.dueDate >= HOJE);
   const futuras = tasks
     .filter((t) => t.status !== "concluida" && t.dueDate > weekDays[6])
     .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
@@ -398,11 +402,10 @@ function SemanaPanel() {
             <User className="h-3 w-3" /> Por cliente
           </button>
         </div>
-        <NewTaskButton label="+ Nova tarefa" />
       </div>
 
       {view === "dia" ? (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
+        <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
           {weekDays.map((date, i) => {
             const isToday = date === HOJE;
             const list = daSemana.filter((t) => t.dueDate === date);
@@ -440,7 +443,7 @@ function SemanaPanel() {
           })}
         </div>
       ) : (
-        <ClienteView tasks={[...atrasadas, ...daSemana]} clients={clients} leads={leads} toggleTaskDone={toggleTaskDone} weekStart={weekDays[0]} />
+        <ClienteView tasks={[...atrasadas, ...daSemana]} clients={clients} leads={leads} toggleTaskDone={toggleTaskDone} hoje={HOJE} />
       )}
 
       {futuras.length > 0 && (
@@ -469,13 +472,13 @@ function ClienteView({
   clients,
   leads,
   toggleTaskDone,
-  weekStart,
+  hoje,
 }: {
   tasks: Task[];
   clients: Client[];
   leads: Lead[];
   toggleTaskDone: (id: string) => void;
-  weekStart: string;
+  hoje: string;
 }) {
   const groups = new Map<string, { label: string; kind: "cliente" | "lead" | "geral"; tasks: Task[] }>();
   for (const t of tasks) {
@@ -484,38 +487,78 @@ function ClienteView({
     if (!groups.has(key)) groups.set(key, { label: link.label, kind: link.kind, tasks: [] });
     groups.get(key)!.tasks.push(t);
   }
-  const sorted = Array.from(groups.values()).sort((a, b) => {
-    if (a.kind === "geral") return 1;
-    if (b.kind === "geral") return -1;
-    return a.label.localeCompare(b.label);
-  });
+  for (const g of groups.values()) g.tasks.sort((a, b) => a.dueDate.localeCompare(b.dueDate));
 
-  if (sorted.length === 0) {
+  const contas = Array.from(groups.values())
+    .filter((g) => g.kind !== "geral")
+    .sort((a, b) => a.label.localeCompare(b.label));
+  const geral = groups.get("geral-Geral");
+
+  if (contas.length === 0 && !geral) {
     return <p className="text-[12px] text-muted-foreground">Nenhuma tarefa nessa semana.</p>;
   }
 
   return (
-    <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-      {sorted.map((g) => (
-        <div key={g.label} className="rounded-xl border bg-surface/40 p-3">
-          <div className="mb-3 flex items-center justify-between">
-            <span className="text-[12px] font-semibold">{g.label}</span>
-            <span className="font-mono text-[10px] text-muted-foreground">{g.tasks.length}</span>
+    <div className="space-y-4">
+      {contas.length > 0 && (
+        <div className="grid grid-cols-1 items-start gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {contas.map((g) => (
+            <div key={g.label} className="rounded-xl border bg-surface/40 p-3.5">
+              <div className="mb-3 flex items-center justify-between border-b pb-2.5">
+                <span className="flex items-center gap-1.5 text-[13px] font-bold">
+                  <span
+                    className={cn(
+                      "h-2 w-2 shrink-0 rounded-full",
+                      g.kind === "cliente" ? "bg-primary" : "bg-info",
+                    )}
+                  />
+                  {g.label}
+                </span>
+                <span className="rounded-full bg-muted px-2 py-0.5 font-mono text-[10px] font-semibold text-muted-foreground">
+                  {g.tasks.length}
+                </span>
+              </div>
+              <div className="space-y-2">
+                {g.tasks.map((t) => (
+                  <TaskCard
+                    key={t.id}
+                    task={t}
+                    clients={clients}
+                    leads={leads}
+                    onToggle={() => toggleTaskDone(t.id)}
+                    overdue={t.dueDate < hoje}
+                    showLink={false}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {geral && (
+        <div className="rounded-xl border border-dashed bg-transparent p-3.5">
+          <div className="mb-3 flex items-center justify-between border-b pb-2.5">
+            <span className="text-[13px] font-bold text-muted-foreground">Geral · administrativo</span>
+            <span className="rounded-full bg-muted px-2 py-0.5 font-mono text-[10px] font-semibold text-muted-foreground">
+              {geral.tasks.length}
+            </span>
           </div>
-          <div className="space-y-2">
-            {g.tasks.map((t) => (
+          <div className="grid grid-cols-1 items-start gap-2 sm:grid-cols-2 xl:grid-cols-3">
+            {geral.tasks.map((t) => (
               <TaskCard
                 key={t.id}
                 task={t}
                 clients={clients}
                 leads={leads}
                 onToggle={() => toggleTaskDone(t.id)}
-                overdue={t.dueDate < weekStart}
+                overdue={t.dueDate < hoje}
+                showLink={false}
               />
             ))}
           </div>
         </div>
-      ))}
+      )}
     </div>
   );
 }
