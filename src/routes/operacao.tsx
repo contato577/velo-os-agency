@@ -277,6 +277,14 @@ function TaskCard({
 }) {
   const link = taskLink(task, clients, leads);
   const done = task.status === "concluida";
+  const priorityLabel = { urgente: "Urgente", alta: "Alta", media: "Média", baixa: "Baixa" }[task.priority];
+  const priorityClass = {
+    urgente: "bg-destructive/90 text-destructive-foreground",
+    alta: "bg-warning/90 text-warning-foreground",
+    media: "bg-info/80 text-white",
+    baixa: "bg-muted-foreground/60 text-white",
+  }[task.priority];
+
   return (
     <div
       className={cn(
@@ -285,6 +293,11 @@ function TaskCard({
         overdue && !done && "border-l-4 border-l-destructive bg-destructive/5",
       )}
     >
+      {!done && (
+        <span className={cn("mb-1.5 inline-block rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide", priorityClass)}>
+          {priorityLabel}
+        </span>
+      )}
       <div className="flex items-start gap-2.5">
         <button
           onClick={onToggle}
@@ -319,16 +332,6 @@ function TaskCard({
                 {link.label}
               </span>
             )}
-            <span
-              className={cn(
-                "h-2 w-2 rounded-full",
-                task.priority === "urgente" && "bg-destructive",
-                task.priority === "alta" && "bg-warning",
-                task.priority === "media" && "bg-info",
-                task.priority === "baixa" && "bg-muted-foreground",
-              )}
-              title={`Prioridade ${task.priority}`}
-            />
           </div>
         </div>
       </div>
@@ -405,7 +408,7 @@ function SemanaPanel() {
       </div>
 
       {view === "dia" ? (
-        <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="flex items-start gap-3 overflow-x-auto pb-3">
           {weekDays.map((date, i) => {
             const isToday = date === HOJE;
             const list = daSemana.filter((t) => t.dueDate === date);
@@ -413,7 +416,7 @@ function SemanaPanel() {
               <div
                 key={date}
                 className={cn(
-                  "flex min-h-[240px] flex-col rounded-xl border bg-surface/40 p-3",
+                  "flex min-h-[280px] w-[270px] shrink-0 flex-col rounded-xl border bg-surface/40 p-3",
                   isToday && "border-primary/50 bg-primary/5",
                 )}
               >
@@ -430,21 +433,23 @@ function SemanaPanel() {
                 {isToday && atrasadas.length > 0 && <OverdueMiniList tasks={atrasadas} onToggle={toggleTaskDone} />}
 
                 <div className="space-y-2">
-                  {list.length === 0 ? (
-                    <p className="text-[11px] text-muted-foreground">—</p>
-                  ) : (
-                    list.map((t) => (
-                      <TaskCard
-                        key={t.id}
-                        task={t}
-                        clients={clients}
-                        leads={leads}
-                        onToggle={() => toggleTaskDone(t.id)}
-                        overdue={t.dueDate < HOJE}
-                      />
-                    ))
-                  )}
+                  {list.map((t) => (
+                    <TaskCard
+                      key={t.id}
+                      task={t}
+                      clients={clients}
+                      leads={leads}
+                      onToggle={() => toggleTaskDone(t.id)}
+                      overdue={t.dueDate < HOJE}
+                    />
+                  ))}
                 </div>
+
+                <NewTaskButton
+                  label="+ Adicionar tarefa"
+                  defaultDate={date}
+                  className="mt-2 w-full justify-center border-dashed text-muted-foreground"
+                />
               </div>
             );
           })}

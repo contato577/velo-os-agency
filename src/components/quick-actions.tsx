@@ -359,11 +359,13 @@ function QuickDialog({
   onClose,
   defaultContext,
   defaultStage,
+  defaultDate,
 }: {
   kind: QuickKind;
   onClose: () => void;
   defaultContext?: TarefaDefaultContext;
   defaultStage?: LeadStage;
+  defaultDate?: string;
 }) {
   const { addLead, addTask, addExpense, clients: realClients } = useDataStore();
   const [saving, setSaving] = useState(false);
@@ -371,7 +373,7 @@ function QuickDialog({
   const meta = kindMeta[kind];
 
   const [leadData, setLeadData] = useState<LeadFormData>(emptyLeadForm);
-  const [tarefaData, setTarefaData] = useState<TarefaFormData>(emptyTarefaForm);
+  const [tarefaData, setTarefaData] = useState<TarefaFormData>({ ...emptyTarefaForm, dueDate: defaultDate ?? "" });
   const [despesaData, setDespesaData] = useState<DespesaFormData>(emptyDespesaForm);
 
   const isReal = kind === "lead" || kind === "tarefa" || kind === "despesa";
@@ -893,10 +895,12 @@ function TarefaForm({
 
 export function NewTaskButton({
   defaultContext,
+  defaultDate,
   className,
   label = "+ Nova tarefa",
 }: {
   defaultContext?: TarefaDefaultContext;
+  defaultDate?: string;
   className?: string;
   label?: string;
 }) {
@@ -915,7 +919,7 @@ export function NewTaskButton({
       </button>
       {open &&
         createPortal(
-          <QuickDialog kind="tarefa" defaultContext={defaultContext} onClose={() => setOpen(false)} />,
+          <QuickDialog kind="tarefa" defaultContext={defaultContext} defaultDate={defaultDate} onClose={() => setOpen(false)} />,
           document.body,
         )}
     </>
