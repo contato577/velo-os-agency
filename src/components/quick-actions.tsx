@@ -201,7 +201,7 @@ function CommandPalette({ onClose, onCreate }: { onClose: () => void; onCreate: 
   const [query, setQuery] = useState("");
 
   const nav = [
-    { label: "Dashboard", to: "/" },
+    { label: "Comercial", to: "/" },
     { label: "CRM", to: "/comercial" },
     { label: "Clientes", to: "/clientes" },
     { label: "Operação", to: "/operacao" },
