@@ -27,7 +27,7 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Dashboard · Veloce" },
+      { title: "Comercial · Veloce" },
       { name: "description", content: "Como está sua agência hoje: pulso da operação em tempo real." },
     ],
   }),
@@ -97,7 +97,7 @@ function Dashboard() {
 
 
   return (
-    <AppShell title="Dashboard" subtitle="Como está sua agência hoje">
+    <AppShell title="Comercial" subtitle="Como está sua agência hoje">
       <div className="px-4 py-6 md:px-6">
         <PageHeader title="Bom dia, Rafael" subtitle="Aqui está o pulso da operação — atualizado agora.">
           <Link

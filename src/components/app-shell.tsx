@@ -22,7 +22,7 @@ import { QuickActionsButton } from "@/components/quick-actions";
 import veloceLogo from "@/assets/veloce-logo.jpg.asset.json";
 
 const nav = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/", label: "Comercial", icon: LayoutDashboard },
   { to: "/comercial", label: "CRM", icon: Briefcase, badge: 18 },
   { to: "/clientes", label: "Clientes", icon: Users },
   { to: "/operacao", label: "Operação", icon: Layers, badge: 4 },
