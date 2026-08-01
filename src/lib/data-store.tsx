@@ -27,6 +27,8 @@ interface DataStoreContextValue {
   addLead: (partial: Omit<Lead, "id" | "createdAt" | "lastActivity"> & { stage?: LeadStage }) => Lead;
   updateLeadStage: (id: string, stage: LeadStage) => void;
   addTask: (partial: Omit<Task, "id">) => Task;
+  updateTask: (id: string, partial: Partial<Omit<Task, "id">>) => void;
+  deleteTask: (id: string) => void;
   addExpense: (partial: Omit<FinanceEntry, "id">) => FinanceEntry;
   toggleTaskDone: (taskId: string) => void;
   criarClienteDeVenda: (lead: Lead, servicos: string[]) => Client;
@@ -98,6 +100,14 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
     const task: Task = { id: `t-${Date.now()}`, ...partial };
     setTasks((prev) => [task, ...prev]);
     return task;
+  };
+
+  const updateTask: DataStoreContextValue["updateTask"] = (id, partial) => {
+    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, ...partial } : t)));
+  };
+
+  const deleteTask: DataStoreContextValue["deleteTask"] = (id) => {
+    setTasks((prev) => prev.filter((t) => t.id !== id));
   };
 
   const addExpense: DataStoreContextValue["addExpense"] = (partial) => {
@@ -320,6 +330,8 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
         addLead,
         updateLeadStage,
         addTask,
+        updateTask,
+        deleteTask,
         addExpense,
         toggleTaskDone,
         criarClienteDeVenda,

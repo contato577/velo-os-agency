@@ -1,5 +1,15 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
+import { createPortal } from "react-dom";
+import {
+  DndContext,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  useDraggable,
+  useDroppable,
+  type DragEndEvent,
+} from "@dnd-kit/core";
 import {
   FolderKanban,
   CheckSquare,
@@ -18,7 +28,7 @@ import { AppShell, PageHeader } from "@/components/app-shell";
 import { projects, agendaEvents } from "@/lib/mock-data";
 import type { Task, Client, Lead } from "@/lib/mock-data";
 import { useDataStore } from "@/lib/data-store";
-import { NewTaskButton } from "@/components/quick-actions";
+import { NewTaskButton, EditTaskDialog } from "@/components/quick-actions";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/operacao")({
@@ -267,6 +277,7 @@ function TaskCard({
   onToggle,
   overdue,
   showLink = true,
+  draggable = false,
 }: {
   task: Task;
   clients: Client[];
@@ -274,9 +285,16 @@ function TaskCard({
   onToggle: () => void;
   overdue?: boolean;
   showLink?: boolean;
+  draggable?: boolean;
 }) {
   const link = taskLink(task, clients, leads);
   const done = task.status === "concluida";
+  const [editOpen, setEditOpen] = useState(false);
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: task.id });
+  const dragStyle =
+    draggable && transform
+      ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`, zIndex: 40 }
+      : undefined;
   const priorityLabel = { urgente: "Urgente", alta: "Alta", media: "Média", baixa: "Baixa" }[task.priority];
   const priorityClass = {
     urgente: "bg-destructive/90 text-destructive-foreground",
@@ -287,8 +305,16 @@ function TaskCard({
 
   return (
     <div
+      ref={draggable ? setNodeRef : undefined}
+      style={dragStyle}
+      {...(draggable ? attributes : {})}
+      {...(draggable ? listeners : {})}
+      onClick={() => {
+        if (isDragging) return;
+        setEditOpen(true);
+      }}
       className={cn(
-        "rounded-md border bg-surface-2 p-3 shadow-sm",
+        "cursor-pointer select-none rounded-md border-2 bg-surface-3 p-3 shadow-md transition-shadow hover:shadow-lg",
         done && "opacity-50",
         overdue && !done && "border-l-4 border-l-destructive bg-destructive/5",
       )}
@@ -300,7 +326,10 @@ function TaskCard({
       )}
       <div className="flex items-start gap-2.5">
         <button
-          onClick={onToggle}
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggle();
+          }}
           className={cn(
             "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-2 transition-colors",
             done ? "border-success bg-success text-success-foreground" : "border-muted-foreground/40 hover:border-primary",
@@ -335,6 +364,8 @@ function TaskCard({
           </div>
         </div>
       </div>
+      {editOpen &&
+        createPortal(<EditTaskDialog task={task} onClose={() => setEditOpen(false)} />, document.body)}
     </div>
   );
 }
@@ -372,9 +403,10 @@ function OverdueMiniList({ tasks, onToggle }: { tasks: Task[]; onToggle: (id: st
 }
 
 function SemanaPanel() {
-  const { tasks, clients, leads, toggleTaskDone } = useDataStore();
+  const { tasks, clients, leads, toggleTaskDone, updateTask } = useDataStore();
   const [view, setView] = useState<"dia" | "cliente">("dia");
   const weekDays = getWeekDays(HOJE);
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
   const atrasadas = tasks.filter((t) => t.status !== "concluida" && t.dueDate < weekDays[0]);
   const daSemana = tasks.filter((t) => weekDays.includes(t.dueDate));
@@ -382,99 +414,143 @@ function SemanaPanel() {
     .filter((t) => t.status !== "concluida" && t.dueDate > weekDays[6])
     .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
 
+  const handleDragEnd = (e: DragEndEvent) => {
+    const taskId = String(e.active.id);
+    const targetDate = e.over?.id ? String(e.over.id) : null;
+    if (!targetDate) return;
+    const task = tasks.find((t) => t.id === taskId);
+    if (!task || task.dueDate === targetDate) return;
+    updateTask(taskId, { dueDate: targetDate });
+  };
+
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="inline-flex rounded-md border bg-surface p-0.5">
-          <button
-            onClick={() => setView("dia")}
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded px-2.5 py-1 text-[12px] font-medium transition-colors",
-              view === "dia" ? "bg-card shadow-sm" : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            <LayoutGrid className="h-3 w-3" /> Por dia
-          </button>
-          <button
-            onClick={() => setView("cliente")}
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded px-2.5 py-1 text-[12px] font-medium transition-colors",
-              view === "cliente" ? "bg-card shadow-sm" : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            <User className="h-3 w-3" /> Por cliente
-          </button>
-        </div>
-      </div>
-
-      {view === "dia" ? (
-        <div className="flex items-start gap-3 overflow-x-auto pb-3">
-          {weekDays.map((date, i) => {
-            const isToday = date === HOJE;
-            const list = daSemana.filter((t) => t.dueDate === date);
-            return (
-              <div
-                key={date}
-                className={cn(
-                  "flex min-h-[280px] w-[270px] shrink-0 flex-col rounded-xl border bg-surface/40 p-3",
-                  isToday && "border-primary/50 bg-primary/5",
-                )}
-              >
-                <div className="mb-3 flex items-center justify-between">
-                  <span className="text-[13px] font-bold uppercase tracking-wide">
-                    {weekdayLabels[i]}
-                    {isToday && <span className="ml-1.5 rounded bg-primary px-1.5 py-0.5 text-[9px] normal-case text-primary-foreground">hoje</span>}
-                  </span>
-                  <span className="font-mono text-[11px] font-medium text-muted-foreground">
-                    {new Date(date + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}
-                  </span>
-                </div>
-
-                {isToday && atrasadas.length > 0 && <OverdueMiniList tasks={atrasadas} onToggle={toggleTaskDone} />}
-
-                <div className="space-y-2">
-                  {list.map((t) => (
-                    <TaskCard
-                      key={t.id}
-                      task={t}
-                      clients={clients}
-                      leads={leads}
-                      onToggle={() => toggleTaskDone(t.id)}
-                      overdue={t.dueDate < HOJE}
-                    />
-                  ))}
-                </div>
-
-                <NewTaskButton
-                  label="+ Adicionar tarefa"
-                  defaultDate={date}
-                  className="mt-2 w-full justify-center border-dashed text-muted-foreground"
-                />
-              </div>
-            );
-          })}
-        </div>
-      ) : (
-        <ClienteView tasks={[...atrasadas, ...daSemana]} clients={clients} leads={leads} toggleTaskDone={toggleTaskDone} hoje={HOJE} />
-      )}
-
-      {futuras.length > 0 && (
-        <div className="rounded-lg border bg-surface/30 p-3">
-          <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Semanas seguintes ({futuras.length})
+    <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="inline-flex rounded-md border bg-surface p-0.5">
+            <button
+              onClick={() => setView("dia")}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded px-2.5 py-1 text-[12px] font-medium transition-colors",
+                view === "dia" ? "bg-card shadow-sm" : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <LayoutGrid className="h-3 w-3" /> Por dia
+            </button>
+            <button
+              onClick={() => setView("cliente")}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded px-2.5 py-1 text-[12px] font-medium transition-colors",
+                view === "cliente" ? "bg-card shadow-sm" : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <User className="h-3 w-3" /> Por cliente
+            </button>
           </div>
-          <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
-            {futuras.map((t) => (
-              <div key={t.id} className="flex items-center gap-2 rounded-md border bg-card px-2.5 py-1.5 text-[12px]">
-                <span className="font-mono text-[10px] text-muted-foreground">
-                  {new Date(t.dueDate + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}
-                </span>
-                <span className="min-w-0 flex-1 truncate font-medium">{t.title}</span>
-              </div>
+        </div>
+
+        {view === "dia" ? (
+          <div className="flex items-start gap-3 overflow-x-auto pb-3">
+            {weekDays.map((date, i) => (
+              <DayColumn
+                key={date}
+                date={date}
+                label={weekdayLabels[i]}
+                isToday={date === HOJE}
+                tasks={daSemana.filter((t) => t.dueDate === date)}
+                atrasadas={date === HOJE ? atrasadas : []}
+                clients={clients}
+                leads={leads}
+                onToggle={toggleTaskDone}
+              />
             ))}
           </div>
-        </div>
+        ) : (
+          <ClienteView tasks={[...atrasadas, ...daSemana]} clients={clients} leads={leads} toggleTaskDone={toggleTaskDone} hoje={HOJE} />
+        )}
+
+        {futuras.length > 0 && (
+          <div className="rounded-lg border bg-surface/30 p-3">
+            <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Semanas seguintes ({futuras.length})
+            </div>
+            <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
+              {futuras.map((t) => (
+                <div key={t.id} className="flex items-center gap-2 rounded-md border bg-card px-2.5 py-1.5 text-[12px]">
+                  <span className="font-mono text-[10px] text-muted-foreground">
+                    {new Date(t.dueDate + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate font-medium">{t.title}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </DndContext>
+  );
+}
+
+function DayColumn({
+  date,
+  label,
+  isToday,
+  tasks,
+  atrasadas,
+  clients,
+  leads,
+  onToggle,
+}: {
+  date: string;
+  label: string;
+  isToday: boolean;
+  tasks: Task[];
+  atrasadas: Task[];
+  clients: Client[];
+  leads: Lead[];
+  onToggle: (id: string) => void;
+}) {
+  const { setNodeRef, isOver } = useDroppable({ id: date });
+  return (
+    <div
+      ref={setNodeRef}
+      className={cn(
+        "flex min-h-[280px] w-[270px] shrink-0 flex-col rounded-xl border bg-surface/40 p-3 transition-colors",
+        isToday && "border-primary/50 bg-primary/5",
+        isOver && "border-primary bg-primary/10",
       )}
+    >
+      <div className="mb-3 flex items-center justify-between">
+        <span className="text-[13px] font-bold uppercase tracking-wide">
+          {label}
+          {isToday && <span className="ml-1.5 rounded bg-primary px-1.5 py-0.5 text-[9px] normal-case text-primary-foreground">hoje</span>}
+        </span>
+        <span className="font-mono text-[11px] font-medium text-muted-foreground">
+          {new Date(date + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}
+        </span>
+      </div>
+
+      {isToday && atrasadas.length > 0 && <OverdueMiniList tasks={atrasadas} onToggle={onToggle} />}
+
+      <div className="space-y-2">
+        {tasks.map((t) => (
+          <TaskCard
+            key={t.id}
+            task={t}
+            clients={clients}
+            leads={leads}
+            onToggle={() => onToggle(t.id)}
+            overdue={t.dueDate < HOJE}
+            draggable
+          />
+        ))}
+      </div>
+
+      <NewTaskButton
+        label="+ Adicionar tarefa"
+        defaultDate={date}
+        className="mt-2 w-full justify-center border-dashed text-muted-foreground"
+      />
     </div>
   );
 }

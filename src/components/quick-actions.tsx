@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { leads, clients, owners } from "@/lib/mock-data";
-import type { LeadStage, LeadPotential } from "@/lib/mock-data";
+import type { LeadStage, LeadPotential, Task } from "@/lib/mock-data";
 import { useDataStore } from "@/lib/data-store";
 
 export type QuickKind = "lead" | "cliente" | "venda" | "despesa" | "tarefa";
@@ -922,6 +922,108 @@ export function NewTaskButton({
           <QuickDialog kind="tarefa" defaultContext={defaultContext} defaultDate={defaultDate} onClose={() => setOpen(false)} />,
           document.body,
         )}
+    </>
+  );
+}
+
+export function EditTaskDialog({ task, onClose }: { task: Task; onClose: () => void }) {
+  const { updateTask, deleteTask, clients: realClients, leads: realLeads } = useDataStore();
+  const [data, setData] = useState<TarefaFormData>({
+    title: task.title,
+    dueDate: task.dueDate,
+    priority: task.priority,
+    clientId: task.clientId ?? "",
+    description: task.description ?? "",
+  });
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  const lockedContext: TarefaDefaultContext | undefined = task.leadId
+    ? { type: "lead", id: task.leadId, label: realLeads.find((l) => l.id === task.leadId)?.name ?? "Lead" }
+    : task.projectId
+      ? { type: "projeto", id: task.projectId, label: "Projeto vinculado" }
+      : undefined;
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    updateTask(task.id, {
+      title: data.title,
+      dueDate: data.dueDate,
+      priority: data.priority,
+      description: data.description || undefined,
+      ...(lockedContext ? {} : { clientId: data.clientId || undefined }),
+    });
+    onClose();
+  };
+
+  return (
+    <>
+      <div className="fixed inset-0 z-50 bg-background/70 backdrop-blur-sm" onClick={onClose} />
+      <div className="fixed left-1/2 top-1/2 z-50 w-[92vw] max-w-lg -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-xl border bg-card shadow-elegant">
+        <div className="flex items-center justify-between border-b px-4 py-3">
+          <div>
+            <h3 className="text-sm font-semibold tracking-tight">Editar tarefa</h3>
+            <p className="text-[11px] text-muted-foreground">Altere os dados ou mude o prazo</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <form onSubmit={submit} className="max-h-[70vh] space-y-3 overflow-y-auto p-4">
+          <TarefaForm data={data} onChange={setData} defaultContext={lockedContext} clients={realClients} />
+
+          <div className="flex items-center justify-between gap-2 border-t pt-3">
+            {confirmDelete ? (
+              <div className="flex items-center gap-2 text-[12px]">
+                <span className="text-muted-foreground">Excluir de vez?</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    deleteTask(task.id);
+                    onClose();
+                  }}
+                  className="rounded-md bg-destructive px-2 py-1 text-[11px] font-medium text-destructive-foreground hover:bg-destructive/90"
+                >
+                  Sim, excluir
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmDelete(false)}
+                  className="rounded-md border px-2 py-1 text-[11px] hover:bg-accent"
+                >
+                  Cancelar
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setConfirmDelete(true)}
+                className="text-[12px] text-destructive hover:underline"
+              >
+                Excluir tarefa
+              </button>
+            )}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="rounded-md border bg-surface px-3 py-1.5 text-xs font-medium hover:bg-accent"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+              >
+                Salvar
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
     </>
   );
 }
