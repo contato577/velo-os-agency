@@ -288,7 +288,7 @@ function TaskCard({
   return (
     <div
       className={cn(
-        "rounded-md border bg-card p-3",
+        "rounded-md border bg-surface-2 p-3 shadow-sm",
         done && "opacity-50",
         overdue && !done && "border-l-4 border-l-destructive bg-destructive/5",
       )}
