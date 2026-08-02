@@ -298,10 +298,10 @@ function TaskCard({
       : undefined;
   const priorityLabel = { urgente: "Urgente", alta: "Alta", media: "Média", baixa: "Baixa" }[task.priority];
   const priorityClass = {
-    urgente: "bg-destructive/90 text-destructive-foreground",
-    alta: "bg-warning/90 text-warning-foreground",
-    media: "bg-info/80 text-white",
-    baixa: "bg-muted-foreground/60 text-white",
+    urgente: "bg-destructive text-destructive-foreground",
+    alta: "bg-warning text-warning-foreground",
+    media: "bg-info text-info-foreground",
+    baixa: "bg-surface-3 text-muted-foreground",
   }[task.priority];
 
   return (
