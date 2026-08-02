@@ -73,7 +73,7 @@ function LeadCard({ lead, onClick, justMoved }: { lead: Lead; onClick: () => voi
         onClick();
       }}
       className={cn(
-        "group w-full cursor-grab rounded-md border border-l-4 bg-card p-2.5 text-left transition-all hover:border-primary/50 hover:shadow-elegant active:cursor-grabbing",
+        "group card-trello w-full cursor-grab border-l-4 p-3 text-left active:cursor-grabbing",
         stageBorderColors[lead.stage],
         isDragging && "opacity-40",
         justMoved && "ring-2 ring-primary/50",
