@@ -1,967 +1,120 @@
-import { createFileRoute, Link, useParams } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
-import {
-  ArrowLeft,
-  Building2,
-  User,
-  Phone,
-  Mail,
-  Calendar,
-  FileText,
-  Plug,
-  ExternalLink,
-  Download,
-  MessageSquare,
-  Folder,
-  CheckSquare,
-  FileUp,
-  Wallet,
-  History,
-  LineChart as LineIcon,
-  MousePointerClick,
-  Search as SearchIcon,
-  Layout as LayoutIcon,
-  TrendingUp,
-  Paperclip,
-  FolderOpen,
-  Link as LinkIcon,
-  Plus,
-  ChevronDown,
-} from "lucide-react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { Plus, Search, Filter, Calendar, ChevronRight } from "lucide-react";
 import { AppShell, PageHeader } from "@/components/app-shell";
-import { NewTaskButton } from "@/components/quick-actions";
-import { formatBRL, type Client } from "@/lib/mock-data";
+import { formatBRL } from "@/lib/mock-data";
 import { useDataStore } from "@/lib/data-store";
-import { gerarResumoCliente, exportarRelatorioPDF, linkWhatsApp } from "@/lib/client-report";
 import { cn } from "@/lib/utils";
-import { serviceTemplates } from "@/lib/service-templates";
 
-export const Route = createFileRoute("/clientes/$clientId")({
+export const Route = createFileRoute("/clientes/")({
   head: () => ({
     meta: [
-      { title: "Cliente · Veloce" },
-      { name: "description", content: "Visão 360° do cliente: geral, performance, operação, financeiro, documentos e histórico." },
+      { title: "Clientes · Veloce" },
+      { name: "description", content: "Carteira de clientes ativos, contratos e renovações." },
     ],
   }),
-  component: ClienteDetalhe,
+  component: ClientesList,
 });
 
-type Tab = "geral" | "performance" | "operacao" | "financeiro" | "documentos" | "historico";
+const statusColor = {
+  ativo: "bg-success/15 text-success",
+  onboarding: "bg-info/15 text-info",
+  pausado: "bg-warning/15 text-warning",
+  cancelado: "bg-destructive/15 text-destructive",
+};
 
-const tabsList: { key: Tab; label: string; icon: typeof User }[] = [
-  { key: "geral", label: "Geral", icon: User },
-  { key: "performance", label: "Performance", icon: TrendingUp },
-  { key: "operacao", label: "Operação", icon: Folder },
-  { key: "financeiro", label: "Financeiro", icon: Wallet },
-  { key: "documentos", label: "Documentos", icon: FolderOpen },
-  { key: "historico", label: "Histórico", icon: History },
-];
-
-function ClientStatusMenu({ client }: { client: Client }) {
-  const { updateClientStatus } = useDataStore();
-  const [open, setOpen] = useState(false);
-  const [confirmCancel, setConfirmCancel] = useState(false);
-
-  const statusClass = {
-    ativo: "bg-success/15 text-success",
-    onboarding: "bg-info/15 text-info",
-    pausado: "bg-warning/15 text-warning",
-    cancelado: "bg-destructive/15 text-destructive",
-  }[client.status];
-
-  const apply = (status: Client["status"]) => {
-    if (status === "cancelado") {
-      setConfirmCancel(true);
-      return;
-    }
-    updateClientStatus(client.id, status);
-    setOpen(false);
-  };
-
-  return (
-    <div className="relative">
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className={cn(
-          "inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider hover:opacity-80",
-          statusClass,
-        )}
-      >
-        {client.status}
-        <ChevronDown className="h-3 w-3" />
-      </button>
-
-      {open && (
-        <>
-          <div className="fixed inset-0 z-40" onClick={() => { setOpen(false); setConfirmCancel(false); }} />
-          <div className="absolute right-0 z-50 mt-1 w-56 overflow-hidden rounded-lg border bg-popover shadow-elegant">
-            {!confirmCancel ? (
-              <div className="p-1">
-                <div className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-                  Mudar status
-                </div>
-                {(["ativo", "pausado", "cancelado"] as const).map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => apply(s)}
-                    disabled={s === client.status}
-                    className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] capitalize transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    {s}
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <div className="space-y-2 p-3">
-                <p className="text-[12px]">
-                  Cancelar <strong>{client.company}</strong>? Isso conta como churn nos indicadores financeiros.
-                </p>
-                <div className="flex justify-end gap-2">
-                  <button
-                    onClick={() => setConfirmCancel(false)}
-                    className="rounded-md border bg-surface px-2 py-1 text-[11px] hover:bg-accent"
-                  >
-                    Voltar
-                  </button>
-                  <button
-                    onClick={() => {
-                      updateClientStatus(client.id, "cancelado");
-                      setConfirmCancel(false);
-                      setOpen(false);
-                    }}
-                    className="rounded-md bg-destructive px-2 py-1 text-[11px] font-medium text-destructive-foreground hover:bg-destructive/90"
-                  >
-                    Confirmar cancelamento
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
-function ClienteDetalhe() {
+function ClientesList() {
   const { clients } = useDataStore();
-  const { clientId } = useParams({ from: "/clientes/$clientId" });
-  const client = clients.find((c) => c.id === clientId) ?? clients[0];
-  const [tab, setTab] = useState<Tab>("geral");
+  const mrr = clients.filter((c) => c.status === "ativo").reduce((s, c) => s + c.monthlyValue, 0);
 
   return (
-    <AppShell title={client.company} subtitle={`${client.plan} · ${formatBRL(client.monthlyValue)}/mês`}>
+    <AppShell title="Clientes" subtitle="Carteira ativa">
       <div className="px-4 py-6 md:px-6">
-        <div className="mb-4">
-          <Link to="/clientes" className="inline-flex items-center gap-1.5 text-[12px] text-muted-foreground hover:text-foreground">
-            <ArrowLeft className="h-3.5 w-3.5" /> Voltar para clientes
-          </Link>
-        </div>
-
-        <PageHeader title={client.company} subtitle={`${client.name} · Responsável ${client.owner}`}>
-          <ClientStatusMenu client={client} />
+        <PageHeader title="Clientes" subtitle={`${clients.length} clientes · MRR ${formatBRL(mrr)}`}>
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <input placeholder="Buscar cliente…" className="h-8 w-52 rounded-md border bg-surface pl-7 pr-2 text-xs focus:border-primary/60 focus:outline-none" />
+          </div>
+          <button className="inline-flex h-8 items-center gap-1.5 rounded-md border bg-surface px-2.5 text-xs font-medium hover:bg-accent">
+            <Filter className="h-3.5 w-3.5" /> Filtrar
+          </button>
+          <button className="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary/90">
+            <Plus className="h-3.5 w-3.5" /> Novo Cliente
+          </button>
         </PageHeader>
 
-        {/* Tabs */}
-        <div className="mb-6 flex items-center gap-1 overflow-x-auto border-b">
-          {tabsList.map((t) => {
-            const Icon = t.icon;
-            const active = t.key === tab;
-            return (
-              <button
-                key={t.key}
-                onClick={() => setTab(t.key)}
-                className={cn(
-                  "-mb-px inline-flex shrink-0 items-center gap-1.5 border-b-2 px-3 py-2 text-[13px] font-medium transition-colors",
-                  active
-                    ? "border-primary text-foreground"
-                    : "border-transparent text-muted-foreground hover:text-foreground",
-                )}
-              >
-                <Icon className="h-3.5 w-3.5" />
-                {t.label}
-              </button>
-            );
-          })}
+        <div className="overflow-hidden rounded-lg border bg-card">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b bg-surface/50 text-left text-[11px] uppercase tracking-wider text-muted-foreground">
+                <th className="px-4 py-2.5 font-medium">Cliente</th>
+                <th className="px-4 py-2.5 font-medium">Plano</th>
+                <th className="px-4 py-2.5 font-medium">Mensalidade</th>
+                <th className="px-4 py-2.5 font-medium">Serviços</th>
+                <th className="px-4 py-2.5 font-medium">Renovação</th>
+                <th className="px-4 py-2.5 font-medium">Responsável</th>
+                <th className="px-4 py-2.5 font-medium">Status</th>
+                <th className="px-4 py-2.5" />
+              </tr>
+            </thead>
+            <tbody>
+              {clients.map((c) => (
+                <tr key={c.id} className="group border-b transition-colors last:border-b-0 hover:bg-surface/40">
+                  <td className="px-4 py-3">
+                    <Link
+                      to="/clientes/$clientId"
+                      params={{ clientId: c.id }}
+                      className="flex items-center gap-2.5"
+                    >
+                      <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/40 text-[10px] font-semibold text-primary-foreground">
+                        {c.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="truncate text-[13px] font-medium">{c.company}</div>
+                        <div className="truncate text-[11px] text-muted-foreground">{c.name}</div>
+                      </div>
+                    </Link>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="rounded bg-accent px-1.5 py-0.5 text-[11px] font-medium">{c.plan}</span>
+                  </td>
+                  <td className="px-4 py-3 font-mono text-[13px] text-primary">{formatBRL(c.monthlyValue)}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex flex-wrap gap-1">
+                      {c.services.slice(0, 2).map((s) => (
+                        <span key={s} className="rounded bg-surface px-1.5 py-0.5 text-[10px] text-muted-foreground">{s}</span>
+                      ))}
+                      {c.services.length > 2 && (
+                        <span className="rounded bg-surface px-1.5 py-0.5 text-[10px] text-muted-foreground">+{c.services.length - 2}</span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-1 text-[12px] text-muted-foreground">
+                      <Calendar className="h-3 w-3" />
+                      {new Date(c.renewalDate).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-[12px] text-muted-foreground">{c.owner}</td>
+                  <td className="px-4 py-3">
+                    <span className={cn("rounded px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider", statusColor[c.status])}>
+                      {c.status}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <Link
+                      to="/clientes/$clientId"
+                      params={{ clientId: c.id }}
+                      className="inline-flex items-center gap-1 rounded-md border bg-surface px-2 py-1 text-[11px] font-medium text-muted-foreground opacity-0 transition-all group-hover:opacity-100 hover:bg-primary/10 hover:text-primary"
+                    >
+                      Abrir <ChevronRight className="h-3 w-3" />
+                    </Link>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-
-        {tab === "geral" && <TabGeral client={client} />}
-        {tab === "performance" && <TabPerformance client={client} />}
-        {tab === "operacao" && <TabOperacao clientId={client.id} />}
-        {tab === "financeiro" && <TabFinanceiro client={client} />}
-        {tab === "documentos" && <TabDocumentos />}
-        {tab === "historico" && <TabHistorico client={client} />}
       </div>
     </AppShell>
-  );
-}
-
-// ─── GERAL ───────────────────────────────────────────────────────────────────
-function TabGeral({ client }: { client: Client }) {
-  return (
-    <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-      <div className="rounded-xl border bg-card p-5 lg:col-span-2">
-        <h3 className="mb-4 text-sm font-semibold tracking-tight">Dados da empresa</h3>
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          <Field icon={Building2} label="Empresa" value={client.company} />
-          <Field icon={User} label="Contato principal" value={client.name} />
-          <Field icon={Phone} label="Telefone" value={`+55 11 9${String(80000000 + client.id.length * 12345).slice(0, 8)}`} />
-          <Field icon={Mail} label="E-mail" value={`contato@${client.company.toLowerCase().replace(/[^a-z]/g, "").slice(0, 12)}.com.br`} />
-          <Field icon={Calendar} label="Cliente desde" value={new Date(client.since).toLocaleDateString("pt-BR")} />
-          <Field icon={User} label="Responsável Veloce" value={client.owner} />
-        </div>
-      </div>
-
-      <div className="rounded-xl border bg-card p-5">
-        <h3 className="mb-4 text-sm font-semibold tracking-tight">Contrato</h3>
-        <div className="space-y-3">
-          <div>
-            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Plano contratado</div>
-            <div className="mt-1 text-[15px] font-semibold">{client.plan}</div>
-          </div>
-          <div>
-            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Mensalidade</div>
-            <div className="mt-1 font-mono text-[20px] font-semibold text-primary">{formatBRL(client.monthlyValue)}</div>
-          </div>
-          <div>
-            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Vencimento</div>
-            <div className="mt-1 text-[13px]">Dia {client.paymentDay} de cada mês</div>
-          </div>
-          <div>
-            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Renovação</div>
-            <div className="mt-1 text-[13px]">{new Date(client.renewalDate).toLocaleDateString("pt-BR")}</div>
-          </div>
-          <div>
-            <div className="mb-1.5 text-[10px] uppercase tracking-widest text-muted-foreground">Serviços</div>
-            <div className="flex flex-wrap gap-1">
-              {client.services.map((s) => (
-                <span key={s} className="rounded bg-surface px-1.5 py-0.5 text-[11px] text-muted-foreground">{s}</span>
-              ))}
-            </div>
-          </div>
-          <button className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-md border bg-surface px-3 py-2 text-xs font-medium hover:bg-accent">
-            <FileText className="h-3.5 w-3.5" /> Ver contrato
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function Field({ icon: Icon, label, value }: { icon: typeof User; label: string; value: string }) {
-  return (
-    <div className="flex items-start gap-2.5">
-      <Icon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-      <div className="min-w-0">
-        <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{label}</div>
-        <div className="truncate text-[13px]">{value}</div>
-      </div>
-    </div>
-  );
-}
-
-// ─── PERFORMANCE ─────────────────────────────────────────────────────────────
-const integrations = [
-  { key: "meta", name: "Meta Ads", description: "Facebook e Instagram — investimento, leads, CPL, CTR e ROAS." },
-  { key: "google-ads", name: "Google Ads", description: "Cliques, conversões, CTR e CPC." },
-  { key: "ga4", name: "Google Analytics", description: "Usuários, sessões e conversões." },
-  { key: "gsc", name: "Google Search Console", description: "Impressões, cliques, CTR e posição média." },
-  { key: "landing", name: "Landing Pages", description: "Visitantes, conversões e taxa de conversão." },
-];
-
-function TabPerformance({ client }: { client: Client }) {
-  const { projects } = useDataStore();
-  const [exporting, setExporting] = useState(false);
-  const clientProjects = projects.filter((p) => p.clientId === client.id);
-  const relatorio = useMemo(() => gerarResumoCliente(client, clientProjects), [client, clientProjects]);
-
-  const handleExport = async () => {
-    setExporting(true);
-    try {
-      await exportarRelatorioPDF(relatorio);
-    } finally {
-      setExporting(false);
-    }
-  };
-
-  return (
-    <div className="space-y-4">
-      {/* Resumo em linguagem simples */}
-      <div className="rounded-xl border bg-card p-5">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h3 className="text-sm font-semibold tracking-tight">Resumo do período</h3>
-            <p className="text-[11px] text-muted-foreground">{relatorio.periodo} · gerado automaticamente</p>
-          </div>
-          <div className="flex gap-2">
-            <button
-              onClick={handleExport}
-              disabled={exporting}
-              className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-70"
-            >
-              <Download className="h-3.5 w-3.5" /> {exporting ? "Gerando…" : "Exportar PDF"}
-            </button>
-            <a
-              href={linkWhatsApp(relatorio)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-md border border-success/40 bg-success/10 px-3 py-1.5 text-xs font-medium text-success hover:bg-success/20"
-            >
-              <MessageSquare className="h-3.5 w-3.5" /> Enviar por WhatsApp
-            </a>
-          </div>
-        </div>
-        <pre className="whitespace-pre-wrap rounded-md border bg-surface/40 p-4 text-[12.5px] leading-relaxed text-foreground/90 font-sans">
-          {relatorio.resumo}
-        </pre>
-      </div>
-
-      {/* Integrações */}
-      <div>
-        <div className="mb-3">
-          <h3 className="text-sm font-semibold tracking-tight">Integrações de performance</h3>
-          <p className="text-[12px] text-muted-foreground">Conecte contas para trazer dados de anúncios em tempo real.</p>
-        </div>
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {integrations.map((i) => (
-            <div key={i.key} className="group relative overflow-hidden rounded-lg border bg-card p-4 transition-all hover:-translate-y-0.5 hover:shadow-elegant">
-              <div className="mb-3 flex items-center justify-between">
-                <div className="flex h-9 w-9 items-center justify-center rounded-md border bg-background/70">
-                  {i.key === "meta" && <TrendingUp className="h-4 w-4" />}
-                  {i.key === "google-ads" && <MousePointerClick className="h-4 w-4" />}
-                  {i.key === "ga4" && <LineIcon className="h-4 w-4" />}
-                  {i.key === "gsc" && <SearchIcon className="h-4 w-4" />}
-                  {i.key === "landing" && <LayoutIcon className="h-4 w-4" />}
-                </div>
-                <span className="rounded border border-info/30 bg-info/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-info">
-                  Em breve
-                </span>
-              </div>
-              <h4 className="text-[14px] font-semibold tracking-tight">{i.name}</h4>
-              <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">{i.description}</p>
-              <p className="mt-3 text-[11px] italic text-muted-foreground">
-                Autenticação OAuth com {i.name.split(" ")[0]} exige backend com armazenamento seguro de tokens. Disponível quando o banco de dados for ativado.
-              </p>
-              <div className="mt-4 flex items-center gap-2">
-                <button
-                  disabled
-                  className="inline-flex h-8 flex-1 items-center justify-center gap-1.5 rounded-md border bg-surface px-3 text-xs font-medium text-muted-foreground opacity-70"
-                >
-                  <Plug className="h-3.5 w-3.5" /> Disponível em breve
-                </button>
-                <button className="inline-flex h-8 items-center justify-center rounded-md border bg-surface px-2 text-xs text-muted-foreground hover:bg-accent hover:text-foreground">
-                  <ExternalLink className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── DOCUMENTOS ─────────────────────────────────────────────────────────────
-type DocCategory = "Atas" | "Relatórios" | "Estratégia" | "Contratos" | "Outros";
-interface DocItem {
-  id: string;
-  title: string;
-  category: DocCategory;
-  type: "file" | "link";
-  url?: string;
-  size?: string;
-  addedBy: string;
-  addedAt: string;
-}
-
-const seedDocs: DocItem[] = [
-  { id: "d1", title: "Ata reunião kickoff.pdf", category: "Atas", type: "file", size: "420 KB", addedBy: "Rafael Souza", addedAt: "2026-06-01" },
-  { id: "d2", title: "Relatório Junho 2026.pdf", category: "Relatórios", type: "file", size: "1.2 MB", addedBy: "Camila Torres", addedAt: "2026-07-01" },
-  { id: "d3", title: "Plano estratégico Q3", category: "Estratégia", type: "link", url: "https://miro.com/app/board/exemplo", addedBy: "Rafael Souza", addedAt: "2026-06-15" },
-  { id: "d4", title: "Contrato assinado.pdf", category: "Contratos", type: "file", size: "480 KB", addedBy: "Sistema", addedAt: "2025-01-15" },
-];
-
-function TabDocumentos() {
-  const [docs, setDocs] = useState<DocItem[]>(seedDocs);
-  const [query, setQuery] = useState("");
-  const [addingIn, setAddingIn] = useState<DocCategory | null>(null);
-  const [linkTitle, setLinkTitle] = useState("");
-  const [linkUrl, setLinkUrl] = useState("");
-
-  const categories: DocCategory[] = ["Atas", "Relatórios", "Estratégia", "Contratos", "Outros"];
-  const filtered = docs.filter((d) => d.title.toLowerCase().includes(query.toLowerCase()));
-
-  const addFile = (category: DocCategory, files: FileList | null) => {
-    if (!files || files.length === 0) return;
-    const now = new Date().toISOString().slice(0, 10);
-    const items: DocItem[] = Array.from(files).map((f, i) => ({
-      id: `d-${Date.now()}-${i}`,
-      title: f.name,
-      category,
-      type: "file",
-      size: `${Math.max(1, Math.round(f.size / 1024))} KB`,
-      addedBy: "Rafael Souza",
-      addedAt: now,
-    }));
-    setDocs((prev) => [...items, ...prev]);
-  };
-
-  const addLink = (category: DocCategory) => {
-    if (!linkTitle || !linkUrl) return;
-    setDocs((prev) => [
-      {
-        id: `d-${Date.now()}`,
-        title: linkTitle,
-        category,
-        type: "link",
-        url: linkUrl,
-        addedBy: "Rafael Souza",
-        addedAt: new Date().toISOString().slice(0, 10),
-      },
-      ...prev,
-    ]);
-    setLinkTitle("");
-    setLinkUrl("");
-    setAddingIn(null);
-  };
-
-  return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h3 className="text-sm font-semibold tracking-tight">Documentos do cliente</h3>
-          <p className="text-[12px] text-muted-foreground">Atas, relatórios, contratos e links externos (Miro, Figma, etc).</p>
-        </div>
-        <div className="relative">
-          <SearchIcon className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Buscar em todos os documentos…"
-            className="h-8 w-64 rounded-md border bg-surface pl-7 pr-2 text-xs focus:border-primary/60 focus:outline-none"
-          />
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        {categories.map((cat) => {
-          const items = filtered.filter((d) => d.category === cat);
-          return (
-            <details key={cat} open className="group rounded-xl border bg-card">
-              <summary className="flex cursor-pointer items-center gap-3 px-4 py-3 hover:bg-surface/40">
-                <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-0 [details:not([open])>&]:-rotate-90" />
-                <FolderOpen className="h-4 w-4 text-primary" />
-                <span className="text-[13px] font-medium">{cat}</span>
-                <span className="rounded bg-accent px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">{items.length}</span>
-                <div className="ml-auto flex gap-2" onClick={(e) => e.preventDefault()}>
-                  <label className="inline-flex cursor-pointer items-center gap-1 rounded-md border bg-surface px-2 py-1 text-[11px] hover:bg-accent">
-                    <FileUp className="h-3 w-3" /> Arquivo
-                    <input type="file" multiple className="hidden" onChange={(e) => addFile(cat, e.target.files)} />
-                  </label>
-                  <button
-                    onClick={() => setAddingIn(addingIn === cat ? null : cat)}
-                    className="inline-flex items-center gap-1 rounded-md border bg-surface px-2 py-1 text-[11px] hover:bg-accent"
-                  >
-                    <LinkIcon className="h-3 w-3" /> Link
-                  </button>
-                </div>
-              </summary>
-
-              <div className="border-t p-3">
-                {addingIn === cat && (
-                  <div className="mb-3 flex flex-wrap items-end gap-2 rounded-md border bg-surface/40 p-2">
-                    <input
-                      value={linkTitle}
-                      onChange={(e) => setLinkTitle(e.target.value)}
-                      placeholder="Título do link"
-                      className="h-8 flex-1 rounded-md border bg-background px-2 text-xs"
-                    />
-                    <input
-                      value={linkUrl}
-                      onChange={(e) => setLinkUrl(e.target.value)}
-                      placeholder="https://…"
-                      className="h-8 flex-1 rounded-md border bg-background px-2 text-xs"
-                    />
-                    <button
-                      onClick={() => addLink(cat)}
-                      className="h-8 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary/90"
-                    >
-                      <Plus className="h-3 w-3" />
-                    </button>
-                  </div>
-                )}
-                {items.length === 0 ? (
-                  <div className="rounded-md border border-dashed py-4 text-center text-[11px] text-muted-foreground">
-                    Nenhum documento nesta categoria ainda.
-                  </div>
-                ) : (
-                  <ul className="space-y-1">
-                    {items.map((d) => (
-                      <li key={d.id} className="flex items-center gap-2.5 rounded-md border bg-surface/50 px-3 py-2 text-[12px]">
-                        {d.type === "file" ? <FileText className="h-3.5 w-3.5 text-muted-foreground" /> : <LinkIcon className="h-3.5 w-3.5 text-info" />}
-                        {d.type === "link" ? (
-                          <a href={d.url} target="_blank" rel="noopener noreferrer" className="min-w-0 flex-1 truncate hover:text-primary">
-                            {d.title}
-                          </a>
-                        ) : (
-                          <span className="min-w-0 flex-1 truncate">{d.title}</span>
-                        )}
-                        <span className="hidden text-[10px] text-muted-foreground sm:inline">{d.addedBy}</span>
-                        <span className="text-[10px] text-muted-foreground">{new Date(d.addedAt).toLocaleDateString("pt-BR")}</span>
-                        {d.size && <span className="text-[10px] text-muted-foreground">{d.size}</span>}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            </details>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-// ─── OPERAÇÃO ────────────────────────────────────────────────────────────────
-interface ArquivoItem {
-  id: string;
-  name: string;
-  size: string;
-  url?: string;
-}
-
-function TabOperacao({ clientId }: { clientId: string }) {
-  const { clients, projects, tasks } = useDataStore();
-  const client = clients.find((c) => c.id === clientId) ?? clients[0];
-  const clientProjects = projects.filter((p) => p.clientId === clientId);
-  const clientTasks = tasks.filter((t) => t.clientId === clientId);
-
-  const [arquivos, setArquivos] = useState<ArquivoItem[]>([
-    { id: "f1", name: "Briefing_kickoff.pdf", size: "1.2 MB" },
-    { id: "f2", name: "Contrato_assinado.pdf", size: "480 KB" },
-    { id: "f3", name: "Criativos_Julho.zip", size: "12.4 MB" },
-  ]);
-
-  const handleUpload = (files: FileList | null) => {
-    if (!files || files.length === 0) return;
-    const novos: ArquivoItem[] = Array.from(files).map((f, i) => ({
-      id: `f-${Date.now()}-${i}`,
-      name: f.name,
-      size: f.size < 1024 * 1024
-        ? `${Math.max(1, Math.round(f.size / 1024))} KB`
-        : `${(f.size / (1024 * 1024)).toFixed(1)} MB`,
-      url: URL.createObjectURL(f),
-    }));
-    setArquivos((prev) => [...novos, ...prev]);
-  };
-  const comentarios = [
-    { id: "c1", user: "Rafael Souza", time: "há 2h", text: "Cliente aprovou os criativos para veiculação." },
-    { id: "c2", user: "Camila Torres", time: "há 1d", text: "Ajustamos o público da campanha conforme feedback." },
-  ];
-
-  return (
-    <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-      <div className="space-y-4 lg:col-span-2">
-        {/* Projetos */}
-        <div className="rounded-xl border bg-card p-4">
-          <div className="mb-3 flex items-center justify-between">
-            <h3 className="text-sm font-semibold tracking-tight">Projetos ativos</h3>
-            <span className="text-[11px] text-muted-foreground">{clientProjects.length} projetos</span>
-          </div>
-          <div className="space-y-2">
-            {clientProjects.length === 0 && (
-              <div className="rounded-md border border-dashed py-6 text-center text-[12px] text-muted-foreground">
-                Nenhum projeto ativo para este cliente.
-              </div>
-            )}
-            {clientProjects.map((p) => (
-              <div key={p.id} className="rounded-md border bg-surface/50 p-3">
-                <div className="flex items-center justify-between gap-2">
-                  <div>
-                    <div className="text-[13px] font-medium">{p.name}</div>
-                    <div className="text-[11px] text-muted-foreground">{p.type} · Responsável {p.owner}</div>
-                  </div>
-                  <span className="rounded bg-primary/10 px-2 py-0.5 font-mono text-[11px] text-primary">{p.progress}%</span>
-                </div>
-                <div className="mt-2 h-1 overflow-hidden rounded bg-background">
-                  <div className="h-full rounded bg-primary" style={{ width: `${p.progress}%` }} />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Tarefas */}
-        <div className="rounded-xl border bg-card p-4">
-          <div className="mb-3 flex items-center justify-between">
-            <h3 className="text-sm font-semibold tracking-tight">Tarefas</h3>
-            <div className="flex items-center gap-2">
-              <span className="text-[11px] text-muted-foreground">{clientTasks.length} tarefas</span>
-              <NewTaskButton
-                defaultContext={{ type: "cliente", id: client.id, label: client.company }}
-              />
-            </div>
-          </div>
-          <ul className="space-y-1">
-            {clientTasks.length === 0 && (
-              <li className="flex flex-col items-center gap-2 rounded-md border border-dashed py-6 text-center text-[12px] text-muted-foreground">
-                <span>Nenhuma tarefa vinculada a este cliente.</span>
-                <NewTaskButton
-                  defaultContext={{ type: "cliente", id: client.id, label: client.company }}
-                  label="+ Nova tarefa"
-                />
-              </li>
-            )}
-            {clientTasks.map((t) => (
-              <li key={t.id} className="flex items-center gap-2.5 rounded-md border bg-surface/50 px-2.5 py-2">
-                <span
-                  className={cn(
-                    "h-1.5 w-1.5 rounded-full",
-                    t.priority === "urgente" && "bg-destructive",
-                    t.priority === "alta" && "bg-warning",
-                    t.priority === "media" && "bg-info",
-                    t.priority === "baixa" && "bg-muted-foreground",
-                  )}
-                />
-                <span className="min-w-0 flex-1 truncate text-[13px]">{t.title}</span>
-                <span className="text-[10px] text-muted-foreground">{t.owner.split(" ")[0]}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-
-
-        {/* Comentários */}
-        <div className="rounded-xl border bg-card p-4">
-          <div className="mb-3 flex items-center gap-2">
-            <MessageSquare className="h-3.5 w-3.5 text-muted-foreground" />
-            <h3 className="text-sm font-semibold tracking-tight">Comentários da equipe</h3>
-          </div>
-          <div className="space-y-3">
-            {comentarios.map((c) => (
-              <div key={c.id} className="rounded-md bg-surface/50 p-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-[12px] font-medium">{c.user}</span>
-                  <span className="text-[10px] text-muted-foreground">{c.time}</span>
-                </div>
-                <p className="mt-1 text-[13px] text-muted-foreground">{c.text}</p>
-              </div>
-            ))}
-            <textarea
-              placeholder="Adicionar comentário…"
-              rows={2}
-              className="w-full rounded-md border bg-background px-3 py-2 text-[13px] focus:border-primary/60 focus:outline-none"
-            />
-          </div>
-        </div>
-      </div>
-
-      <div className="space-y-4">
-        {/* Jornada do Cliente */}
-        <JornadaCliente client={client} clientProjects={clientProjects} />
-
-        {/* Arquivos */}
-        <div className="rounded-xl border bg-card p-4">
-          <div className="mb-3 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Paperclip className="h-3.5 w-3.5 text-muted-foreground" />
-              <h3 className="text-sm font-semibold tracking-tight">Arquivos</h3>
-            </div>
-            <label className="inline-flex cursor-pointer items-center gap-1 rounded-md border bg-surface px-2 py-1 text-[11px] hover:bg-accent">
-              <FileUp className="h-3 w-3" /> Upload
-              <input
-                type="file"
-                multiple
-                className="hidden"
-                onChange={(e) => handleUpload(e.target.files)}
-              />
-            </label>
-          </div>
-          <ul className="space-y-1">
-            {arquivos.length === 0 && (
-              <li className="rounded-md border border-dashed py-4 text-center text-[11px] text-muted-foreground">
-                Nenhum arquivo enviado ainda.
-              </li>
-            )}
-            {arquivos.map((a) => (
-              <li key={a.id} className="flex items-center gap-2 rounded-md border bg-surface/50 px-2.5 py-2">
-                <FileText className="h-3.5 w-3.5 text-muted-foreground" />
-                {a.url ? (
-                  <a
-                    href={a.url}
-                    download={a.name}
-                    className="min-w-0 flex-1 truncate text-[12px] hover:text-primary hover:underline"
-                  >
-                    {a.name}
-                  </a>
-                ) : (
-                  <span className="min-w-0 flex-1 truncate text-[12px]">{a.name}</span>
-                )}
-                <span className="text-[10px] text-muted-foreground">{a.size}</span>
-                {a.url && (
-                  <a
-                    href={a.url}
-                    download={a.name}
-                    className="text-muted-foreground hover:text-foreground"
-                    title="Baixar"
-                  >
-                    <Download className="h-3 w-3" />
-                  </a>
-                )}
-              </li>
-            ))}
-          </ul>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── JORNADA DO CLIENTE ──────────────────────────────────────────────────────
-function JornadaCliente({
-  client,
-  clientProjects,
-}: {
-  client: Client;
-  clientProjects: import("@/lib/mock-data").Project[];
-}) {
-  const { toggleChecklistItem } = useDataStore();
-
-  // Etapas do primeiro template de serviço do cliente
-  const matchedTemplate = (client.services ?? [])
-    .map((s) => serviceTemplates.find((t) => t.name === s || t.id === s))
-    .find(Boolean);
-  const stages: string[] = matchedTemplate?.stages ?? [];
-  const currentIdx = stages.indexOf(client.etapaJornada ?? "");
-
-  // Indicador de prazo
-  const hoje = new Date();
-  hoje.setHours(0, 0, 0, 0);
-  const prazoStatus = (() => {
-    if (client.status !== "onboarding" || !client.dataPrevistaFimOnboarding) return null;
-    const fim = new Date(client.dataPrevistaFimOnboarding);
-    fim.setHours(0, 0, 0, 0);
-    const diffDias = Math.round((fim.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
-    if (diffDias > 3) return { label: "No prazo", variant: "success" as const, diff: diffDias };
-    if (diffDias >= 0) return { label: `Atenção — faltam ${diffDias}d`, variant: "warning" as const, diff: diffDias };
-    return { label: `Atrasado ${Math.abs(diffDias)} dias`, variant: "destructive" as const, diff: diffDias };
-  })();
-
-  // Checklist flat de todos os projetos do cliente
-  const allItems = clientProjects.flatMap((p) =>
-    (p.checklist ?? []).map((item) => ({ ...item, projectId: p.id, projectName: p.name }))
-  );
-  const doneCount = allItems.filter((i) => i.done).length;
-  const totalCount = allItems.length;
-
-  if (stages.length === 0 && allItems.length === 0) return null;
-
-  return (
-    <div className="rounded-xl border bg-card p-4">
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <CheckSquare className="h-3.5 w-3.5 text-muted-foreground" />
-          <h3 className="text-sm font-semibold tracking-tight">Jornada do cliente</h3>
-        </div>
-        {prazoStatus && (
-          <span
-            className={cn(
-              "rounded px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider",
-              prazoStatus.variant === "success" && "bg-success/15 text-success",
-              prazoStatus.variant === "warning" && "bg-warning/15 text-warning",
-              prazoStatus.variant === "destructive" && "bg-destructive/15 text-destructive",
-            )}
-          >
-            {prazoStatus.label}
-          </span>
-        )}
-      </div>
-
-      {/* Barra de etapas */}
-      {stages.length > 0 && (
-        <div className="mb-4">
-          <div className="flex items-center gap-0">
-            {stages.map((stage, idx) => {
-              const isPast = idx < currentIdx;
-              const isCurrent = idx === currentIdx;
-              const isFirst = idx === 0;
-              const isLast = idx === stages.length - 1;
-              return (
-                <div key={stage} className="flex flex-1 flex-col items-center">
-                  <div className="relative flex w-full items-center">
-                    {/* Linha esquerda */}
-                    {!isFirst && (
-                      <div
-                        className={cn(
-                          "h-0.5 flex-1 transition-colors",
-                          isPast || isCurrent ? "bg-primary" : "bg-border",
-                        )}
-                      />
-                    )}
-                    {/* Bolinha */}
-                    <div
-                      className={cn(
-                        "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 text-[9px] font-bold transition-all",
-                        isPast && "border-primary bg-primary text-primary-foreground",
-                        isCurrent && "border-primary bg-background text-primary shadow-[0_0_0_3px] shadow-primary/20",
-                        !isPast && !isCurrent && "border-border bg-background text-muted-foreground",
-                      )}
-                    >
-                      {isPast ? "✓" : idx + 1}
-                    </div>
-                    {/* Linha direita */}
-                    {!isLast && (
-                      <div
-                        className={cn(
-                          "h-0.5 flex-1 transition-colors",
-                          isPast ? "bg-primary" : "bg-border",
-                        )}
-                      />
-                    )}
-                  </div>
-                  <span
-                    className={cn(
-                      "mt-1.5 text-center text-[9px] leading-tight",
-                      isCurrent ? "font-semibold text-primary" : isPast ? "text-muted-foreground" : "text-muted-foreground/60",
-                    )}
-                  >
-                    {stage}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Checklist real dos projetos */}
-      {allItems.length > 0 && (
-        <>
-          <div className="mb-2 flex items-center justify-between">
-            <span className="text-[11px] text-muted-foreground">Checklist de entregas</span>
-            <span className="font-mono text-[10px] text-muted-foreground">{doneCount}/{totalCount}</span>
-          </div>
-          {/* Progress bar */}
-          <div className="mb-3 h-1 overflow-hidden rounded-full bg-border">
-            <div
-              className="h-full rounded-full bg-primary transition-all"
-              style={{ width: totalCount > 0 ? `${(doneCount / totalCount) * 100}%` : "0%" }}
-            />
-          </div>
-          <ul className="space-y-1">
-            {allItems.map((item) => (
-              <li
-                key={`${item.projectId}-${item.id}`}
-                className="flex cursor-pointer items-center gap-2.5 rounded-md p-1.5 hover:bg-accent"
-                onClick={() => toggleChecklistItem(item.projectId, item.id)}
-              >
-                <span
-                  className={cn(
-                    "flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors",
-                    item.done
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "border-border",
-                  )}
-                >
-                  {item.done && <span className="text-[9px] font-bold">✓</span>}
-                </span>
-                <span
-                  className={cn(
-                    "min-w-0 flex-1 truncate text-[12px]",
-                    item.done && "text-muted-foreground line-through",
-                  )}
-                >
-                  {item.text}
-                </span>
-                <span className="shrink-0 rounded bg-surface px-1.5 py-0.5 text-[9px] text-muted-foreground">
-                  {item.projectName.replace(/ — .*/, "")}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
-
-      {allItems.length === 0 && stages.length > 0 && (
-        <p className="text-center text-[11px] text-muted-foreground">
-          Nenhum item de checklist ainda. Crie um projeto para este cliente.
-        </p>
-      )}
-    </div>
-  );
-}
-
-// ─── FINANCEIRO ──────────────────────────────────────────────────────────────
-function TabFinanceiro({ client }: { client: Client }) {
-  const pagamentos = Array.from({ length: 6 }, (_, i) => ({
-    id: `pg-${i}`,
-    date: new Date(2026, 6 - i, client.paymentDay).toLocaleDateString("pt-BR"),
-    value: client.monthlyValue,
-    status: i === 0 ? "pendente" : "pago",
-  }));
-
-  return (
-    <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-      <div className="rounded-xl border bg-card p-5">
-        <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Mensalidade</div>
-        <div className="mt-2 font-mono text-3xl font-semibold text-primary">{formatBRL(client.monthlyValue)}</div>
-        <div className="mt-1 text-[12px] text-muted-foreground">Vence dia {client.paymentDay} de cada mês</div>
-      </div>
-      <div className="rounded-xl border bg-card p-4 lg:col-span-2">
-        <h3 className="mb-3 text-sm font-semibold tracking-tight">Últimos pagamentos</h3>
-        <ul className="space-y-1">
-          {pagamentos.map((p) => (
-            <li key={p.id} className="flex items-center gap-3 rounded-md border bg-surface/50 px-3 py-2 text-[13px]">
-              <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-              <span className="font-mono">{p.date}</span>
-              <span className="ml-auto font-mono text-primary">{formatBRL(p.value)}</span>
-              <span
-                className={cn(
-                  "rounded px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider",
-                  p.status === "pago" ? "bg-success/15 text-success" : "bg-warning/15 text-warning",
-                )}
-              >
-                {p.status}
-              </span>
-            </li>
-          ))}
-        </ul>
-      </div>
-    </div>
-  );
-}
-
-// ─── HISTÓRICO ───────────────────────────────────────────────────────────────
-function TabHistorico({ client }: { client: Client }) {
-  const customEntries = (client.timeline ?? []).map((t) => ({
-    time: t.time,
-    user: t.user,
-    text: t.text,
-  }));
-  const defaultEntries = [
-    { time: "há 2h", user: client.owner, text: `Reunião de resultados realizada com ${client.name}` },
-    { time: "há 3d", user: "Sistema", text: "Fatura de julho gerada automaticamente" },
-    { time: "há 2s", user: "Sistema", text: `Contrato renovado até ${new Date(client.renewalDate).toLocaleDateString("pt-BR")}` },
-  ];
-  const timeline = [...customEntries, ...defaultEntries];
-
-  return (
-    <div className="rounded-xl border bg-card p-5">
-      <h3 className="mb-4 text-sm font-semibold tracking-tight">Timeline completa</h3>
-      <div className="space-y-3">
-        {timeline.map((e, i) => (
-          <div key={i} className="flex gap-3">
-            <div className="relative flex flex-col items-center">
-              <div className="mt-1.5 h-2 w-2 rounded-full bg-primary" />
-              {i < timeline.length - 1 && <div className="w-px flex-1 bg-border" />}
-            </div>
-            <div className="flex-1 pb-3">
-              <div className="text-[13px]">{e.text}</div>
-              <div className="mt-0.5 text-[10px] text-muted-foreground">{e.user} · {e.time}</div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
   );
 }
