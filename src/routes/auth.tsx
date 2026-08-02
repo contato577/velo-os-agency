@@ -43,7 +43,7 @@ function Auth() {
 
       <div className="relative w-full max-w-[380px]">
         <div className="mb-8 flex flex-col items-center gap-3 text-center">
-          <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-xl bg-black ring-1 ring-primary/30">
+          <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-xl bg-surface-2 ring-1 ring-primary/40">
             <img src={veloceLogo.url} alt="Veloce" className="h-11 w-11 object-cover" />
           </div>
           <div>
