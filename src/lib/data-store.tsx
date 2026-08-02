@@ -111,9 +111,44 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
   };
 
   const updateLeadStage: DataStoreContextValue["updateLeadStage"] = (id, stage) => {
+    const targetLead = leads.find((l) => l.id === id);
+
     setLeads((prev) =>
       prev.map((l) => (l.id === id ? { ...l, stage, lastActivity: new Date().toISOString() } : l)),
     );
+
+    if (targetLead && targetLead.stage !== stage) {
+      const stageTaskTitles: Partial<Record<LeadStage, { title: string; priority: Task["priority"] }>> = {
+        contato: { title: `Contato inicial com ${targetLead.name}`, priority: "alta" },
+        diagnostico: { title: `Realizar diagnóstico de ${targetLead.name}`, priority: "alta" },
+        reuniao: { title: `Preparar reunião com ${targetLead.name}`, priority: "urgente" },
+        proposta: { title: `Fazer follow-up da proposta com ${targetLead.name}`, priority: "urgente" },
+        negociacao: { title: `Acompanhar negociação com ${targetLead.name}`, priority: "urgente" },
+      };
+
+      const taskConfig = stageTaskTitles[stage];
+      if (taskConfig) {
+        const amanha = new Date(Date.now() + 24 * 3600 * 1000).toISOString().slice(0, 10);
+        setTasks((prevTasks) => {
+          const hasDuplicate = prevTasks.some(
+            (t) => t.leadId === id && (t.title === taskConfig.title || (t.labels && t.labels.includes(stageLabels[stage]))),
+          );
+          if (hasDuplicate) return prevTasks;
+
+          const newTask: Task = {
+            id: `t-auto-stage-${Date.now()}`,
+            title: taskConfig.title,
+            owner: targetLead.owner,
+            priority: taskConfig.priority,
+            status: "hoje",
+            dueDate: amanha,
+            leadId: id,
+            labels: ["CRM", stageLabels[stage]],
+          };
+          return [newTask, ...prevTasks];
+        });
+      }
+    }
   };
 
   const addTask: DataStoreContextValue["addTask"] = (partial) => {

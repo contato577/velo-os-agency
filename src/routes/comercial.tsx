@@ -3,10 +3,14 @@ import { useMemo, useState } from "react";
 import {
   DndContext,
   PointerSensor,
+  TouchSensor,
+  MouseSensor,
   useSensor,
   useSensors,
   useDroppable,
   useDraggable,
+  DragOverlay,
+  type DragStartEvent,
   type DragEndEvent,
 } from "@dnd-kit/core";
 import {
@@ -73,29 +77,44 @@ const potencialStyles: Record<LeadPotential, { label: string; chip: string; dot:
   baixo: { label: "Baixo", chip: "bg-muted text-muted-foreground border-border", dot: "bg-muted-foreground" },
 };
 
-function LeadCard({ lead, onClick, justMoved }: { lead: Lead; onClick: () => void; justMoved: boolean }) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: lead.id });
-  const style = transform
+function LeadCard({
+  lead,
+  onClick,
+  justMoved,
+  isOverlay = false,
+}: {
+  lead: Lead;
+  onClick: () => void;
+  justMoved: boolean;
+  isOverlay?: boolean;
+}) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: lead.id,
+    disabled: isOverlay,
+  });
+
+  const style = transform && !isOverlay
     ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`, zIndex: 40 }
     : undefined;
 
   return (
     <div
-      ref={setNodeRef}
+      ref={isOverlay ? undefined : setNodeRef}
       style={style}
-      {...attributes}
-      {...listeners}
+      {...(isOverlay ? {} : attributes)}
+      {...(isOverlay ? {} : listeners)}
       onClick={(e) => {
-        if (isDragging) return;
+        if (isDragging || isOverlay) return;
         // Só abrir detalhe em clique simples, não em drag
         if ((e.target as HTMLElement).closest("[data-no-drag]")) return;
         onClick();
       }}
       className={cn(
-        "group card-trello w-full cursor-grab border-l-4 p-3 text-left active:cursor-grabbing",
+        "group card-trello w-full cursor-grab border-l-4 p-3 text-left transition-all duration-200 active:cursor-grabbing",
         stageBorderColors[lead.stage],
-        isDragging && "opacity-40",
-        justMoved && "ring-2 ring-primary/50",
+        isDragging && !isOverlay && "opacity-30 border-dashed bg-accent/40 scale-[0.98]",
+        isOverlay && "shadow-2xl ring-2 ring-primary/60 scale-[1.03] opacity-95 bg-card z-50 cursor-grabbing",
+        justMoved && !isOverlay && "animate-in fade-in zoom-in-95 ring-2 ring-primary/70 duration-300 shadow-md",
       )}
     >
       <div className="mb-1.5 flex items-start justify-between gap-2">
@@ -544,10 +563,21 @@ function Comercial() {
   const [potFilter, setPotFilter] = useState<Set<LeadPotential>>(new Set());
   const [ownerFilter, setOwnerFilter] = useState<string>("");
   const [justMovedId, setJustMovedId] = useState<string | null>(null);
+  const [activeId, setActiveId] = useState<string | null>(null);
   const [pendingWin, setPendingWin] = useState<Lead | null>(null);
   const [createdClient, setCreatedClient] = useState<Client | null>(null);
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
+  const sensors = useSensors(
+    useSensor(MouseSensor, {
+      activationConstraint: { distance: 8 },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 150, tolerance: 5 },
+    }),
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 8 },
+    }),
+  );
 
   const owners = useMemo(() => Array.from(new Set(leads.map((l) => l.owner))), [leads]);
   const filteredLeads = useMemo(
@@ -560,6 +590,11 @@ function Comercial() {
         return true;
       }),
     [leads, query, potFilter, ownerFilter],
+  );
+
+  const activeLead = useMemo(
+    () => (activeId ? leads.find((l) => l.id === activeId) : null),
+    [activeId, leads],
   );
 
   const totalPipeline = filteredLeads
@@ -575,8 +610,13 @@ function Comercial() {
     });
   };
 
+  const handleDragStart = (e: DragStartEvent) => {
+    setActiveId(String(e.active.id));
+  };
+
   const handleDragEnd = (e: DragEndEvent) => {
     const leadId = String(e.active.id);
+    setActiveId(null);
     const overId = e.over?.id;
     if (!overId) return;
     const targetStage = String(overId).replace("col-", "") as LeadStage;
@@ -719,7 +759,12 @@ function Comercial() {
 
         {/* Content View */}
         {activeTab === "kanban" ? (
-          <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+          <DndContext
+            sensors={sensors}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+            onDragCancel={() => setActiveId(null)}
+          >
             <div className="flex-1 overflow-x-auto overflow-y-hidden">
               <div className="flex h-full min-w-max gap-3 p-4 md:p-6">
                 {stageOrder.map((stage) => (
@@ -734,6 +779,16 @@ function Comercial() {
                 ))}
               </div>
             </div>
+            <DragOverlay dropAnimation={{ duration: 200, easing: "cubic-bezier(0.18, 0.67, 0.6, 1.22)" }}>
+              {activeLead ? (
+                <LeadCard
+                  lead={activeLead}
+                  onClick={() => {}}
+                  justMoved={false}
+                  isOverlay
+                />
+              ) : null}
+            </DragOverlay>
           </DndContext>
         ) : (
           <PontoDeControleView />
@@ -779,4 +834,5 @@ function Comercial() {
     </AppShell>
   );
 }
+
 
