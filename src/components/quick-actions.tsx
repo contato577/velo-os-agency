@@ -957,8 +957,17 @@ export function EditTaskDialog({ task, onClose }: { task: Task; onClose: () => v
 
   return (
     <>
-      <div className="fixed inset-0 z-50 bg-background/70 backdrop-blur-sm" onClick={onClose} />
-      <div className="fixed left-1/2 top-1/2 z-50 w-[92vw] max-w-lg -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-xl border bg-card shadow-elegant">
+      <div
+        className="fixed inset-0 z-50 bg-background/70 backdrop-blur-sm"
+        onClick={(e) => {
+          e.stopPropagation();
+          onClose();
+        }}
+      />
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="fixed left-1/2 top-1/2 z-50 w-[92vw] max-w-lg -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-xl border bg-card shadow-elegant"
+      >
         <div className="flex items-center justify-between border-b px-4 py-3">
           <div>
             <h3 className="text-sm font-semibold tracking-tight">Editar tarefa</h3>

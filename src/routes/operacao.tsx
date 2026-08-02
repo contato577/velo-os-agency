@@ -22,6 +22,7 @@ import {
   ArrowRight,
   Check,
   LayoutGrid,
+  Pencil,
   User,
 } from "lucide-react";
 import { AppShell, PageHeader } from "@/components/app-shell";
@@ -314,11 +315,14 @@ function TaskCard({
         setEditOpen(true);
       }}
       className={cn(
-        "cursor-pointer select-none rounded-md border-2 bg-surface-3 p-3 shadow-md transition-shadow hover:shadow-lg",
+        "group relative cursor-pointer select-none rounded-md border-2 bg-surface-3 p-3 shadow-md transition-shadow hover:shadow-lg",
         done && "opacity-50",
         overdue && !done && "border-l-4 border-l-destructive bg-destructive/5",
       )}
     >
+      <div className="pointer-events-none absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-md bg-surface/90 text-muted-foreground opacity-0 shadow-sm transition-opacity group-hover:opacity-100">
+        <Pencil className="h-3 w-3" />
+      </div>
       {!done && (
         <span className={cn("mb-1.5 inline-block rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide", priorityClass)}>
           {priorityLabel}
