@@ -108,6 +108,7 @@ export interface Client {
   owner: string;
   status: "ativo" | "onboarding" | "pausado" | "cancelado";
   since: string;
+  canceledAt?: string;
   services: string[];
   prazoJornadaDias?: number;
   dataInicioJornada?: string;

@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { ArrowUpRight, ArrowDownRight, TrendingUp, Brain, ArrowRight, Plus, X } from "lucide-react";
 import { AppShell, PageHeader } from "@/components/app-shell";
-import { clients, financeEntries, formatBRL, monthlyRevenue } from "@/lib/mock-data";
+import { financeEntries, formatBRL, monthlyRevenue } from "@/lib/mock-data";
 import { useDataStore } from "@/lib/data-store";
 import { LancamentoForm } from "@/components/lancamento-form";
 import { cn } from "@/lib/utils";
@@ -19,6 +19,7 @@ export const Route = createFileRoute("/dre")({
 });
 
 function DRE() {
+  const { insights: aiInsights, expenses, clients } = useDataStore();
   const [openNew, setOpenNew] = useState(false);
   const july = financeEntries.filter((f) => f.date.startsWith("2026-07"));
   const receitas = {
@@ -106,7 +107,29 @@ function DRE() {
   }));
 
   // Insights de IA vindos da mesma engine central, filtrados por Financeiro
-  const { insights: aiInsights, expenses } = useDataStore();
+  // ── Churn, CAC e LTV — calculados com dados reais ──────────────────────
+  const hojeISO = new Date().toISOString().slice(0, 10);
+  const mesAtual = hojeISO.slice(0, 7); // "YYYY-MM"
+
+  const clientesAtivos = clients.filter((c) => c.status === "ativo" || c.status === "onboarding");
+  const clientesCanceladosMes = clients.filter((c) => c.canceledAt?.startsWith(mesAtual));
+  const baseInicioMes = clientesAtivos.length + clientesCanceladosMes.length;
+  const churnMensal = baseInicioMes > 0 ? clientesCanceladosMes.length / baseInicioMes : null;
+
+  const ticketMedio =
+    clientesAtivos.length > 0
+      ? clientesAtivos.reduce((s, c) => s + c.monthlyValue, 0) / clientesAtivos.length
+      : 0;
+  const ltv = churnMensal && churnMensal > 0 ? ticketMedio / churnMensal : null;
+
+  const gastoMarketingMes = expenses
+    .filter((e) => e.type === "saida" && e.costCenter === "Marketing" && e.date.startsWith(mesAtual))
+    .reduce((s, e) => s + e.amount, 0);
+  const novosClientesMes = clients.filter((c) => c.since.startsWith(mesAtual)).length;
+  const cac = novosClientesMes > 0 ? gastoMarketingMes / novosClientesMes : null;
+
+  const ltvCac = ltv && cac ? ltv / cac : null;
+
   const insights = useMemo(() => {
     const financeiros = aiInsights.filter((i) => i.area === "Financeiro");
     // Fallback: garantir 2 insights positivos junto aos alertas
@@ -360,10 +383,14 @@ function DRE() {
         <div className="mt-4 rounded-lg border bg-card p-4">
           <h3 className="mb-3 text-sm font-semibold tracking-tight">Indicadores financeiros</h3>
           <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
-            <FinIndicator label="LTV médio" value={formatBRL(48500)} />
-            <FinIndicator label="CAC" value={formatBRL(2100)} />
-            <FinIndicator label="LTV/CAC" value="23x" tone="success" />
-            <FinIndicator label="Churn mensal" value="2.1%" tone="warning" />
+            <FinIndicator label="LTV médio" value={ltv ? formatBRL(ltv) : "Sem dados"} />
+            <FinIndicator label="CAC" value={cac ? formatBRL(cac) : "Sem dados"} />
+            <FinIndicator label="LTV/CAC" value={ltvCac ? `${ltvCac.toFixed(1)}x` : "Sem dados"} tone={ltvCac && ltvCac >= 3 ? "success" : undefined} />
+            <FinIndicator
+              label="Churn mensal"
+              value={churnMensal !== null ? `${(churnMensal * 100).toFixed(1)}%` : "Sem dados"}
+              tone={churnMensal !== null && churnMensal > 0.05 ? "warning" : churnMensal !== null ? "success" : undefined}
+            />
             <FinIndicator label="Burn multiple" value="0.4x" tone="success" />
             <FinIndicator label="Runway" value="18 meses" tone="success" />
           </div>
