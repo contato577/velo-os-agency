@@ -97,10 +97,19 @@ export const leads: Lead[] = leadSeed.map(([name, company, stage, value], i) => 
   tags: i % 3 === 0 ? ["Alta prioridade"] : i % 3 === 1 ? ["Recorrente"] : ["Frio"],
 }));
 
+export interface ClientComentario {
+  id: string;
+  texto: string;
+  autor: string;
+  data: string;
+}
+
 export interface Client {
   id: string;
   name: string;
   company: string;
+  email?: string;
+  phone?: string;
   plan: "Starter" | "Growth" | "Scale" | "Enterprise";
   plano?: string;
   monthlyValue: number;
@@ -116,6 +125,8 @@ export interface Client {
   dataPrevistaFimOnboarding?: string;
   etapaJornada?: string;
   timeline?: { id: string; time: string; user: string; text: string }[];
+  contratoArquivo?: { nome: string; url: string };
+  comentarios?: ClientComentario[];
 }
 
 

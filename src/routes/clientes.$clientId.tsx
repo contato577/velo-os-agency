@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
   Building2,
@@ -27,6 +27,15 @@ import {
   Link as LinkIcon,
   Plus,
   ChevronDown,
+  Pencil,
+  X,
+  Check,
+  Trash2,
+  Eye,
+  ClipboardList,
+  BarChart2,
+  Lightbulb,
+  MoreVertical,
 } from "lucide-react";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { NewTaskButton } from "@/components/quick-actions";
@@ -122,17 +131,123 @@ function ClienteDetalhe() {
 
 // ─── GERAL ───────────────────────────────────────────────────────────────────
 function TabGeral({ client }: { client: Client }) {
+  const { updateClientInfo } = useDataStore();
+  const [editing, setEditing] = useState(false);
+  const [form, setForm] = useState({
+    name: client.name,
+    company: client.company,
+    email: client.email ?? `contato@${client.company.toLowerCase().replace(/[^a-z]/g, "").slice(0, 12)}.com.br`,
+    phone: client.phone ?? `+55 11 9${String(80000000 + client.id.length * 12345).slice(0, 8)}`,
+  });
+
+  // Sync form when client changes from external updates
+  const handleEdit = () => {
+    setForm({
+      name: client.name,
+      company: client.company,
+      email: client.email ?? `contato@${client.company.toLowerCase().replace(/[^a-z]/g, "").slice(0, 12)}.com.br`,
+      phone: client.phone ?? `+55 11 9${String(80000000 + client.id.length * 12345).slice(0, 8)}`,
+    });
+    setEditing(true);
+  };
+
+  const handleSave = () => {
+    updateClientInfo(client.id, form);
+    setEditing(false);
+  };
+
+  // Contract state (stored on the client object via updateClientInfo-like approach)
+  const [showContractUpload, setShowContractUpload] = useState(false);
+  const [contrato, setContrato] = useState<{ nome: string; url: string } | undefined>(client.contratoArquivo);
+  const contratoInputRef = useRef<HTMLInputElement>(null);
+
+  const handleContratoUpload = (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    const f = files[0];
+    const url = URL.createObjectURL(f);
+    const novo = { nome: f.name, url };
+    setContrato(novo);
+    updateClientInfo(client.id, { contratoArquivo: novo });
+    setShowContractUpload(false);
+  };
+
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
       <div className="rounded-xl border bg-card p-5 lg:col-span-2">
-        <h3 className="mb-4 text-sm font-semibold tracking-tight">Dados da empresa</h3>
+        <div className="mb-4 flex items-center justify-between">
+          <h3 className="text-sm font-semibold tracking-tight">Dados da empresa</h3>
+          {editing ? (
+            <div className="flex gap-1.5">
+              <button
+                onClick={handleSave}
+                className="inline-flex items-center gap-1 rounded-md bg-primary px-2.5 py-1 text-[11px] font-medium text-primary-foreground hover:bg-primary/90"
+              >
+                <Check className="h-3 w-3" /> Salvar
+              </button>
+              <button
+                onClick={() => setEditing(false)}
+                className="inline-flex items-center gap-1 rounded-md border bg-surface px-2.5 py-1 text-[11px] hover:bg-accent"
+              >
+                <X className="h-3 w-3" /> Cancelar
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={handleEdit}
+              className="inline-flex items-center gap-1 rounded-md border bg-surface px-2.5 py-1 text-[11px] hover:bg-accent"
+            >
+              <Pencil className="h-3 w-3" /> Editar
+            </button>
+          )}
+        </div>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          <Field icon={Building2} label="Empresa" value={client.company} />
-          <Field icon={User} label="Contato principal" value={client.name} />
-          <Field icon={Phone} label="Telefone" value={`+55 11 9${String(80000000 + client.id.length * 12345).slice(0, 8)}`} />
-          <Field icon={Mail} label="E-mail" value={`contato@${client.company.toLowerCase().replace(/[^a-z]/g, "").slice(0, 12)}.com.br`} />
-          <Field icon={Calendar} label="Cliente desde" value={new Date(client.since).toLocaleDateString("pt-BR")} />
-          <Field icon={User} label="Responsável Veloce" value={client.owner} />
+          {editing ? (
+            <>
+              <EditField
+                icon={Building2}
+                label="Empresa"
+                value={form.company}
+                onChange={(v) => setForm((f) => ({ ...f, company: v }))}
+              />
+              <EditField
+                icon={User}
+                label="Contato principal"
+                value={form.name}
+                onChange={(v) => setForm((f) => ({ ...f, name: v }))}
+              />
+              <EditField
+                icon={Phone}
+                label="Telefone"
+                value={form.phone}
+                onChange={(v) => setForm((f) => ({ ...f, phone: v }))}
+              />
+              <EditField
+                icon={Mail}
+                label="E-mail"
+                value={form.email}
+                onChange={(v) => setForm((f) => ({ ...f, email: v }))}
+              />
+              <Field icon={Calendar} label="Cliente desde" value={new Date(client.since).toLocaleDateString("pt-BR")} />
+              <Field icon={User} label="Responsável Veloce" value={client.owner} />
+            </>
+          ) : (
+            <>
+              <Field icon={Building2} label="Empresa" value={client.company} />
+              <Field icon={User} label="Contato principal" value={client.name} />
+              <Field
+                icon={Phone}
+                label="Telefone"
+                value={client.phone ?? `+55 11 9${String(80000000 + client.id.length * 12345).slice(0, 8)}`}
+              />
+              <Field
+                icon={Mail}
+                label="E-mail"
+                value={client.email ?? `contato@${client.company.toLowerCase().replace(/[^a-z]/g, "").slice(0, 12)}.com.br`}
+              />
+              <Field icon={Calendar} label="Cliente desde" value={new Date(client.since).toLocaleDateString("pt-BR")} />
+              <Field icon={User} label="Responsável Veloce" value={client.owner} />
+            </>
+          )}
         </div>
       </div>
 
@@ -163,10 +278,101 @@ function TabGeral({ client }: { client: Client }) {
               ))}
             </div>
           </div>
-          <button className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-md border bg-surface px-3 py-2 text-xs font-medium hover:bg-accent">
-            <FileText className="h-3.5 w-3.5" /> Ver contrato
-          </button>
+
+          {/* Contrato */}
+          {contrato ? (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 rounded-md border bg-surface/50 px-2.5 py-2">
+                <FileText className="h-3.5 w-3.5 shrink-0 text-primary" />
+                <span className="min-w-0 flex-1 truncate text-[12px]">{contrato.nome}</span>
+                <a
+                  href={contrato.url}
+                  download={contrato.nome}
+                  className="text-muted-foreground hover:text-foreground"
+                  title="Baixar"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                </a>
+              </div>
+              <div className="flex gap-1.5">
+                <a
+                  href={contrato.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-md border bg-surface px-3 py-2 text-xs font-medium hover:bg-accent"
+                >
+                  <Eye className="h-3.5 w-3.5" /> Visualizar
+                </a>
+                <label className="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-md border bg-surface px-3 py-2 text-xs font-medium hover:bg-accent">
+                  <FileUp className="h-3.5 w-3.5" /> Substituir
+                  <input
+                    type="file"
+                    accept=".pdf,.doc,.docx"
+                    className="hidden"
+                    onChange={(e) => handleContratoUpload(e.target.files)}
+                  />
+                </label>
+              </div>
+            </div>
+          ) : (
+            <>
+              {showContractUpload ? (
+                <div className="rounded-md border border-dashed p-3 text-center">
+                  <p className="mb-2 text-[11px] text-muted-foreground">Selecione o arquivo de contrato (PDF ou Word)</p>
+                  <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90">
+                    <FileUp className="h-3.5 w-3.5" /> Escolher arquivo
+                    <input
+                      ref={contratoInputRef}
+                      type="file"
+                      accept=".pdf,.doc,.docx"
+                      className="hidden"
+                      onChange={(e) => handleContratoUpload(e.target.files)}
+                    />
+                  </label>
+                  <button
+                    onClick={() => setShowContractUpload(false)}
+                    className="mt-1.5 block w-full text-center text-[11px] text-muted-foreground hover:text-foreground"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setShowContractUpload(true)}
+                  className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-md border bg-surface px-3 py-2 text-xs font-medium hover:bg-accent"
+                >
+                  <FileText className="h-3.5 w-3.5" /> Anexar contrato
+                </button>
+              )}
+            </>
+          )}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function EditField({
+  icon: Icon,
+  label,
+  value,
+  onChange,
+}: {
+  icon: typeof User;
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <div className="flex items-start gap-2.5">
+      <Icon className="mt-2.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+      <div className="min-w-0 flex-1">
+        <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{label}</div>
+        <input
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="mt-0.5 w-full rounded border bg-background px-2 py-1 text-[13px] focus:border-primary/60 focus:outline-none"
+        />
       </div>
     </div>
   );
@@ -286,7 +492,7 @@ function TabPerformance({ client }: { client: Client }) {
 }
 
 // ─── DOCUMENTOS ─────────────────────────────────────────────────────────────
-type DocCategory = "Atas" | "Relatórios" | "Estratégia" | "Contratos" | "Outros";
+type DocCategory = "Atas" | "Relatórios" | "Estratégia" | "Outros";
 interface DocItem {
   id: string;
   title: string;
@@ -302,17 +508,25 @@ const seedDocs: DocItem[] = [
   { id: "d1", title: "Ata reunião kickoff.pdf", category: "Atas", type: "file", size: "420 KB", addedBy: "Rafael Souza", addedAt: "2026-06-01" },
   { id: "d2", title: "Relatório Junho 2026.pdf", category: "Relatórios", type: "file", size: "1.2 MB", addedBy: "Camila Torres", addedAt: "2026-07-01" },
   { id: "d3", title: "Plano estratégico Q3", category: "Estratégia", type: "link", url: "https://miro.com/app/board/exemplo", addedBy: "Rafael Souza", addedAt: "2026-06-15" },
-  { id: "d4", title: "Contrato assinado.pdf", category: "Contratos", type: "file", size: "480 KB", addedBy: "Sistema", addedAt: "2025-01-15" },
 ];
+
+const categoryMeta: Record<DocCategory, { icon: typeof FolderOpen; color: string; bg: string }> = {
+  Atas: { icon: ClipboardList, color: "text-info", bg: "bg-info/10" },
+  Relatórios: { icon: BarChart2, color: "text-primary", bg: "bg-primary/10" },
+  Estratégia: { icon: Lightbulb, color: "text-warning", bg: "bg-warning/10" },
+  Outros: { icon: FolderOpen, color: "text-muted-foreground", bg: "bg-surface" },
+};
 
 function TabDocumentos() {
   const [docs, setDocs] = useState<DocItem[]>(seedDocs);
   const [query, setQuery] = useState("");
+  const [openCategory, setOpenCategory] = useState<DocCategory | null>(null);
   const [addingIn, setAddingIn] = useState<DocCategory | null>(null);
   const [linkTitle, setLinkTitle] = useState("");
   const [linkUrl, setLinkUrl] = useState("");
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
-  const categories: DocCategory[] = ["Atas", "Relatórios", "Estratégia", "Contratos", "Outros"];
+  const categories: DocCategory[] = ["Atas", "Relatórios", "Estratégia", "Outros"];
   const filtered = docs.filter((d) => d.title.toLowerCase().includes(query.toLowerCase()));
 
   const addFile = (category: DocCategory, files: FileList | null) => {
@@ -349,100 +563,214 @@ function TabDocumentos() {
     setAddingIn(null);
   };
 
+  const deleteDoc = (id: string) => {
+    setDocs((prev) => prev.filter((d) => d.id !== id));
+    setConfirmDeleteId(null);
+  };
+
+  // Category card view
+  if (!openCategory) {
+    return (
+      <div className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 className="text-sm font-semibold tracking-tight">Documentos do cliente</h3>
+            <p className="text-[12px] text-muted-foreground">Atas, relatórios, estratégia e outros arquivos.</p>
+          </div>
+          <div className="relative">
+            <SearchIcon className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Buscar em todos os documentos…"
+              className="h-8 w-56 rounded-md border bg-surface pl-7 pr-2 text-xs focus:border-primary/60 focus:outline-none"
+            />
+          </div>
+        </div>
+
+        {/* Se há busca ativa, mostra lista flat */}
+        {query.trim() ? (
+          <div className="rounded-xl border bg-card p-4">
+            <p className="mb-2 text-[11px] text-muted-foreground">{filtered.length} resultado(s) para "{query}"</p>
+            {filtered.length === 0 ? (
+              <div className="rounded-md border border-dashed py-6 text-center text-[11px] text-muted-foreground">Nenhum documento encontrado.</div>
+            ) : (
+              <ul className="space-y-1">
+                {filtered.map((d) => (
+                  <DocRow key={d.id} doc={d} onDelete={() => setConfirmDeleteId(d.id)} confirmDeleteId={confirmDeleteId} onConfirmDelete={deleteDoc} onCancelDelete={() => setConfirmDeleteId(null)} />
+                ))}
+              </ul>
+            )}
+          </div>
+        ) : (
+          /* Cards por categoria */
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            {categories.map((cat) => {
+              const items = docs.filter((d) => d.category === cat);
+              const meta = categoryMeta[cat];
+              const IconComp = meta.icon;
+              const mostRecent = items.sort((a, b) => b.addedAt.localeCompare(a.addedAt))[0];
+              return (
+                <button
+                  key={cat}
+                  onClick={() => setOpenCategory(cat)}
+                  className="group flex flex-col rounded-xl border bg-card p-4 text-left transition-all hover:-translate-y-0.5 hover:shadow-elegant"
+                >
+                  <div className={cn("mb-3 flex h-10 w-10 items-center justify-center rounded-lg", meta.bg)}>
+                    <IconComp className={cn("h-5 w-5", meta.color)} />
+                  </div>
+                  <div className="text-[14px] font-semibold tracking-tight">{cat}</div>
+                  <div className="mt-0.5 text-[11px] text-muted-foreground">
+                    {items.length === 0
+                      ? "Nenhum arquivo"
+                      : `${items.length} arquivo${items.length > 1 ? "s" : ""}`}
+                  </div>
+                  {mostRecent && (
+                    <div className="mt-1.5 text-[10px] text-muted-foreground">
+                      Último: {new Date(mostRecent.addedAt).toLocaleDateString("pt-BR")}
+                    </div>
+                  )}
+                  <div className="mt-3 inline-flex items-center gap-1 text-[10px] font-medium text-primary opacity-0 transition-opacity group-hover:opacity-100">
+                    Ver arquivos →
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Categoria aberta — lista de arquivos
+  const catItems = docs.filter((d) => d.category === openCategory);
+  const catMeta = categoryMeta[openCategory];
+  const CatIcon = catMeta.icon;
+
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h3 className="text-sm font-semibold tracking-tight">Documentos do cliente</h3>
-          <p className="text-[12px] text-muted-foreground">Atas, relatórios, contratos e links externos (Miro, Figma, etc).</p>
+      <div className="flex items-center gap-3">
+        <button
+          onClick={() => { setOpenCategory(null); setAddingIn(null); }}
+          className="inline-flex items-center gap-1 text-[12px] text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" /> Voltar
+        </button>
+        <div className={cn("flex h-7 w-7 items-center justify-center rounded-md", catMeta.bg)}>
+          <CatIcon className={cn("h-4 w-4", catMeta.color)} />
         </div>
-        <div className="relative">
-          <SearchIcon className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+        <h3 className="text-sm font-semibold tracking-tight">{openCategory}</h3>
+        <span className="rounded bg-accent px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">{catItems.length}</span>
+        <div className="ml-auto flex gap-2">
+          <label className="inline-flex cursor-pointer items-center gap-1 rounded-md border bg-surface px-2.5 py-1.5 text-[11px] hover:bg-accent">
+            <FileUp className="h-3 w-3" /> Arquivo
+            <input type="file" multiple className="hidden" onChange={(e) => addFile(openCategory, e.target.files)} />
+          </label>
+          <button
+            onClick={() => setAddingIn(addingIn ? null : openCategory)}
+            className="inline-flex items-center gap-1 rounded-md border bg-surface px-2.5 py-1.5 text-[11px] hover:bg-accent"
+          >
+            <LinkIcon className="h-3 w-3" /> Link
+          </button>
+        </div>
+      </div>
+
+      {addingIn === openCategory && (
+        <div className="flex flex-wrap items-end gap-2 rounded-md border bg-surface/40 p-2">
           <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Buscar em todos os documentos…"
-            className="h-8 w-64 rounded-md border bg-surface pl-7 pr-2 text-xs focus:border-primary/60 focus:outline-none"
+            value={linkTitle}
+            onChange={(e) => setLinkTitle(e.target.value)}
+            placeholder="Título do link"
+            className="h-8 flex-1 rounded-md border bg-background px-2 text-xs"
           />
+          <input
+            value={linkUrl}
+            onChange={(e) => setLinkUrl(e.target.value)}
+            placeholder="https://…"
+            className="h-8 flex-1 rounded-md border bg-background px-2 text-xs"
+          />
+          <button
+            onClick={() => addLink(openCategory)}
+            className="h-8 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+          >
+            <Plus className="h-3 w-3" />
+          </button>
         </div>
-      </div>
+      )}
 
-      <div className="space-y-2">
-        {categories.map((cat) => {
-          const items = filtered.filter((d) => d.category === cat);
-          return (
-            <details key={cat} open className="group rounded-xl border bg-card">
-              <summary className="flex cursor-pointer items-center gap-3 px-4 py-3 hover:bg-surface/40">
-                <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-0 [details:not([open])>&]:-rotate-90" />
-                <FolderOpen className="h-4 w-4 text-primary" />
-                <span className="text-[13px] font-medium">{cat}</span>
-                <span className="rounded bg-accent px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">{items.length}</span>
-                <div className="ml-auto flex gap-2" onClick={(e) => e.preventDefault()}>
-                  <label className="inline-flex cursor-pointer items-center gap-1 rounded-md border bg-surface px-2 py-1 text-[11px] hover:bg-accent">
-                    <FileUp className="h-3 w-3" /> Arquivo
-                    <input type="file" multiple className="hidden" onChange={(e) => addFile(cat, e.target.files)} />
-                  </label>
-                  <button
-                    onClick={() => setAddingIn(addingIn === cat ? null : cat)}
-                    className="inline-flex items-center gap-1 rounded-md border bg-surface px-2 py-1 text-[11px] hover:bg-accent"
-                  >
-                    <LinkIcon className="h-3 w-3" /> Link
-                  </button>
-                </div>
-              </summary>
-
-              <div className="border-t p-3">
-                {addingIn === cat && (
-                  <div className="mb-3 flex flex-wrap items-end gap-2 rounded-md border bg-surface/40 p-2">
-                    <input
-                      value={linkTitle}
-                      onChange={(e) => setLinkTitle(e.target.value)}
-                      placeholder="Título do link"
-                      className="h-8 flex-1 rounded-md border bg-background px-2 text-xs"
-                    />
-                    <input
-                      value={linkUrl}
-                      onChange={(e) => setLinkUrl(e.target.value)}
-                      placeholder="https://…"
-                      className="h-8 flex-1 rounded-md border bg-background px-2 text-xs"
-                    />
-                    <button
-                      onClick={() => addLink(cat)}
-                      className="h-8 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary/90"
-                    >
-                      <Plus className="h-3 w-3" />
-                    </button>
-                  </div>
-                )}
-                {items.length === 0 ? (
-                  <div className="rounded-md border border-dashed py-4 text-center text-[11px] text-muted-foreground">
-                    Nenhum documento nesta categoria ainda.
-                  </div>
-                ) : (
-                  <ul className="space-y-1">
-                    {items.map((d) => (
-                      <li key={d.id} className="flex items-center gap-2.5 rounded-md border bg-surface/50 px-3 py-2 text-[12px]">
-                        {d.type === "file" ? <FileText className="h-3.5 w-3.5 text-muted-foreground" /> : <LinkIcon className="h-3.5 w-3.5 text-info" />}
-                        {d.type === "link" ? (
-                          <a href={d.url} target="_blank" rel="noopener noreferrer" className="min-w-0 flex-1 truncate hover:text-primary">
-                            {d.title}
-                          </a>
-                        ) : (
-                          <span className="min-w-0 flex-1 truncate">{d.title}</span>
-                        )}
-                        <span className="hidden text-[10px] text-muted-foreground sm:inline">{d.addedBy}</span>
-                        <span className="text-[10px] text-muted-foreground">{new Date(d.addedAt).toLocaleDateString("pt-BR")}</span>
-                        {d.size && <span className="text-[10px] text-muted-foreground">{d.size}</span>}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            </details>
-          );
-        })}
-      </div>
+      {catItems.length === 0 ? (
+        <div className="rounded-xl border border-dashed py-10 text-center text-[12px] text-muted-foreground">
+          Nenhum arquivo nesta categoria. Clique em "Arquivo" ou "Link" para adicionar.
+        </div>
+      ) : (
+        <div className="rounded-xl border bg-card p-3">
+          <ul className="space-y-1">
+            {catItems.map((d) => (
+              <DocRow
+                key={d.id}
+                doc={d}
+                onDelete={() => setConfirmDeleteId(d.id)}
+                confirmDeleteId={confirmDeleteId}
+                onConfirmDelete={deleteDoc}
+                onCancelDelete={() => setConfirmDeleteId(null)}
+              />
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
+  );
+}
+
+function DocRow({
+  doc,
+  onDelete,
+  confirmDeleteId,
+  onConfirmDelete,
+  onCancelDelete,
+}: {
+  doc: DocItem;
+  onDelete: () => void;
+  confirmDeleteId: string | null;
+  onConfirmDelete: (id: string) => void;
+  onCancelDelete: () => void;
+}) {
+  const isConfirming = confirmDeleteId === doc.id;
+  return (
+    <li className="flex items-center gap-2.5 rounded-md border bg-surface/50 px-3 py-2 text-[12px]">
+      {doc.type === "file" ? <FileText className="h-3.5 w-3.5 text-muted-foreground" /> : <LinkIcon className="h-3.5 w-3.5 text-info" />}
+      {doc.type === "link" ? (
+        <a href={doc.url} target="_blank" rel="noopener noreferrer" className="min-w-0 flex-1 truncate hover:text-primary">
+          {doc.title}
+        </a>
+      ) : (
+        <span className="min-w-0 flex-1 truncate">{doc.title}</span>
+      )}
+      <span className="hidden text-[10px] text-muted-foreground sm:inline">{doc.addedBy}</span>
+      <span className="text-[10px] text-muted-foreground">{new Date(doc.addedAt).toLocaleDateString("pt-BR")}</span>
+      {doc.size && <span className="text-[10px] text-muted-foreground">{doc.size}</span>}
+      {doc.url && doc.type === "file" && (
+        <a href={doc.url} download={doc.title} className="text-muted-foreground hover:text-foreground" title="Baixar">
+          <Download className="h-3 w-3" />
+        </a>
+      )}
+      {doc.type === "link" && doc.url && (
+        <a href={doc.url} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground" title="Abrir">
+          <ExternalLink className="h-3 w-3" />
+        </a>
+      )}
+      {isConfirming ? (
+        <div className="flex items-center gap-1">
+          <span className="text-[10px] text-destructive">Excluir?</span>
+          <button onClick={() => onConfirmDelete(doc.id)} className="rounded bg-destructive/10 px-1.5 py-0.5 text-[10px] text-destructive hover:bg-destructive/20">Sim</button>
+          <button onClick={onCancelDelete} className="rounded bg-surface px-1.5 py-0.5 text-[10px] hover:bg-accent">Não</button>
+        </div>
+      ) : (
+        <button onClick={onDelete} className="text-muted-foreground hover:text-destructive" title="Excluir">
+          <Trash2 className="h-3 w-3" />
+        </button>
+      )}
+    </li>
   );
 }
 
@@ -462,9 +790,9 @@ function TabOperacao({ clientId }: { clientId: string }) {
 
   const [arquivos, setArquivos] = useState<ArquivoItem[]>([
     { id: "f1", name: "Briefing_kickoff.pdf", size: "1.2 MB" },
-    { id: "f2", name: "Contrato_assinado.pdf", size: "480 KB" },
-    { id: "f3", name: "Criativos_Julho.zip", size: "12.4 MB" },
+    { id: "f2", name: "Criativos_Julho.zip", size: "12.4 MB" },
   ]);
+  const [confirmDeleteArquivoId, setConfirmDeleteArquivoId] = useState<string | null>(null);
 
   const handleUpload = (files: FileList | null) => {
     if (!files || files.length === 0) return;
@@ -478,10 +806,24 @@ function TabOperacao({ clientId }: { clientId: string }) {
     }));
     setArquivos((prev) => [...novos, ...prev]);
   };
-  const comentarios = [
-    { id: "c1", user: "Rafael Souza", time: "há 2h", text: "Cliente aprovou os criativos para veiculação." },
-    { id: "c2", user: "Camila Torres", time: "há 1d", text: "Ajustamos o público da campanha conforme feedback." },
-  ];
+
+  const deleteArquivo = (id: string) => {
+    setArquivos((prev) => prev.filter((a) => a.id !== id));
+    setConfirmDeleteArquivoId(null);
+  };
+
+  // Comentários reais via data store
+  const { addComentario, removeComentario } = useDataStore();
+  const comentarios = client.comentarios ?? [];
+  const [novoComentario, setNovoComentario] = useState("");
+  const [confirmDeleteComId, setConfirmDeleteComId] = useState<string | null>(null);
+
+  const handleAddComentario = () => {
+    const texto = novoComentario.trim();
+    if (!texto) return;
+    addComentario(clientId, texto, "Rafael Souza");
+    setNovoComentario("");
+  };
 
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
@@ -562,20 +904,65 @@ function TabOperacao({ clientId }: { clientId: string }) {
             <h3 className="text-sm font-semibold tracking-tight">Comentários da equipe</h3>
           </div>
           <div className="space-y-3">
-            {comentarios.map((c) => (
-              <div key={c.id} className="rounded-md bg-surface/50 p-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-[12px] font-medium">{c.user}</span>
-                  <span className="text-[10px] text-muted-foreground">{c.time}</span>
-                </div>
-                <p className="mt-1 text-[13px] text-muted-foreground">{c.text}</p>
+            {comentarios.length === 0 && (
+              <div className="rounded-md border border-dashed py-4 text-center text-[11px] text-muted-foreground">
+                Nenhum comentário ainda.
               </div>
-            ))}
-            <textarea
-              placeholder="Adicionar comentário…"
-              rows={2}
-              className="w-full rounded-md border bg-background px-3 py-2 text-[13px] focus:border-primary/60 focus:outline-none"
-            />
+            )}
+            {comentarios.map((c) => {
+              const isConfirmingDel = confirmDeleteComId === c.id;
+              return (
+                <div key={c.id} className="group relative rounded-md bg-surface/50 p-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[12px] font-medium">{c.autor}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-muted-foreground">
+                        {new Date(c.data).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+                      </span>
+                      {isConfirmingDel ? (
+                        <div className="flex items-center gap-1">
+                          <span className="text-[10px] text-destructive">Excluir?</span>
+                          <button
+                            onClick={() => { removeComentario(clientId, c.id); setConfirmDeleteComId(null); }}
+                            className="rounded bg-destructive/10 px-1.5 py-0.5 text-[10px] text-destructive hover:bg-destructive/20"
+                          >Sim</button>
+                          <button
+                            onClick={() => setConfirmDeleteComId(null)}
+                            className="rounded bg-surface px-1.5 py-0.5 text-[10px] hover:bg-accent"
+                          >Não</button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => setConfirmDeleteComId(c.id)}
+                          className="text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
+                          title="Remover comentário"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <p className="mt-1 text-[13px] text-muted-foreground">{c.texto}</p>
+                </div>
+              );
+            })}
+            <div className="flex gap-2">
+              <textarea
+                value={novoComentario}
+                onChange={(e) => setNovoComentario(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) handleAddComentario(); }}
+                placeholder="Adicionar comentário… (Ctrl+Enter para enviar)"
+                rows={2}
+                className="flex-1 rounded-md border bg-background px-3 py-2 text-[13px] focus:border-primary/60 focus:outline-none"
+              />
+              <button
+                onClick={handleAddComentario}
+                disabled={!novoComentario.trim()}
+                className="self-end rounded-md bg-primary px-3 py-2 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+              >
+                Enviar
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -607,33 +994,57 @@ function TabOperacao({ clientId }: { clientId: string }) {
                 Nenhum arquivo enviado ainda.
               </li>
             )}
-            {arquivos.map((a) => (
-              <li key={a.id} className="flex items-center gap-2 rounded-md border bg-surface/50 px-2.5 py-2">
-                <FileText className="h-3.5 w-3.5 text-muted-foreground" />
-                {a.url ? (
-                  <a
-                    href={a.url}
-                    download={a.name}
-                    className="min-w-0 flex-1 truncate text-[12px] hover:text-primary hover:underline"
-                  >
-                    {a.name}
-                  </a>
-                ) : (
-                  <span className="min-w-0 flex-1 truncate text-[12px]">{a.name}</span>
-                )}
-                <span className="text-[10px] text-muted-foreground">{a.size}</span>
-                {a.url && (
-                  <a
-                    href={a.url}
-                    download={a.name}
-                    className="text-muted-foreground hover:text-foreground"
-                    title="Baixar"
-                  >
-                    <Download className="h-3 w-3" />
-                  </a>
-                )}
-              </li>
-            ))}
+            {arquivos.map((a) => {
+              const isConfirmingDel = confirmDeleteArquivoId === a.id;
+              return (
+                <li key={a.id} className="group flex items-center gap-2 rounded-md border bg-surface/50 px-2.5 py-2">
+                  <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                  {a.url ? (
+                    <a
+                      href={a.url}
+                      download={a.name}
+                      className="min-w-0 flex-1 truncate text-[12px] hover:text-primary hover:underline"
+                    >
+                      {a.name}
+                    </a>
+                  ) : (
+                    <span className="min-w-0 flex-1 truncate text-[12px]">{a.name}</span>
+                  )}
+                  <span className="text-[10px] text-muted-foreground">{a.size}</span>
+                  {a.url && (
+                    <a
+                      href={a.url}
+                      download={a.name}
+                      className="text-muted-foreground hover:text-foreground"
+                      title="Baixar"
+                    >
+                      <Download className="h-3 w-3" />
+                    </a>
+                  )}
+                  {isConfirmingDel ? (
+                    <div className="flex items-center gap-1">
+                      <span className="text-[10px] text-destructive">Excluir?</span>
+                      <button
+                        onClick={() => deleteArquivo(a.id)}
+                        className="rounded bg-destructive/10 px-1.5 py-0.5 text-[10px] text-destructive hover:bg-destructive/20"
+                      >Sim</button>
+                      <button
+                        onClick={() => setConfirmDeleteArquivoId(null)}
+                        className="rounded bg-surface px-1.5 py-0.5 text-[10px] hover:bg-accent"
+                      >Não</button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setConfirmDeleteArquivoId(a.id)}
+                      className="text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
+                      title="Excluir arquivo"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         </div>
       </div>

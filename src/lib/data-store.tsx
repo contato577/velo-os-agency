@@ -11,6 +11,7 @@ import {
   type Lead,
   type Task,
   type Client,
+  type ClientComentario,
   type FinanceEntry,
   type Project,
   type LeadStage,
@@ -42,6 +43,9 @@ interface DataStoreContextValue {
   addExpense: (partial: Omit<FinanceEntry, "id">) => FinanceEntry;
   toggleTaskDone: (taskId: string) => void;
   updateClientStatus: (clientId: string, status: Client["status"]) => void;
+  updateClientInfo: (clientId: string, partial: Partial<Pick<Client, "name" | "company" | "email" | "phone" | "contratoArquivo">>) => void;
+  addComentario: (clientId: string, texto: string, autor: string) => void;
+  removeComentario: (clientId: string, comentarioId: string) => void;
   criarClienteDeVenda: (lead: Lead, servicos: string[], plano?: string) => Client;
   toggleChecklistItem: (projectId: string, itemId: string) => void;
 }
@@ -184,6 +188,38 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
       prev.map((c) =>
         c.id === clientId
           ? { ...c, status, canceledAt: status === "cancelado" ? hoje : status === "ativo" ? undefined : c.canceledAt }
+          : c,
+      ),
+    );
+  };
+
+  const updateClientInfo: DataStoreContextValue["updateClientInfo"] = (clientId, partial) => {
+    setClients((prev) =>
+      prev.map((c) => (c.id === clientId ? { ...c, ...partial } : c)),
+    );
+  };
+
+  const addComentario: DataStoreContextValue["addComentario"] = (clientId, texto, autor) => {
+    const comentario: ClientComentario = {
+      id: `cm-${Date.now()}`,
+      texto,
+      autor,
+      data: new Date().toISOString(),
+    };
+    setClients((prev) =>
+      prev.map((c) =>
+        c.id === clientId
+          ? { ...c, comentarios: [comentario, ...(c.comentarios ?? [])] }
+          : c,
+      ),
+    );
+  };
+
+  const removeComentario: DataStoreContextValue["removeComentario"] = (clientId, comentarioId) => {
+    setClients((prev) =>
+      prev.map((c) =>
+        c.id === clientId
+          ? { ...c, comentarios: (c.comentarios ?? []).filter((cm) => cm.id !== comentarioId) }
           : c,
       ),
     );
@@ -405,6 +441,9 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
         addExpense,
         toggleTaskDone,
         updateClientStatus,
+        updateClientInfo,
+        addComentario,
+        removeComentario,
         criarClienteDeVenda,
         toggleChecklistItem,
       }}
