@@ -298,10 +298,10 @@ function TaskCard({
       : undefined;
   const priorityLabel = { urgente: "Urgente", alta: "Alta", media: "Média", baixa: "Baixa" }[task.priority];
   const priorityClass = {
-    urgente: "bg-destructive/90 text-destructive-foreground",
-    alta: "bg-warning/90 text-warning-foreground",
-    media: "bg-info/80 text-white",
-    baixa: "bg-muted-foreground/60 text-white",
+    urgente: "bg-destructive text-destructive-foreground",
+    alta: "bg-warning text-warning-foreground",
+    media: "bg-info text-info-foreground",
+    baixa: "bg-surface-3 text-muted-foreground",
   }[task.priority];
 
   return (
@@ -315,7 +315,7 @@ function TaskCard({
         setEditOpen(true);
       }}
       className={cn(
-        "group relative cursor-pointer select-none rounded-md border-2 bg-surface-3 p-3 shadow-md transition-shadow hover:shadow-lg",
+        "group card-trello relative cursor-pointer select-none p-3.5",
         done && "opacity-50",
         overdue && !done && "border-l-4 border-l-destructive bg-destructive/5",
       )}
@@ -324,7 +324,7 @@ function TaskCard({
         <Pencil className="h-3 w-3" />
       </div>
       {!done && (
-        <span className={cn("mb-1.5 inline-block rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide", priorityClass)}>
+        <span className={cn("pill-label mb-2", priorityClass)}>
           {priorityLabel}
         </span>
       )}
