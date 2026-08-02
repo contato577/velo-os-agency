@@ -1,6 +1,7 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
 import {
   leads as seedLeads,
+  stageLabels,
   tasks as seedTasks,
   clients as seedClients,
   financeEntries as seedExpenses,
