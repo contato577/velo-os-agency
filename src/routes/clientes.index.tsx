@@ -75,7 +75,7 @@ function ClientesList() {
                     </Link>
                   </td>
                   <td className="px-4 py-3">
-                    <span className="rounded bg-accent px-1.5 py-0.5 text-[11px] font-medium">{c.plan}</span>
+                    <span className="rounded bg-accent px-1.5 py-0.5 text-[11px] font-medium">{c.plano ?? c.plan}</span>
                   </td>
                   <td className="px-4 py-3 font-mono text-[13px] text-primary">{formatBRL(c.monthlyValue)}</td>
                   <td className="px-4 py-3">

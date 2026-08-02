@@ -102,6 +102,7 @@ export interface Client {
   name: string;
   company: string;
   plan: "Starter" | "Growth" | "Scale" | "Enterprise";
+  plano?: string;
   monthlyValue: number;
   paymentDay: number;
   renewalDate: string;

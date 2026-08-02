@@ -9,7 +9,26 @@ import {
   useDraggable,
   type DragEndEvent,
 } from "@dnd-kit/core";
-import { Plus, Filter, Search, MoreHorizontal, Phone, Instagram, Globe, MapPin, X, Clock, Building2, Flame, CheckCircle2 } from "lucide-react";
+import {
+  Plus,
+  Filter,
+  Search,
+  MoreHorizontal,
+  Phone,
+  Instagram,
+  Globe,
+  MapPin,
+  X,
+  Clock,
+  Building2,
+  Flame,
+  CheckCircle2,
+  Target,
+  Users,
+  Briefcase,
+  DollarSign,
+  Columns,
+} from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { stageOrder, stageLabels, formatBRL, type Lead, type LeadStage, type LeadPotential, type Client } from "@/lib/mock-data";
 import { useDataStore } from "@/lib/data-store";
@@ -247,18 +266,32 @@ function InfoRow({ icon: Icon, label, value }: { icon: React.ComponentType<{ cla
   );
 }
 
+const PLANOS_FIXOS = [
+  { label: "Plano Essencial", value: 400, desc: "Essencial para começar" },
+  { label: "Plano Crescimento", value: 890, desc: "Crescimento contínuo" },
+  { label: "Plano Performance", value: 1399, desc: "Performance máxima" },
+];
+
 function VendaConfirmDialog({
   lead,
   onConfirm,
   onCancel,
 }: {
   lead: Lead;
-  onConfirm: (servicos: string[]) => void;
+  onConfirm: (servicos: string[], plano: string, valor: number) => void;
   onCancel: () => void;
 }) {
   const [servicos, setServicos] = useState<string[]>(["Gestão de Tráfego"]);
+  const [plano, setPlano] = useState<string>("Plano Crescimento");
+  const [valor, setValor] = useState<number>(lead.value > 0 ? lead.value : 890);
+
   const toggle = (s: string) =>
     setServicos((prev) => (prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]));
+
+  const selectPlano = (p: typeof PLANOS_FIXOS[number]) => {
+    setPlano(p.label);
+    setValor(p.value);
+  };
 
   return (
     <>
@@ -273,20 +306,53 @@ function VendaConfirmDialog({
             Cliente, projeto, checklist e cobrança serão criados automaticamente a partir dos templates.
           </p>
         </div>
-        <div className="space-y-3 p-4">
+        <div className="space-y-3.5 p-4 max-h-[75vh] overflow-y-auto">
+          <div>
+            <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+              Selecione o Plano de Venda
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {PLANOS_FIXOS.map((p) => {
+                const isSelected = plano === p.label;
+                return (
+                  <button
+                    key={p.label}
+                    type="button"
+                    onClick={() => selectPlano(p)}
+                    className={cn(
+                      "flex flex-col items-start justify-between rounded-lg border p-2.5 text-left transition-all",
+                      isSelected
+                        ? "border-primary bg-primary/10 ring-1 ring-primary/40"
+                        : "border-border bg-surface/40 hover:border-primary/30",
+                    )}
+                  >
+                    <span className="text-[11px] font-semibold leading-tight">{p.label}</span>
+                    <span className="mt-1.5 font-mono text-xs font-bold text-primary">{formatBRL(p.value)}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           <div>
             <div className="mb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-              Valor da venda
+              Valor da venda (R$)
             </div>
-            <div className="font-mono text-2xl font-semibold text-primary">{formatBRL(lead.value)}</div>
+            <input
+              type="number"
+              value={valor}
+              onChange={(e) => setValor(Number(e.target.value) || 0)}
+              className="w-full rounded-md border bg-background px-3 py-1.5 font-mono text-lg font-semibold text-primary focus:border-primary/60 focus:outline-none"
+            />
           </div>
+
           <div>
             <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
               Serviços vendidos
             </div>
             <div className="grid grid-cols-2 gap-1.5 rounded-md border bg-surface/40 p-2 text-[12px]">
               {["Gestão de Tráfego", "Landing Page", "Site Institucional", "Consultoria Estratégica"].map((s) => (
-                <label key={s} className="flex items-center gap-2">
+                <label key={s} className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={servicos.includes(s)}
@@ -304,7 +370,7 @@ function VendaConfirmDialog({
             Cancelar
           </button>
           <button
-            onClick={() => onConfirm(servicos)}
+            onClick={() => onConfirm(servicos, plano, valor)}
             disabled={servicos.length === 0}
             className="rounded-md bg-success px-3 py-1.5 text-xs font-medium text-success-foreground hover:opacity-90 disabled:opacity-50"
           >
@@ -316,9 +382,162 @@ function VendaConfirmDialog({
   );
 }
 
+function PontoDeControleView() {
+  const { metasMensais, updateMetas, leads, clients, projects } = useDataStore();
+
+  const vendasReal = useMemo(
+    () => leads.filter((l) => l.stage === "fechado").reduce((s, l) => s + l.value, 0),
+    [leads],
+  );
+  const clientesAtivosReal = useMemo(
+    () => clients.filter((c) => c.status === "ativo").length,
+    [clients],
+  );
+  const novosClientesReal = useMemo(
+    () => clients.length,
+    [clients],
+  );
+  const servicosEntregarReal = useMemo(
+    () => projects.filter((p) => p.status === "entregue").length,
+    [projects],
+  );
+
+  const cards = [
+    {
+      key: "metaComercial" as const,
+      title: "Meta Comercial do Mês",
+      subtitle: "Faturamento em vendas fechadas",
+      icon: DollarSign,
+      isCurrency: true,
+      target: metasMensais.metaComercial,
+      current: vendasReal,
+      unit: "",
+    },
+    {
+      key: "metaOperacional" as const,
+      title: "Meta Operacional do Mês",
+      subtitle: "Clientes migrados de onboarding para ativo",
+      icon: Target,
+      isCurrency: false,
+      target: metasMensais.metaOperacional,
+      current: clientesAtivosReal,
+      unit: "clientes ativos",
+    },
+    {
+      key: "novosClientesDesejados" as const,
+      title: "Novos Clientes Desejados",
+      subtitle: "Quantidade de novos clientes no mês",
+      icon: Users,
+      isCurrency: false,
+      target: metasMensais.novosClientesDesejados,
+      current: novosClientesReal,
+      unit: "clientes criados",
+    },
+    {
+      key: "servicosEntregar" as const,
+      title: "Serviços a Entregar",
+      subtitle: "Quantidade de entregas de serviços/projetos",
+      icon: Briefcase,
+      isCurrency: false,
+      target: metasMensais.servicosEntregar,
+      current: servicosEntregarReal,
+      unit: "serviços entregues",
+    },
+  ];
+
+  return (
+    <div className="flex-1 overflow-y-auto p-4 md:p-6">
+      <div className="mx-auto max-w-5xl space-y-6">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b pb-4">
+          <div>
+            <h2 className="text-xl font-bold tracking-tight">Ponto de Controle Comercial</h2>
+            <p className="text-xs text-muted-foreground">
+              Acompanhe e ajuste as metas do mês com indicadores em tempo real.
+            </p>
+          </div>
+          <div className="rounded-lg border bg-surface/60 px-3 py-1.5 font-mono text-xs text-muted-foreground">
+            Período: Mês Vigente
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          {cards.map((card) => {
+            const Icon = card.icon;
+            const percent = card.target > 0 ? Math.min(Math.round((card.current / card.target) * 100), 999) : 0;
+
+            return (
+              <div
+                key={card.key}
+                className="group relative flex flex-col justify-between rounded-xl border bg-card p-5 shadow-sm transition-all hover:border-primary/40 hover:shadow-md"
+              >
+                <div>
+                  <div className="mb-3 flex items-start justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                        <Icon className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-semibold tracking-tight">{card.title}</h3>
+                        <p className="text-[11px] text-muted-foreground">{card.subtitle}</p>
+                      </div>
+                    </div>
+                    <span className="rounded-full bg-accent px-2.5 py-0.5 font-mono text-[11px] font-semibold text-primary">
+                      {percent}%
+                    </span>
+                  </div>
+
+                  <div className="mt-4 grid grid-cols-2 gap-3 rounded-lg border bg-surface/50 p-3">
+                    <div>
+                      <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        Meta Editável
+                      </label>
+                      <div className="flex items-center gap-1">
+                        {card.isCurrency && <span className="text-xs font-semibold text-muted-foreground">R$</span>}
+                        <input
+                          type="number"
+                          min="0"
+                          value={card.target}
+                          onChange={(e) => updateMetas({ [card.key]: Math.max(0, Number(e.target.value) || 0) })}
+                          className="w-full rounded-md border bg-background px-2.5 py-1 font-mono text-sm font-semibold focus:border-primary/60 focus:outline-none"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        Progresso Real
+                      </span>
+                      <div className="py-1 font-mono text-sm font-bold text-primary">
+                        {card.isCurrency ? formatBRL(card.current) : `${card.current} ${card.unit}`}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-4">
+                  <div className="mb-1 flex justify-between text-[10px] text-muted-foreground">
+                    <span>Atingimento da Meta</span>
+                    <span className="font-mono">{card.current} / {card.isCurrency ? formatBRL(card.target) : card.target}</span>
+                  </div>
+                  <div className="h-2 w-full overflow-hidden rounded-full bg-accent">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-primary to-brand-deep transition-all duration-500"
+                      style={{ width: `${Math.min(percent, 100)}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Comercial() {
   const { leads, updateLeadStage, criarClienteDeVenda } = useDataStore();
   const { openDialog } = useQuickActions();
+  const [activeTab, setActiveTab] = useState<"kanban" | "ponto-controle">("kanban");
   const [selected, setSelected] = useState<Lead | null>(null);
   const [query, setQuery] = useState("");
   const [filterOpen, setFilterOpen] = useState(false);
@@ -373,10 +592,12 @@ function Comercial() {
     setTimeout(() => setJustMovedId(null), 1500);
   };
 
-  const confirmarVenda = (servicos: string[]) => {
+  const confirmarVenda = (servicos: string[], plano: string, valor: number) => {
     if (!pendingWin) return;
-    // 1. Criar o cliente com prazo, datas, etapa, projetos, checklist, cobrança e timeline
-    const client = criarClienteDeVenda(pendingWin, servicos);
+    const updatedLead = { ...pendingWin, value: valor };
+
+    // 1. Criar o cliente com prazo, datas, etapa, projetos, checklist, cobrança, timeline e plano
+    const client = criarClienteDeVenda(updatedLead, servicos, plano);
 
     // 2. Atualizar estágio do lead para fechado
     updateLeadStage(pendingWin.id, "fechado");
@@ -393,90 +614,130 @@ function Comercial() {
     <AppShell title="CRM" subtitle="Pipeline comercial">
       <div className="flex h-[calc(100vh-3.5rem)] flex-col">
         {/* Toolbar */}
-        <div className="flex flex-wrap items-center gap-2 border-b px-4 py-3 md:px-6">
-          <div className="min-w-0">
-            <h2 className="text-lg font-semibold tracking-tight">Pipeline</h2>
-            <p className="text-xs text-muted-foreground">
-              {filteredLeads.length} de {leads.length} leads · <span className="text-primary font-mono">{formatBRL(totalPipeline)}</span> em aberto · <span className="text-muted-foreground">arraste para mover</span>
-            </p>
-          </div>
-          <div className="ml-auto flex items-center gap-2">
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-              <input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Filtrar leads…"
-                className="h-8 w-52 rounded-md border bg-surface pl-7 pr-2 text-xs focus:border-primary/60 focus:outline-none"
-              />
-            </div>
-            <div className="relative">
-              <button
-                onClick={() => setFilterOpen((v) => !v)}
-                className={cn(
-                  "inline-flex h-8 items-center gap-1.5 rounded-md border px-2.5 text-xs font-medium hover:bg-accent",
-                  (potFilter.size > 0 || ownerFilter) ? "border-primary/50 bg-primary/10 text-primary" : "bg-surface",
-                )}
-              >
-                <Filter className="h-3.5 w-3.5" /> Filtrar
-                {(potFilter.size + (ownerFilter ? 1 : 0)) > 0 && (
-                  <span className="rounded bg-primary px-1 font-mono text-[10px] text-primary-foreground">
-                    {potFilter.size + (ownerFilter ? 1 : 0)}
-                  </span>
-                )}
-              </button>
-              {filterOpen && (
-                <>
-                  <div className="fixed inset-0 z-30" onClick={() => setFilterOpen(false)} />
-                  <div className="absolute right-0 top-9 z-40 w-64 rounded-lg border bg-popover p-3 shadow-elegant">
-                    <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Potencial</div>
-                    <div className="mb-3 flex flex-col gap-1">
-                      {(["alto", "medio", "baixo"] as LeadPotential[]).map((p) => (
-                        <label key={p} className="flex items-center gap-2 text-[12px] capitalize">
-                          <input type="checkbox" checked={potFilter.has(p)} onChange={() => togglePot(p)} className="h-3 w-3" />
-                          {potencialStyles[p].label}
-                        </label>
-                      ))}
-                    </div>
-                    <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Responsável</div>
-                    <select
-                      value={ownerFilter}
-                      onChange={(e) => setOwnerFilter(e.target.value)}
-                      className="w-full rounded-md border bg-background px-2 py-1 text-[12px]"
-                    >
-                      <option value="">Todos</option>
-                      {owners.map((o) => <option key={o} value={o}>{o}</option>)}
-                    </select>
-                    <button
-                      onClick={() => { setPotFilter(new Set()); setOwnerFilter(""); }}
-                      className="mt-3 w-full rounded-md border bg-surface py-1 text-[11px] text-muted-foreground hover:bg-accent"
-                    >
-                      Limpar filtros
-                    </button>
-                  </div>
-                </>
+        <div className="flex flex-wrap items-center gap-3 border-b px-4 py-3 md:px-6">
+          <div className="flex items-center rounded-lg border bg-surface p-0.5">
+            <button
+              onClick={() => setActiveTab("kanban")}
+              className={cn(
+                "flex items-center gap-1.5 rounded-md px-3 py-1 text-xs transition-all",
+                activeTab === "kanban"
+                  ? "bg-background font-semibold text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground",
               )}
-            </div>
+            >
+              <Columns className="h-3.5 w-3.5" />
+              Kanban
+            </button>
+            <button
+              onClick={() => setActiveTab("ponto-controle")}
+              className={cn(
+                "flex items-center gap-1.5 rounded-md px-3 py-1 text-xs transition-all",
+                activeTab === "ponto-controle"
+                  ? "bg-background font-semibold text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <Target className="h-3.5 w-3.5 text-primary" />
+              Ponto de Controle
+            </button>
           </div>
+
+          {activeTab === "kanban" && (
+            <>
+              <div className="hidden min-w-0 md:block">
+                <p className="text-xs text-muted-foreground">
+                  {filteredLeads.length} de {leads.length} leads ·{" "}
+                  <span className="font-mono text-primary">{formatBRL(totalPipeline)}</span> em aberto
+                </p>
+              </div>
+              <div className="ml-auto flex items-center gap-2">
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                  <input
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Filtrar leads…"
+                    className="h-8 w-44 rounded-md border bg-surface pl-7 pr-2 text-xs focus:border-primary/60 focus:outline-none md:w-52"
+                  />
+                </div>
+                <div className="relative">
+                  <button
+                    onClick={() => setFilterOpen((v) => !v)}
+                    className={cn(
+                      "inline-flex h-8 items-center gap-1.5 rounded-md border px-2.5 text-xs font-medium hover:bg-accent",
+                      potFilter.size > 0 || ownerFilter ? "border-primary/50 bg-primary/10 text-primary" : "bg-surface",
+                    )}
+                  >
+                    <Filter className="h-3.5 w-3.5" /> Filtrar
+                    {potFilter.size + (ownerFilter ? 1 : 0) > 0 && (
+                      <span className="rounded bg-primary px-1 font-mono text-[10px] text-primary-foreground">
+                        {potFilter.size + (ownerFilter ? 1 : 0)}
+                      </span>
+                    )}
+                  </button>
+                  {filterOpen && (
+                    <>
+                      <div className="fixed inset-0 z-30" onClick={() => setFilterOpen(false)} />
+                      <div className="absolute right-0 top-9 z-40 w-64 rounded-lg border bg-popover p-3 shadow-elegant">
+                        <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Potencial</div>
+                        <div className="mb-3 flex flex-col gap-1">
+                          {(["alto", "medio", "baixo"] as LeadPotential[]).map((p) => (
+                            <label key={p} className="flex items-center gap-2 text-[12px] capitalize">
+                              <input type="checkbox" checked={potFilter.has(p)} onChange={() => togglePot(p)} className="h-3 w-3" />
+                              {potencialStyles[p].label}
+                            </label>
+                          ))}
+                        </div>
+                        <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Responsável</div>
+                        <select
+                          value={ownerFilter}
+                          onChange={(e) => setOwnerFilter(e.target.value)}
+                          className="w-full rounded-md border bg-background px-2 py-1 text-[12px]"
+                        >
+                          <option value="">Todos</option>
+                          {owners.map((o) => (
+                            <option key={o} value={o}>{o}</option>
+                          ))}
+                        </select>
+                        <button
+                          onClick={() => {
+                            setPotFilter(new Set());
+                            setOwnerFilter("");
+                          }}
+                          className="mt-3 w-full rounded-md border bg-surface py-1 text-[11px] text-muted-foreground hover:bg-accent"
+                        >
+                          Limpar filtros
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
-        {/* Kanban */}
-        <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-          <div className="flex-1 overflow-x-auto overflow-y-hidden">
-            <div className="flex h-full min-w-max gap-3 p-4 md:p-6">
-              {stageOrder.map((stage) => (
-                <StageColumn
-                  key={stage}
-                  stage={stage}
-                  leads={filteredLeads.filter((l) => l.stage === stage)}
-                  onCardClick={setSelected}
-                  justMovedId={justMovedId}
-                  onAdd={(s) => openDialog("lead", s)}
-                />
-              ))}
+        {/* Content View */}
+        {activeTab === "kanban" ? (
+          <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+            <div className="flex-1 overflow-x-auto overflow-y-hidden">
+              <div className="flex h-full min-w-max gap-3 p-4 md:p-6">
+                {stageOrder.map((stage) => (
+                  <StageColumn
+                    key={stage}
+                    stage={stage}
+                    leads={filteredLeads.filter((l) => l.stage === stage)}
+                    onCardClick={setSelected}
+                    justMovedId={justMovedId}
+                    onAdd={(s) => openDialog("lead", s)}
+                  />
+                ))}
+              </div>
             </div>
-          </div>
-        </DndContext>
+          </DndContext>
+        ) : (
+          <PontoDeControleView />
+        )}
 
         <div className="border-t bg-surface/30 px-4 py-2 text-[10px] text-muted-foreground md:px-6">
           Dados mantidos durante a sessão. Persistência real será ativada com o banco de dados.
@@ -518,3 +779,4 @@ function Comercial() {
     </AppShell>
   );
 }
+

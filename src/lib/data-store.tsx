@@ -17,6 +17,13 @@ import {
 import { serviceTemplates, type ServiceTemplate } from "./service-templates";
 import { gerarInsights, type Insight } from "./ai-engine";
 
+export interface MetasMensais {
+  metaComercial: number;
+  metaOperacional: number;
+  novosClientesDesejados: number;
+  servicosEntregar: number;
+}
+
 interface DataStoreContextValue {
   leads: Lead[];
   tasks: Task[];
@@ -24,6 +31,8 @@ interface DataStoreContextValue {
   expenses: FinanceEntry[];
   projects: Project[];
   insights: Insight[];
+  metasMensais: MetasMensais;
+  updateMetas: (partial: Partial<MetasMensais>) => void;
   addLead: (partial: Omit<Lead, "id" | "createdAt" | "lastActivity"> & { stage?: LeadStage }) => Lead;
   updateLeadStage: (id: string, stage: LeadStage) => void;
   addTask: (partial: Omit<Task, "id">) => Task;
@@ -32,7 +41,7 @@ interface DataStoreContextValue {
   addExpense: (partial: Omit<FinanceEntry, "id">) => FinanceEntry;
   toggleTaskDone: (taskId: string) => void;
   updateClientStatus: (clientId: string, status: Client["status"]) => void;
-  criarClienteDeVenda: (lead: Lead, servicos: string[]) => Client;
+  criarClienteDeVenda: (lead: Lead, servicos: string[], plano?: string) => Client;
   toggleChecklistItem: (projectId: string, itemId: string) => void;
 }
 
@@ -44,6 +53,16 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
   const [clients, setClients] = useState<Client[]>(seedClients);
   const [expenses, setExpenses] = useState<FinanceEntry[]>(seedExpenses);
   const [projects, setProjects] = useState<Project[]>(seedProjects);
+  const [metasMensais, setMetasMensais] = useState<MetasMensais>({
+    metaComercial: 50000,
+    metaOperacional: 5,
+    novosClientesDesejados: 6,
+    servicosEntregar: 10,
+  });
+
+  const updateMetas: DataStoreContextValue["updateMetas"] = (partial) => {
+    setMetasMensais((prev) => ({ ...prev, ...partial }));
+  };
 
   const insights = useMemo(
     () =>
@@ -134,7 +153,7 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
     );
   };
 
-  const criarClienteDeVenda = (lead: Lead, servicos: string[]): Client => {
+  const criarClienteDeVenda = (lead: Lead, servicos: string[], plano?: string): Client => {
     const hoje = new Date();
     const dataInicioJornada = hoje.toISOString().slice(0, 10);
 
@@ -172,6 +191,7 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
       name: lead.name,
       company: lead.company,
       plan,
+      plano,
       monthlyValue: lead.value,
       paymentDay: 5,
       renewalDate: new Date(hoje.getTime() + 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
@@ -339,6 +359,8 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
         expenses,
         projects,
         insights,
+        metasMensais,
+        updateMetas,
         addLead,
         updateLeadStage,
         addTask,
