@@ -26,6 +26,30 @@ export interface MetasMensais {
   servicosEntregar: number;
 }
 
+export interface QualidadeItem {
+  id: string;
+  titulo: string;
+  descricao: string;
+}
+
+export interface PontoControle {
+  id: string;
+  mes: string; // "YYYY-MM"
+  criadoEm: string;
+  metaComercial: number;
+  novosClientesDesejados: number;
+  servicosEntregar: number;
+  taxaProspeccaoReuniao: number; // %
+  taxaReuniaoFechamento: number; // %
+  qualidade: QualidadeItem[];
+}
+
+export const qualidadePadrao: QualidadeItem[] = [
+  { id: "q-1", titulo: "Clientes ativos", descricao: "Manter 100% clientes na base" },
+  { id: "q-2", titulo: "Relatórios semanais", descricao: "Entregar 100% relatórios semanais" },
+  { id: "q-3", titulo: "Entregas de serviços", descricao: "Entregar 100% serviços no prazo" },
+];
+
 interface DataStoreContextValue {
   leads: Lead[];
   tasks: Task[];
@@ -34,6 +58,9 @@ interface DataStoreContextValue {
   projects: Project[];
   insights: Insight[];
   metasMensais: MetasMensais;
+  pontosControle: PontoControle[];
+  pontoControleAtual: PontoControle | null;
+  salvarPontoControle: (dados: Omit<PontoControle, "id" | "criadoEm">) => PontoControle;
   updateMetas: (partial: Partial<MetasMensais>) => void;
   addLead: (partial: Omit<Lead, "id" | "createdAt" | "lastActivity"> & { stage?: LeadStage }) => Lead;
   updateLeadStage: (id: string, stage: LeadStage) => void;
@@ -49,6 +76,7 @@ interface DataStoreContextValue {
   criarClienteDeVenda: (lead: Lead, servicos: string[], plano?: string) => Client;
   toggleChecklistItem: (projectId: string, itemId: string) => void;
 }
+
 
 const DataStoreContext = createContext<DataStoreContextValue | null>(null);
 
