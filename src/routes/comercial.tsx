@@ -811,32 +811,23 @@ function Comercial() {
       <div className="flex h-[calc(100vh-3.5rem)] flex-col">
         {/* Toolbar */}
         <div className="flex flex-wrap items-center gap-3 border-b px-4 py-3 md:px-6">
-          <div className="flex items-center rounded-lg border bg-surface p-0.5">
+          <div className="flex items-center gap-2 border-r pr-3">
+            <span className="inline-flex items-center gap-1.5 rounded-md bg-surface px-2.5 py-1 text-xs font-semibold">
+              <Columns className="h-3.5 w-3.5 text-primary" /> Pipeline
+            </span>
             <button
-              onClick={() => setActiveTab("kanban")}
+              onClick={() => setActiveTab(activeTab === "ponto-controle" ? "kanban" : "ponto-controle")}
               className={cn(
-                "flex items-center gap-1.5 rounded-md px-3 py-1 text-xs transition-all",
-                activeTab === "kanban"
-                  ? "bg-background font-semibold text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              <Columns className="h-3.5 w-3.5" />
-              Kanban
-            </button>
-            <button
-              onClick={() => setActiveTab("ponto-controle")}
-              className={cn(
-                "flex items-center gap-1.5 rounded-md px-3 py-1 text-xs transition-all",
+                "inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition-all",
                 activeTab === "ponto-controle"
-                  ? "bg-background font-semibold text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground",
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-dashed text-muted-foreground hover:border-primary/50 hover:text-primary",
               )}
             >
-              <Target className="h-3.5 w-3.5 text-primary" />
-              Ponto de Controle
+              <Target className="h-3.5 w-3.5" /> Ponto de Controle · Planejamento do mês
             </button>
           </div>
+
 
           {activeTab === "kanban" && (
             <>
