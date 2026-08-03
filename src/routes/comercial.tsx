@@ -35,7 +35,7 @@ import {
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { stageOrder, stageLabels, formatBRL, type Lead, type LeadStage, type LeadPotential, type Client } from "@/lib/mock-data";
-import { useDataStore } from "@/lib/data-store";
+import { useDataStore, qualidadePadrao, type QualidadeItem } from "@/lib/data-store";
 import { useQuickActions, NewTaskButton } from "@/components/quick-actions";
 import { cn } from "@/lib/utils";
 
