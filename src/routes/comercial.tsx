@@ -906,40 +906,44 @@ function Comercial() {
 
         {/* Content View */}
         {activeTab === "kanban" ? (
-          <DndContext
-            sensors={sensors}
-            onDragStart={handleDragStart}
-            onDragEnd={handleDragEnd}
-            onDragCancel={() => setActiveId(null)}
-          >
-            <div className="flex-1 overflow-x-auto overflow-y-hidden">
-              <div className="flex h-full min-w-max gap-3 p-4 md:p-6">
-                {stageOrder.map((stage) => (
-                  <StageColumn
-                    key={stage}
-                    stage={stage}
-                    leads={filteredLeads.filter((l) => l.stage === stage)}
-                    onCardClick={setSelected}
-                    justMovedId={justMovedId}
-                    onAdd={(s) => openDialog("lead", s)}
-                  />
-                ))}
+          <>
+            <ProjecoesPipeline />
+            <DndContext
+              sensors={sensors}
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
+              onDragCancel={() => setActiveId(null)}
+            >
+              <div className="flex-1 overflow-x-auto overflow-y-hidden">
+                <div className="flex h-full min-w-max gap-3 p-4 md:p-6">
+                  {stageOrder.map((stage) => (
+                    <StageColumn
+                      key={stage}
+                      stage={stage}
+                      leads={filteredLeads.filter((l) => l.stage === stage)}
+                      onCardClick={setSelected}
+                      justMovedId={justMovedId}
+                      onAdd={(s) => openDialog("lead", s)}
+                    />
+                  ))}
+                </div>
               </div>
-            </div>
-            <DragOverlay dropAnimation={{ duration: 200, easing: "cubic-bezier(0.18, 0.67, 0.6, 1.22)" }}>
-              {activeLead ? (
-                <LeadCard
-                  lead={activeLead}
-                  onClick={() => {}}
-                  justMoved={false}
-                  isOverlay
-                />
-              ) : null}
-            </DragOverlay>
-          </DndContext>
+              <DragOverlay dropAnimation={{ duration: 200, easing: "cubic-bezier(0.18, 0.67, 0.6, 1.22)" }}>
+                {activeLead ? (
+                  <LeadCard
+                    lead={activeLead}
+                    onClick={() => {}}
+                    justMoved={false}
+                    isOverlay
+                  />
+                ) : null}
+              </DragOverlay>
+            </DndContext>
+          </>
         ) : (
-          <PontoDeControleView />
+          <PontoControleSection onClose={() => setActiveTab("kanban")} />
         )}
+
 
         <div className="border-t bg-surface/30 px-4 py-2 text-[10px] text-muted-foreground md:px-6">
           Dados mantidos durante a sessão. Persistência real será ativada com o banco de dados.
