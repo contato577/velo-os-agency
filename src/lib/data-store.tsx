@@ -478,6 +478,10 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
         projects,
         insights,
         metasMensais,
+        pontosControle,
+        pontoControleAtual,
+        salvarPontoControle,
+
         updateMetas,
         addLead,
         updateLeadStage,
