@@ -401,7 +401,7 @@ function DRE() {
           <div className="rounded-lg border bg-card p-4">
             <div className="mb-3 flex items-center justify-between">
               <h3 className="text-sm font-semibold tracking-tight">Top 10 despesas</h3>
-              <span className="text-[10px] uppercase tracking-widest text-muted-foreground">Julho</span>
+              <span className="text-[10px] uppercase tracking-widest text-muted-foreground">{tituloMes}</span>
             </div>
             <div className="space-y-2">
               {topDespesas.map(([nome, valor], i) => {
