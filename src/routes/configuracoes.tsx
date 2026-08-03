@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import {
   User, Building2, Bell, Shield, Palette, Users, Zap, Plug, FileStack, ChevronRight, Check,
-  Sun, Moon,
+  Sun, Moon, CalendarDays, X,
 } from "lucide-react";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { serviceTemplates } from "@/lib/service-templates";
@@ -61,6 +61,7 @@ const groups: { title: string; items: Section[] }[] = [
 function Config() {
   const { theme, setTheme } = useTheme();
   const [rules, setRules] = useState(automationRules);
+  const [agendaToast, setAgendaToast] = useState<string | null>(null);
 
   const toggleRule = (id: string) =>
     setRules((prev) => prev.map((r) => (r.id === id ? { ...r, active: !r.active } : r)));
@@ -333,5 +334,28 @@ function Config() {
         </div>
       </div>
     </AppShell>
+  );
+}
+
+// Aviso de integração indisponível — mesmo padrão dos cards de Meta Ads/Google Ads
+function IntegrationToast({ name, onClose }: { name: string; onClose: () => void }) {
+  return (
+    <div
+      className="fixed bottom-6 right-6 z-50 flex items-start gap-3 rounded-xl border bg-card p-4 shadow-elegant animate-in fade-in slide-in-from-bottom-2 duration-200"
+      style={{ maxWidth: 320 }}
+    >
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-info/15">
+        <Plug className="h-4 w-4 text-info" />
+      </div>
+      <div className="flex-1">
+        <div className="text-[13px] font-semibold">Integração disponível em breve</div>
+        <p className="mt-0.5 text-[12px] text-muted-foreground">
+          A conexão com <strong>{name}</strong> requer backend com armazenamento seguro de tokens OAuth. Disponível quando o banco de dados for ativado.
+        </p>
+      </div>
+      <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
+        <X className="h-3.5 w-3.5" />
+      </button>
+    </div>
   );
 }
