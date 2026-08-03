@@ -93,9 +93,27 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
     servicosEntregar: 10,
   });
 
+  const [pontosControle, setPontosControle] = useState<PontoControle[]>([]);
+
+  const pontoControleAtual = useMemo(() => {
+    if (pontosControle.length === 0) return null;
+    return [...pontosControle].sort((a, b) => b.mes.localeCompare(a.mes))[0];
+  }, [pontosControle]);
+
+  const salvarPontoControle: DataStoreContextValue["salvarPontoControle"] = (dados) => {
+    const registro: PontoControle = {
+      id: `pc-${Date.now()}`,
+      criadoEm: new Date().toISOString(),
+      ...dados,
+    };
+    setPontosControle((prev) => [registro, ...prev]);
+    return registro;
+  };
+
   const updateMetas: DataStoreContextValue["updateMetas"] = (partial) => {
     setMetasMensais((prev) => ({ ...prev, ...partial }));
   };
+
 
   const insights = useMemo(
     () =>
