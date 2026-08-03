@@ -572,11 +572,14 @@ function ClienteView({
   toggleTaskDone: (id: string) => void;
   hoje: string;
 }) {
-  const groups = new Map<string, { label: string; kind: "cliente" | "lead" | "geral"; tasks: Task[] }>();
+  const groups = new Map<
+    string,
+    { label: string; kind: "cliente" | "lead" | "geral"; tasks: Task[]; clientId?: string }
+  >();
   for (const t of tasks) {
     const link = taskLink(t, clients, leads);
     const key = `${link.kind}-${link.label}`;
-    if (!groups.has(key)) groups.set(key, { label: link.label, kind: link.kind, tasks: [] });
+    if (!groups.has(key)) groups.set(key, { label: link.label, kind: link.kind, tasks: [], clientId: t.clientId });
     groups.get(key)!.tasks.push(t);
   }
   for (const g of groups.values()) g.tasks.sort((a, b) => a.dueDate.localeCompare(b.dueDate));
@@ -593,38 +596,62 @@ function ClienteView({
   return (
     <div className="space-y-4">
       {contas.length > 0 && (
-        <div className="grid grid-cols-1 items-start gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {contas.map((g) => (
-            <div key={g.label} className="rounded-xl border bg-surface/40 p-3.5">
-              <div className="mb-3 flex items-center justify-between border-b pb-2.5">
-                <span className="flex items-center gap-1.5 text-[13px] font-bold">
-                  <span
-                    className={cn(
-                      "h-2 w-2 shrink-0 rounded-full",
-                      g.kind === "cliente" ? "bg-primary" : "bg-info",
+        <div className="grid max-h-[70vh] grid-cols-1 items-start gap-3 overflow-y-auto pr-1 md:grid-cols-2 xl:grid-cols-3">
+          {contas.map((g) => {
+            const client = g.kind === "cliente" ? clients.find((c) => c.id === g.clientId) : undefined;
+            const overdueCount = g.tasks.filter((t) => t.dueDate < hoje && t.status !== "concluida").length;
+
+            const statusInfo =
+              client?.status === "pausado"
+                ? { label: "Pausado", cls: "bg-muted text-muted-foreground" }
+                : overdueCount > 0
+                  ? { label: "Atrasado", cls: "bg-destructive/15 text-destructive" }
+                  : { label: "Em dia", cls: "bg-success/15 text-success" };
+
+            return (
+              <div key={g.label} className="rounded-xl border bg-surface/40 p-3.5">
+                <div className="mb-2 flex items-center justify-between border-b pb-2.5">
+                  <span className="flex items-center gap-1.5 text-[13px] font-bold">
+                    <span
+                      className={cn(
+                        "h-2 w-2 shrink-0 rounded-full",
+                        g.kind === "cliente" ? "bg-primary" : "bg-info",
+                      )}
+                    />
+                    {g.label}
+                  </span>
+                  <span className="rounded-full bg-muted px-2 py-0.5 font-mono text-[10px] font-semibold text-muted-foreground">
+                    {g.tasks.length}
+                  </span>
+                </div>
+                {client && (
+                  <div className="mb-2.5 flex flex-wrap items-center gap-1.5">
+                    <span className={cn("rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide", statusInfo.cls)}>
+                      {statusInfo.label}
+                    </span>
+                    {client.etapaJornada && (
+                      <span className="rounded bg-info/10 px-1.5 py-0.5 text-[10px] font-medium text-info">
+                        {client.etapaJornada}
+                      </span>
                     )}
-                  />
-                  {g.label}
-                </span>
-                <span className="rounded-full bg-muted px-2 py-0.5 font-mono text-[10px] font-semibold text-muted-foreground">
-                  {g.tasks.length}
-                </span>
+                  </div>
+                )}
+                <div className="space-y-2">
+                  {g.tasks.map((t) => (
+                    <TaskCard
+                      key={t.id}
+                      task={t}
+                      clients={clients}
+                      leads={leads}
+                      onToggle={() => toggleTaskDone(t.id)}
+                      overdue={t.dueDate < hoje}
+                      showLink={false}
+                    />
+                  ))}
+                </div>
               </div>
-              <div className="space-y-2">
-                {g.tasks.map((t) => (
-                  <TaskCard
-                    key={t.id}
-                    task={t}
-                    clients={clients}
-                    leads={leads}
-                    onToggle={() => toggleTaskDone(t.id)}
-                    overdue={t.dueDate < hoje}
-                    showLink={false}
-                  />
-                ))}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
