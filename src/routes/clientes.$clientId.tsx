@@ -391,17 +391,77 @@ function Field({ icon: Icon, label, value }: { icon: typeof User; label: string;
 }
 
 // ─── PERFORMANCE ─────────────────────────────────────────────────────────────
-const integrations = [
-  { key: "meta", name: "Meta Ads", description: "Facebook e Instagram — investimento, leads, CPL, CTR e ROAS." },
-  { key: "google-ads", name: "Google Ads", description: "Cliques, conversões, CTR e CPC." },
-  { key: "ga4", name: "Google Analytics", description: "Usuários, sessões e conversões." },
-  { key: "gsc", name: "Google Search Console", description: "Impressões, cliques, CTR e posição média." },
-  { key: "landing", name: "Landing Pages", description: "Visitantes, conversões e taxa de conversão." },
+const adIntegrations = [
+  {
+    key: "meta",
+    name: "Meta Ads",
+    description: "Facebook e Instagram Ads — investimento, leads, CPL, CTR e ROAS.",
+    icon: TrendingUp,
+    iconColor: "text-blue-500",
+    iconBg: "bg-blue-500/10",
+    metrics: [
+      { label: "Investimento", key: "investimento" },
+      { label: "Leads", key: "leads" },
+      { label: "CPL", key: "cpl" },
+      { label: "CTR", key: "ctr" },
+      { label: "ROAS", key: "roas" },
+    ],
+  },
+  {
+    key: "google-ads",
+    name: "Google Ads",
+    description: "Cliques, impressões, conversões, CTR e CPC médio.",
+    icon: MousePointerClick,
+    iconColor: "text-warning",
+    iconBg: "bg-warning/10",
+    metrics: [
+      { label: "Cliques", key: "cliques" },
+      { label: "Impressões", key: "impressoes" },
+      { label: "Conversões", key: "conversoes" },
+      { label: "CTR", key: "ctr" },
+      { label: "CPC médio", key: "cpc" },
+    ],
+  },
+  {
+    key: "ga4",
+    name: "Google Analytics",
+    description: "Usuários, sessões, taxa de rejeição e conversões.",
+    icon: LineIcon,
+    iconColor: "text-success",
+    iconBg: "bg-success/10",
+    metrics: [
+      { label: "Usuários", key: "usuarios" },
+      { label: "Sessões", key: "sessoes" },
+      { label: "Taxa rejeição", key: "bounce" },
+      { label: "Conversões", key: "conversoes" },
+    ],
+  },
 ];
+
+// Toast de aviso de integração em breve
+function ComingSoonToast({ name, onClose }: { name: string; onClose: () => void }) {
+  return (
+    <div className="fixed bottom-6 right-6 z-50 flex items-start gap-3 rounded-xl border bg-card p-4 shadow-elegant animate-in fade-in slide-in-from-bottom-2 duration-200" style={{ maxWidth: 320 }}>
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-info/15">
+        <Plug className="h-4 w-4 text-info" />
+      </div>
+      <div className="flex-1">
+        <div className="text-[13px] font-semibold">Integração em breve</div>
+        <p className="mt-0.5 text-[12px] text-muted-foreground">
+          A conexão com <strong>{name}</strong> requer backend com armazenamento seguro de tokens OAuth. Disponível quando o banco de dados for ativado.
+        </p>
+      </div>
+      <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
+        <X className="h-3.5 w-3.5" />
+      </button>
+    </div>
+  );
+}
 
 function TabPerformance({ client }: { client: Client }) {
   const { projects } = useDataStore();
   const [exporting, setExporting] = useState(false);
+  const [toastIntegration, setToastIntegration] = useState<string | null>(null);
   const clientProjects = projects.filter((p) => p.clientId === client.id);
   const relatorio = useMemo(() => gerarResumoCliente(client, clientProjects), [client, clientProjects]);
 
@@ -415,7 +475,7 @@ function TabPerformance({ client }: { client: Client }) {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* Resumo em linguagem simples */}
       <div className="rounded-xl border bg-card p-5">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
@@ -446,43 +506,77 @@ function TabPerformance({ client }: { client: Client }) {
         </pre>
       </div>
 
-      {/* Integrações */}
+      {/* Integrações de anúncios */}
+      <div>
+        <div className="mb-1">
+          <h3 className="text-sm font-semibold tracking-tight">Integrações de anúncios</h3>
+          <p className="text-[12px] text-muted-foreground">Conecte as contas de anúncios do cliente para trazer dados em tempo real.</p>
+        </div>
+        <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
+          {adIntegrations.map((intg) => {
+            const Icon = intg.icon;
+            return (
+              <div key={intg.key} className="flex flex-col rounded-xl border bg-card p-4">
+                {/* Header */}
+                <div className="mb-3 flex items-center justify-between">
+                  <div className={cn("flex h-9 w-9 items-center justify-center rounded-lg", intg.iconBg)}>
+                    <Icon className={cn("h-4.5 w-4.5", intg.iconColor)} />
+                  </div>
+                  <span className="flex items-center gap-1 rounded-full border border-destructive/20 bg-destructive/8 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-destructive/70">
+                    <span className="h-1.5 w-1.5 rounded-full bg-destructive/50" />
+                    Não conectado
+                  </span>
+                </div>
+
+                <h4 className="text-[14px] font-semibold tracking-tight">{intg.name}</h4>
+                <p className="mt-1 flex-1 text-[12px] leading-relaxed text-muted-foreground">{intg.description}</p>
+
+                {/* Métricas — placeholder */}
+                <div className="mt-3 grid grid-cols-2 gap-1.5">
+                  {intg.metrics.map((m) => (
+                    <div key={m.key} className="rounded-md border border-dashed bg-surface/40 px-2 py-1.5">
+                      <div className="text-[9px] uppercase tracking-wider text-muted-foreground/60">{m.label}</div>
+                      <div className="mt-0.5 text-[12px] font-mono text-muted-foreground/40">—</div>
+                    </div>
+                  ))}
+                </div>
+
+                <p className="mt-2 text-center text-[10px] italic text-muted-foreground/50">
+                  Conecte a conta para ver os dados aqui
+                </p>
+
+                <button
+                  onClick={() => setToastIntegration(intg.name)}
+                  className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-md border bg-surface px-3 py-1.5 text-[12px] font-medium hover:bg-accent"
+                >
+                  <Plug className="h-3.5 w-3.5" /> Conectar {intg.name}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Outras integrações (Search Console, Landing Pages) */}
       <div>
         <div className="mb-3">
-          <h3 className="text-sm font-semibold tracking-tight">Integrações de performance</h3>
-          <p className="text-[12px] text-muted-foreground">Conecte contas para trazer dados de anúncios em tempo real.</p>
+          <h3 className="text-sm font-semibold tracking-tight">Outras integrações</h3>
+          <p className="text-[12px] text-muted-foreground">Dados de SEO e páginas de conversão — disponíveis em breve.</p>
         </div>
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {integrations.map((i) => (
-            <div key={i.key} className="group relative overflow-hidden rounded-lg border bg-card p-4 transition-all hover:-translate-y-0.5 hover:shadow-elegant">
-              <div className="mb-3 flex items-center justify-between">
-                <div className="flex h-9 w-9 items-center justify-center rounded-md border bg-background/70">
-                  {i.key === "meta" && <TrendingUp className="h-4 w-4" />}
-                  {i.key === "google-ads" && <MousePointerClick className="h-4 w-4" />}
-                  {i.key === "ga4" && <LineIcon className="h-4 w-4" />}
-                  {i.key === "gsc" && <SearchIcon className="h-4 w-4" />}
-                  {i.key === "landing" && <LayoutIcon className="h-4 w-4" />}
-                </div>
-                <span className="rounded border border-info/30 bg-info/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-info">
-                  Em breve
-                </span>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          {[
+            { key: "gsc", name: "Google Search Console", description: "Impressões orgânicas, cliques, CTR e posição média.", Icon: SearchIcon },
+            { key: "landing", name: "Landing Pages", description: "Visitantes, tempo na página e taxa de conversão.", Icon: LayoutIcon },
+          ].map((item) => (
+            <div key={item.key} className="flex items-center gap-3 rounded-xl border bg-card p-3.5 opacity-60">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border bg-surface">
+                <item.Icon className="h-4 w-4 text-muted-foreground" />
               </div>
-              <h4 className="text-[14px] font-semibold tracking-tight">{i.name}</h4>
-              <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">{i.description}</p>
-              <p className="mt-3 text-[11px] italic text-muted-foreground">
-                Autenticação OAuth com {i.name.split(" ")[0]} exige backend com armazenamento seguro de tokens. Disponível quando o banco de dados for ativado.
-              </p>
-              <div className="mt-4 flex items-center gap-2">
-                <button
-                  disabled
-                  className="inline-flex h-8 flex-1 items-center justify-center gap-1.5 rounded-md border bg-surface px-3 text-xs font-medium text-muted-foreground opacity-70"
-                >
-                  <Plug className="h-3.5 w-3.5" /> Disponível em breve
-                </button>
-                <button className="inline-flex h-8 items-center justify-center rounded-md border bg-surface px-2 text-xs text-muted-foreground hover:bg-accent hover:text-foreground">
-                  <ExternalLink className="h-3.5 w-3.5" />
-                </button>
+              <div className="min-w-0 flex-1">
+                <div className="text-[13px] font-medium">{item.name}</div>
+                <div className="text-[11px] text-muted-foreground">{item.description}</div>
               </div>
+              <span className="shrink-0 rounded border border-info/30 bg-info/10 px-1.5 py-0.5 text-[10px] font-medium text-info">Em breve</span>
             </div>
           ))}
         </div>
@@ -782,6 +876,91 @@ interface ArquivoItem {
   url?: string;
 }
 
+const statusProjectMeta: Record<string, { label: string; className: string }> = {
+  briefing: { label: "Briefing", className: "bg-muted/50 text-muted-foreground" },
+  producao: { label: "Produção", className: "bg-info/10 text-info" },
+  revisao: { label: "Revisão", className: "bg-warning/10 text-warning" },
+  entregue: { label: "Entregue", className: "bg-success/10 text-success" },
+};
+
+function ProjectCard({ project }: { project: import("@/lib/mock-data").Project }) {
+  const { toggleChecklistItem } = useDataStore();
+  const [expanded, setExpanded] = useState(false);
+  const checklist = project.checklist ?? [];
+  const doneCount = checklist.filter((i) => i.done).length;
+  const statusMeta = statusProjectMeta[project.status] ?? { label: project.status, className: "bg-surface text-muted-foreground" };
+
+  return (
+    <div className="rounded-xl border bg-card p-4 transition-all">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className="truncate text-[13px] font-semibold">{project.name}</div>
+          <div className="mt-0.5 text-[11px] text-muted-foreground">{project.type} · Resp. {project.owner.split(" ")[0]}</div>
+        </div>
+        <span className={cn("shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider", statusMeta.className)}>
+          {statusMeta.label}
+        </span>
+      </div>
+
+      {/* Barra de progresso */}
+      <div className="mt-3">
+        <div className="mb-1 flex items-center justify-between">
+          <span className="text-[10px] text-muted-foreground">Progresso</span>
+          <span className="font-mono text-[10px] text-primary">{project.progress}%</span>
+        </div>
+        <div className="h-1.5 overflow-hidden rounded-full bg-border">
+          <div
+            className="h-full rounded-full bg-primary transition-all"
+            style={{ width: `${project.progress}%` }}
+          />
+        </div>
+      </div>
+
+      {/* Prazo */}
+      <div className="mt-2 text-[11px] text-muted-foreground">
+        Prazo: {new Date(project.deadline).toLocaleDateString("pt-BR")}
+      </div>
+
+      {/* Checklist */}
+      {checklist.length > 0 && (
+        <div className="mt-3">
+          <button
+            onClick={() => setExpanded((v) => !v)}
+            className="flex w-full items-center justify-between text-[11px] text-muted-foreground hover:text-foreground"
+          >
+            <span>Checklist ({doneCount}/{checklist.length})</span>
+            <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", expanded && "rotate-180")} />
+          </button>
+          {expanded && (
+            <ul className="mt-2 space-y-1">
+              {checklist.map((item) => (
+                <li
+                  key={item.id}
+                  className="flex cursor-pointer items-center gap-2 rounded-md p-1 hover:bg-accent"
+                  onClick={() => toggleChecklistItem(project.id, item.id)}
+                >
+                  <span
+                    className={cn(
+                      "flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded border transition-colors",
+                      item.done ? "border-primary bg-primary text-primary-foreground" : "border-border",
+                    )}
+                  >
+                    {item.done && <span className="text-[8px] font-bold">✓</span>}
+                  </span>
+                  <span className={cn("min-w-0 flex-1 truncate text-[12px]", item.done && "text-muted-foreground line-through")}>
+                    {item.text}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function TabOperacao({ clientId }: { clientId: string }) {
   const { clients, projects, tasks } = useDataStore();
   const client = clients.find((c) => c.id === clientId) ?? clients[0];
@@ -832,29 +1011,21 @@ function TabOperacao({ clientId }: { clientId: string }) {
         <div className="rounded-xl border bg-card p-4">
           <div className="mb-3 flex items-center justify-between">
             <h3 className="text-sm font-semibold tracking-tight">Projetos ativos</h3>
-            <span className="text-[11px] text-muted-foreground">{clientProjects.length} projetos</span>
+            <span className="text-[11px] text-muted-foreground">{clientProjects.length} projeto{clientProjects.length !== 1 ? "s" : ""}</span>
           </div>
-          <div className="space-y-2">
-            {clientProjects.length === 0 && (
-              <div className="rounded-md border border-dashed py-6 text-center text-[12px] text-muted-foreground">
-                Nenhum projeto ativo para este cliente.
-              </div>
-            )}
-            {clientProjects.map((p) => (
-              <div key={p.id} className="rounded-md border bg-surface/50 p-3">
-                <div className="flex items-center justify-between gap-2">
-                  <div>
-                    <div className="text-[13px] font-medium">{p.name}</div>
-                    <div className="text-[11px] text-muted-foreground">{p.type} · Responsável {p.owner}</div>
-                  </div>
-                  <span className="rounded bg-primary/10 px-2 py-0.5 font-mono text-[11px] text-primary">{p.progress}%</span>
-                </div>
-                <div className="mt-2 h-1 overflow-hidden rounded bg-background">
-                  <div className="h-full rounded bg-primary" style={{ width: `${p.progress}%` }} />
-                </div>
-              </div>
-            ))}
-          </div>
+          {clientProjects.length === 0 ? (
+            <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed py-10 text-center">
+              <Folder className="h-8 w-8 text-muted-foreground/40" />
+              <div className="text-[13px] font-medium text-muted-foreground">Nenhum projeto ativo</div>
+              <p className="text-[11px] text-muted-foreground/70">Crie um projeto para este cliente no módulo Operação.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {clientProjects.map((p) => (
+                <ProjectCard key={p.id} project={p} />
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Tarefas */}
