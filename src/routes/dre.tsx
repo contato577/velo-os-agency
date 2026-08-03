@@ -1,9 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { ArrowUpRight, ArrowDownRight, TrendingUp, Brain, ArrowRight, Plus, X } from "lucide-react";
+import { ArrowUpRight, ArrowDownRight, TrendingUp, Brain, ArrowRight, Plus, X, Repeat } from "lucide-react";
 import { AppShell, PageHeader } from "@/components/app-shell";
-import { financeEntries, formatBRL, monthlyRevenue } from "@/lib/mock-data";
+import { formatBRL, type FinanceEntry } from "@/lib/mock-data";
 import { useDataStore } from "@/lib/data-store";
 import { LancamentoForm } from "@/components/lancamento-form";
 import { cn } from "@/lib/utils";
@@ -18,47 +18,97 @@ export const Route = createFileRoute("/dre")({
   component: DRE,
 });
 
+const NOMES_MES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+const NOMES_MES_FULL = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+
+function mesISO(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function ultimosMeses(qtd: number): string[] {
+  const hoje = new Date();
+  return Array.from({ length: qtd }, (_, i) => {
+    const d = new Date(hoje.getFullYear(), hoje.getMonth() - (qtd - 1 - i), 1);
+    return mesISO(d);
+  });
+}
+
+function labelMes(mes: string) {
+  return NOMES_MES[Number(mes.split("-")[1]) - 1] ?? mes;
+}
+
+/**
+ * Retorna os lançamentos que impactam o mês informado.
+ * Lançamentos recorrentes contam em TODOS os meses a partir do mês de criação.
+ */
+function lancamentosDoMes(entries: FinanceEntry[], mes: string): FinanceEntry[] {
+  return entries.filter((e) => {
+    const mesEntrada = e.date.slice(0, 7);
+    if (mesEntrada === mes) return true;
+    return Boolean(e.recurring) && mesEntrada < mes;
+  });
+}
+
 function DRE() {
-  const { insights: aiInsights, expenses, clients } = useDataStore();
+  const { insights: aiInsights, expenses, clients, metasMensais } = useDataStore();
   const [openNew, setOpenNew] = useState(false);
-  const july = financeEntries.filter((f) => f.date.startsWith("2026-07"));
+
+  const hoje = new Date();
+  const mesAtual = mesISO(hoje);
+  const mesAnterior = mesISO(new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1));
+  const tituloMes = `${NOMES_MES_FULL[hoje.getMonth()]} ${hoje.getFullYear()}`;
+
+  const doMes = useMemo(() => lancamentosDoMes(expenses, mesAtual), [expenses, mesAtual]);
+  const doMesAnterior = useMemo(() => lancamentosDoMes(expenses, mesAnterior), [expenses, mesAnterior]);
+
+  const somaCategoria = (entries: FinanceEntry[], categoria: string) =>
+    entries.filter((f) => f.type === "entrada" && f.category === categoria).reduce((s, f) => s + f.amount, 0);
+  const somaCentro = (entries: FinanceEntry[], centro: string) =>
+    entries.filter((f) => f.type === "saida" && f.costCenter === centro).reduce((s, f) => s + f.amount, 0);
+
   const receitas = {
-    Mensalidades: july.filter((f) => f.category === "Mensalidade").reduce((s, f) => s + f.amount, 0),
-    Projetos: july.filter((f) => f.category === "Projeto").reduce((s, f) => s + f.amount, 0),
-    Consultorias: 0,
-    "Serviços Extras": 0,
+    Mensalidades: somaCategoria(doMes, "Mensalidade"),
+    Projetos: somaCategoria(doMes, "Projeto"),
+    Consultorias: somaCategoria(doMes, "Consultoria"),
+    "Serviços Extras": doMes
+      .filter((f) => f.type === "entrada" && !["Mensalidade", "Projeto", "Consultoria"].includes(f.category))
+      .reduce((s, f) => s + f.amount, 0),
   };
   const receitaBruta = Object.values(receitas).reduce((a, b) => a + b, 0);
-  const receitaRecorrente = receitas.Mensalidades;
+  const receitaRecorrente = doMes
+    .filter((f) => f.type === "entrada" && f.recurring)
+    .reduce((s, f) => s + f.amount, 0);
   const receitaExtra = receitaBruta - receitaRecorrente;
 
-  const despesas = {
-    Marketing: july.filter((f) => f.costCenter === "Marketing").reduce((s, f) => s + f.amount, 0),
-    Ferramentas: july.filter((f) => f.costCenter === "Ferramentas").reduce((s, f) => s + f.amount, 0),
-    Equipe: july.filter((f) => f.costCenter === "Equipe").reduce((s, f) => s + f.amount, 0),
-    Impostos: july.filter((f) => f.costCenter === "Impostos").reduce((s, f) => s + f.amount, 0),
-    Operacional: 0,
-    Administrativo: 0,
-    Investimentos: 0,
-  };
+  const centrosDespesa = ["Marketing", "Ferramentas", "Equipe", "Impostos", "Operacional", "Administrativo", "Investimentos"];
+  const despesas = centrosDespesa.reduce<Record<string, number>>((acc, centro) => {
+    acc[centro] = somaCentro(doMes, centro);
+    return acc;
+  }, {});
+  const outrasDespesas = doMes
+    .filter((f) => f.type === "saida" && !centrosDespesa.includes(f.costCenter))
+    .reduce((s, f) => s + f.amount, 0);
+  if (outrasDespesas > 0) despesas["Outros"] = outrasDespesas;
+
   const totalDespesas = Object.values(despesas).reduce((a, b) => a + b, 0);
-  const impostos = despesas.Impostos;
+  const impostos = despesas["Impostos"] ?? 0;
   const receitaLiquida = receitaBruta - impostos;
   const custoOperacional = totalDespesas - impostos;
-  const lucroBruto = receitaLiquida - despesas.Marketing - despesas.Ferramentas;
+  const lucroBruto = receitaLiquida - (despesas["Marketing"] ?? 0) - (despesas["Ferramentas"] ?? 0);
   const lucroLiquido = receitaLiquida - custoOperacional;
-  const margem = (lucroLiquido / receitaBruta) * 100;
+  const margem = receitaBruta > 0 ? (lucroLiquido / receitaBruta) * 100 : 0;
   const ebitda = lucroLiquido + impostos;
 
-  // Mês anterior (mockado a partir de monthlyRevenue)
-  const receitaAnterior = monthlyRevenue[monthlyRevenue.length - 2]?.receita ?? 48500;
-  const margemAnterior = 22.4;
-  const lucroAnterior = 12600;
+  // Mês anterior — calculado com os lançamentos reais (recorrentes incluídos)
+  const receitaAnterior = doMesAnterior.filter((f) => f.type === "entrada").reduce((s, f) => s + f.amount, 0);
+  const despesaAnterior = doMesAnterior.filter((f) => f.type === "saida").reduce((s, f) => s + f.amount, 0);
+  const lucroAnterior = receitaAnterior - despesaAnterior;
+  const margemAnterior = receitaAnterior > 0 ? (lucroAnterior / receitaAnterior) * 100 : 0;
 
-  // Comparativos
-  const deltaReceita = ((receitaBruta - receitaAnterior) / receitaAnterior) * 100;
+  const pct = (atual: number, anterior: number) => (anterior > 0 ? ((atual - anterior) / anterior) * 100 : 0);
+  const deltaReceita = pct(receitaBruta, receitaAnterior);
   const deltaMargem = margem - margemAnterior;
-  const deltaLucro = ((lucroLiquido - lucroAnterior) / lucroAnterior) * 100;
+  const deltaLucro = pct(lucroLiquido, lucroAnterior);
 
   const indicators = [
     { label: "Receita Bruta", value: receitaBruta, tone: "primary" as const, delta: deltaReceita },
@@ -78,6 +128,26 @@ function DRE() {
     info: "text-info",
   };
 
+  // Série mensal real (últimos 7 meses) — receita, despesa, margem
+  const serieMensal = useMemo(() => {
+    return ultimosMeses(7).map((mes) => {
+      const entries = lancamentosDoMes(expenses, mes);
+      const receita = entries.filter((f) => f.type === "entrada").reduce((s, f) => s + f.amount, 0);
+      const despesa = entries.filter((f) => f.type === "saida").reduce((s, f) => s + f.amount, 0);
+      const lucro = receita - despesa;
+      return {
+        mes,
+        month: labelMes(mes),
+        receita,
+        despesa,
+        meta: metasMensais.metaComercial,
+        margem: receita > 0 ? (lucro / receita) * 100 : 0,
+      };
+    });
+  }, [expenses, metasMensais.metaComercial]);
+
+  const margemHistorica = serieMensal.map((m) => ({ month: m.month, margem: m.margem }));
+
   // Top despesas
   const topDespesas = Object.entries(despesas)
     .filter(([, v]) => v > 0)
@@ -90,27 +160,26 @@ function DRE() {
     .sort((a, b) => b.monthlyValue - a.monthlyValue)
     .slice(0, 10);
 
-  // Fluxo de caixa projetado (próximos 6 meses)
-  const fluxoProjetado = [
-    { mes: "Jul", entrada: receitaBruta, saida: totalDespesas, saldo: receitaBruta - totalDespesas },
-    { mes: "Ago", entrada: 54000, saida: 36000, saldo: 18000 },
-    { mes: "Set", entrada: 58500, saida: 37500, saldo: 21000 },
-    { mes: "Out", entrada: 62000, saida: 38200, saldo: 23800 },
-    { mes: "Nov", entrada: 66500, saida: 39800, saldo: 26700 },
-    { mes: "Dez", entrada: 72000, saida: 42500, saldo: 29500 },
-  ];
+  // Fluxo de caixa projetado — próximos 6 meses a partir dos recorrentes reais
+  const fluxoProjetado = useMemo(() => {
+    return Array.from({ length: 6 }, (_, i) => {
+      const d = new Date(hoje.getFullYear(), hoje.getMonth() + i, 1);
+      const mes = mesISO(d);
+      const entries = lancamentosDoMes(expenses, mes);
+      const entrada = entries.filter((f) => f.type === "entrada").reduce((s, f) => s + f.amount, 0);
+      const saida = entries.filter((f) => f.type === "saida").reduce((s, f) => s + f.amount, 0);
+      return { mes: labelMes(mes), entrada, saida, saldo: entrada - saida };
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expenses]);
 
-  // Margem histórica por mês
-  const margemHistorica = monthlyRevenue.map((m, i) => ({
-    month: m.month,
-    margem: 18 + Math.sin(i) * 3 + i * 0.6,
-  }));
+  // Histórico completo de lançamentos (mais recente primeiro)
+  const historico = useMemo(
+    () => [...expenses].sort((a, b) => b.date.localeCompare(a.date)),
+    [expenses],
+  );
 
-  // Insights de IA vindos da mesma engine central, filtrados por Financeiro
   // ── Churn, CAC e LTV — calculados com dados reais ──────────────────────
-  const hojeISO = new Date().toISOString().slice(0, 10);
-  const mesAtual = hojeISO.slice(0, 7); // "YYYY-MM"
-
   const clientesAtivos = clients.filter((c) => c.status === "ativo" || c.status === "onboarding");
   const clientesCanceladosMes = clients.filter((c) => c.canceledAt?.startsWith(mesAtual));
   const baseInicioMes = clientesAtivos.length + clientesCanceladosMes.length;
@@ -122,8 +191,8 @@ function DRE() {
       : 0;
   const ltv = churnMensal && churnMensal > 0 ? ticketMedio / churnMensal : null;
 
-  const gastoMarketingMes = expenses
-    .filter((e) => e.type === "saida" && e.costCenter === "Marketing" && e.date.startsWith(mesAtual))
+  const gastoMarketingMes = doMes
+    .filter((e) => e.type === "saida" && e.costCenter === "Marketing")
     .reduce((s, e) => s + e.amount, 0);
   const novosClientesMes = clients.filter((c) => c.since.startsWith(mesAtual)).length;
   const cac = novosClientesMes > 0 ? gastoMarketingMes / novosClientesMes : null;
@@ -132,13 +201,23 @@ function DRE() {
 
   const insights = useMemo(() => {
     const financeiros = aiInsights.filter((i) => i.area === "Financeiro");
-    // Fallback: garantir 2 insights positivos junto aos alertas
     const complementos = [
-      { id: "loc-1", titulo: "Receita recorrente cresceu", descricao: "O lucro aumentou porque o MRR cresceu 8% e diluiu o custo fixo.", prioridade: "baixa" as const },
-      { id: "loc-2", titulo: "Lucro acima da média", descricao: `Seu lucro líquido de ${formatBRL(lucroLiquido)} está acima da média dos últimos 6 meses.`, prioridade: "baixa" as const },
+      {
+        id: "loc-1",
+        titulo: "Receita recorrente",
+        descricao: `${formatBRL(receitaRecorrente)} do faturamento do mês vem de lançamentos recorrentes — base previsível.`,
+        prioridade: "baixa" as const,
+      },
+      {
+        id: "loc-2",
+        titulo: margem >= 0 ? "Margem positiva" : "Margem negativa",
+        descricao: `Lucro líquido de ${formatBRL(lucroLiquido)} sobre ${formatBRL(receitaBruta)} de receita (${margem.toFixed(1)}% de margem).`,
+        prioridade: margem >= 0 ? ("baixa" as const) : ("alta" as const),
+      },
     ];
     return [...financeiros.map((i) => ({ id: i.id, titulo: i.titulo, descricao: i.descricao, prioridade: i.prioridade })), ...complementos];
-  }, [aiInsights, lucroLiquido]);
+  }, [aiInsights, lucroLiquido, margem, receitaBruta, receitaRecorrente]);
+
 
   return (
     <AppShell title="DRE Inteligente" subtitle="Análise gerencial automática">
