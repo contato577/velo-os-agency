@@ -333,7 +333,7 @@ function DRE() {
             </div>
             <div className="h-[240px]">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={monthlyRevenue}>
+                <BarChart data={serieMensal}>
                   <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.22 0.010 155)" />
                   <XAxis dataKey="month" stroke="oklch(0.68 0.02 155)" fontSize={11} tickLine={false} axisLine={false} />
                   <YAxis stroke="oklch(0.68 0.02 155)" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `${v / 1000}k`} />
