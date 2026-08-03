@@ -401,157 +401,313 @@ function VendaConfirmDialog({
   );
 }
 
-function PontoDeControleView() {
-  const { metasMensais, updateMetas, leads, clients, projects } = useDataStore();
+// ─── PONTO DE CONTROLE — Planejamento estratégico mensal ────────────────────
+function mesAtualISO() {
+  return new Date().toISOString().slice(0, 7);
+}
 
-  const vendasReal = useMemo(
-    () => leads.filter((l) => l.stage === "fechado").reduce((s, l) => s + l.value, 0),
-    [leads],
-  );
-  const clientesAtivosReal = useMemo(
-    () => clients.filter((c) => c.status === "ativo").length,
-    [clients],
-  );
-  const novosClientesReal = useMemo(
-    () => clients.length,
-    [clients],
-  );
-  const servicosEntregarReal = useMemo(
-    () => projects.filter((p) => p.status === "entregue").length,
-    [projects],
-  );
+function labelMes(mes: string) {
+  const [y, m] = mes.split("-");
+  const nomes = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+  return `${nomes[Number(m) - 1] ?? m}/${y}`;
+}
 
-  const cards = [
-    {
-      key: "metaComercial" as const,
-      title: "Meta Comercial do Mês",
-      subtitle: "Faturamento em vendas fechadas",
-      icon: DollarSign,
-      isCurrency: true,
-      target: metasMensais.metaComercial,
-      current: vendasReal,
-      unit: "",
-    },
-    {
-      key: "metaOperacional" as const,
-      title: "Meta Operacional do Mês",
-      subtitle: "Clientes migrados de onboarding para ativo",
-      icon: Target,
-      isCurrency: false,
-      target: metasMensais.metaOperacional,
-      current: clientesAtivosReal,
-      unit: "clientes ativos",
-    },
-    {
-      key: "novosClientesDesejados" as const,
-      title: "Novos Clientes Desejados",
-      subtitle: "Quantidade de novos clientes no mês",
-      icon: Users,
-      isCurrency: false,
-      target: metasMensais.novosClientesDesejados,
-      current: novosClientesReal,
-      unit: "clientes criados",
-    },
-    {
-      key: "servicosEntregar" as const,
-      title: "Serviços a Entregar",
-      subtitle: "Quantidade de entregas de serviços/projetos",
-      icon: Briefcase,
-      isCurrency: false,
-      target: metasMensais.servicosEntregar,
-      current: servicosEntregarReal,
-      unit: "serviços entregues",
-    },
-  ];
+function PontoControleSection({ onClose }: { onClose: () => void }) {
+  const { pontosControle, pontoControleAtual, salvarPontoControle, updateMetas } = useDataStore();
+
+  const base = pontoControleAtual;
+  const [mes, setMes] = useState(mesAtualISO());
+  const [metaComercial, setMetaComercial] = useState(base?.metaComercial ?? 50000);
+  const [novosClientes, setNovosClientes] = useState(base?.novosClientesDesejados ?? 6);
+  const [servicos, setServicos] = useState(base?.servicosEntregar ?? 10);
+  const [taxaProspReuniao, setTaxaProspReuniao] = useState(base?.taxaProspeccaoReuniao ?? 20);
+  const [taxaReuniaoFech, setTaxaReuniaoFech] = useState(base?.taxaReuniaoFechamento ?? 30);
+  const [qualidade, setQualidade] = useState<QualidadeItem[]>(base?.qualidade ?? qualidadePadrao);
+  const [salvoMsg, setSalvoMsg] = useState<string | null>(null);
+
+  const reunioesNecessarias = taxaReuniaoFech > 0 ? Math.ceil(novosClientes / (taxaReuniaoFech / 100)) : 0;
+  const prospeccoesNecessarias = taxaProspReuniao > 0 ? Math.ceil(reunioesNecessarias / (taxaProspReuniao / 100)) : 0;
+  const ticketPlanejado = novosClientes > 0 ? metaComercial / novosClientes : 0;
+
+  const updateQualidade = (id: string, partial: Partial<QualidadeItem>) =>
+    setQualidade((prev) => prev.map((q) => (q.id === id ? { ...q, ...partial } : q)));
+
+  const salvar = () => {
+    salvarPontoControle({
+      mes,
+      metaComercial,
+      novosClientesDesejados: novosClientes,
+      servicosEntregar: servicos,
+      taxaProspeccaoReuniao: taxaProspReuniao,
+      taxaReuniaoFechamento: taxaReuniaoFech,
+      qualidade,
+    });
+    updateMetas({ metaComercial, novosClientesDesejados: novosClientes, servicosEntregar: servicos });
+    setSalvoMsg(`Planejamento de ${labelMes(mes)} registrado no histórico.`);
+    setTimeout(() => setSalvoMsg(null), 4000);
+  };
 
   return (
     <div className="flex-1 overflow-y-auto p-4 md:p-6">
-      <div className="mx-auto max-w-5xl space-y-6">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b pb-4">
+      <div className="mx-auto max-w-5xl space-y-5">
+        <div className="flex flex-wrap items-start justify-between gap-3 border-b pb-4">
           <div>
-            <h2 className="text-xl font-bold tracking-tight">Ponto de Controle Comercial</h2>
-            <p className="text-xs text-muted-foreground">
-              Acompanhe e ajuste as metas do mês com indicadores em tempo real.
+            <h2 className="text-xl font-bold tracking-tight">Ponto de Controle</h2>
+            <p className="max-w-xl text-xs text-muted-foreground">
+              Planejamento estratégico do mês — preenchido uma vez, na 1ª semana. Não é acompanhamento:
+              define as metas e taxas que o sistema usa para projetar o mês na aba Pipeline.
             </p>
           </div>
-          <div className="rounded-lg border bg-surface/60 px-3 py-1.5 font-mono text-xs text-muted-foreground">
-            Período: Mês Vigente
+          <div className="flex items-center gap-2">
+            <input
+              type="month"
+              value={mes}
+              onChange={(e) => setMes(e.target.value || mesAtualISO())}
+              className="h-8 rounded-md border bg-background px-2 font-mono text-xs focus:border-primary/60 focus:outline-none"
+            />
+            <button
+              onClick={onClose}
+              className="inline-flex h-8 items-center gap-1.5 rounded-md border bg-surface px-2.5 text-xs font-medium hover:bg-accent"
+            >
+              <Columns className="h-3.5 w-3.5" /> Voltar ao pipeline
+            </button>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          {cards.map((card) => {
-            const Icon = card.icon;
-            const percent = card.target > 0 ? Math.min(Math.round((card.current / card.target) * 100), 999) : 0;
+        {/* Planejamento comercial */}
+        <div className="rounded-xl border bg-card p-4 shadow-sm">
+          <div className="mb-3 flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <Target className="h-4 w-4" />
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold tracking-tight">Planejamento comercial</h3>
+              <p className="text-[11px] text-muted-foreground">Metas e taxas de conversão do mês</p>
+            </div>
+          </div>
 
-            return (
-              <div
-                key={card.key}
-                className="group relative flex flex-col justify-between rounded-xl border bg-card p-5 shadow-sm transition-all hover:border-primary/40 hover:shadow-md"
-              >
-                <div>
-                  <div className="mb-3 flex items-start justify-between">
-                    <div className="flex items-center gap-2.5">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                        <Icon className="h-5 w-5" />
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-semibold tracking-tight">{card.title}</h3>
-                        <p className="text-[11px] text-muted-foreground">{card.subtitle}</p>
-                      </div>
-                    </div>
-                    <span className="rounded-full bg-accent px-2.5 py-0.5 font-mono text-[11px] font-semibold text-primary">
-                      {percent}%
-                    </span>
-                  </div>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+            <PlanField label="Meta comercial (R$)" icon={DollarSign} value={metaComercial} onChange={setMetaComercial} />
+            <PlanField label="Novos clientes desejados" icon={Users} value={novosClientes} onChange={setNovosClientes} />
+            <PlanField label="Serviços a entregar" icon={Briefcase} value={servicos} onChange={setServicos} />
+            <PlanField label="Taxa prospecção → reunião (%)" icon={Target} value={taxaProspReuniao} onChange={setTaxaProspReuniao} suffix="%" />
+            <PlanField label="Taxa reunião → fechamento (%)" icon={CheckCircle2} value={taxaReuniaoFech} onChange={setTaxaReuniaoFech} suffix="%" />
+            <div className="rounded-lg border border-dashed bg-surface/40 p-3">
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Ticket médio planejado</div>
+              <div className="mt-1.5 font-mono text-lg font-semibold text-primary">{formatBRL(ticketPlanejado)}</div>
+            </div>
+          </div>
 
-                  <div className="mt-4 grid grid-cols-2 gap-3 rounded-lg border bg-surface/50 p-3">
-                    <div>
-                      <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                        Meta Editável
-                      </label>
-                      <div className="flex items-center gap-1">
-                        {card.isCurrency && <span className="text-xs font-semibold text-muted-foreground">R$</span>}
-                        <input
-                          type="number"
-                          min="0"
-                          value={card.target}
-                          onChange={(e) => updateMetas({ [card.key]: Math.max(0, Number(e.target.value) || 0) })}
-                          className="w-full rounded-md border bg-background px-2.5 py-1 font-mono text-sm font-semibold focus:border-primary/60 focus:outline-none"
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                        Progresso Real
-                      </span>
-                      <div className="py-1 font-mono text-sm font-bold text-primary">
-                        {card.isCurrency ? formatBRL(card.current) : `${card.current} ${card.unit}`}
-                      </div>
-                    </div>
-                  </div>
-                </div>
+          <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+            <div className="rounded-lg border border-primary/30 bg-primary/5 p-3.5">
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Reuniões necessárias no mês</div>
+              <div className="mt-1 font-mono text-2xl font-bold text-primary">{reunioesNecessarias}</div>
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                {novosClientes} clientes ÷ {taxaReuniaoFech}% de fechamento
+              </p>
+            </div>
+            <div className="rounded-lg border border-primary/30 bg-primary/5 p-3.5">
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Prospecções necessárias no mês</div>
+              <div className="mt-1 font-mono text-2xl font-bold text-primary">{prospeccoesNecessarias}</div>
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                {reunioesNecessarias} reuniões ÷ {taxaProspReuniao}% de agendamento
+              </p>
+            </div>
+          </div>
+        </div>
 
-                <div className="mt-4">
-                  <div className="mb-1 flex justify-between text-[10px] text-muted-foreground">
-                    <span>Atingimento da Meta</span>
-                    <span className="font-mono">{card.current} / {card.isCurrency ? formatBRL(card.target) : card.target}</span>
-                  </div>
-                  <div className="h-2 w-full overflow-hidden rounded-full bg-accent">
-                    <div
-                      className="h-full rounded-full bg-gradient-to-r from-primary to-brand-deep transition-all duration-500"
-                      style={{ width: `${Math.min(percent, 100)}%` }}
-                    />
-                  </div>
-                </div>
+        {/* Metas de qualidade */}
+        <div className="rounded-xl border bg-card p-4 shadow-sm">
+          <div className="mb-3">
+            <h3 className="text-sm font-semibold tracking-tight">Metas de qualidade</h3>
+            <p className="text-[11px] text-muted-foreground">Compromissos operacionais do mês — texto editável</p>
+          </div>
+          <div className="overflow-hidden rounded-lg border">
+            <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)_auto] gap-2 border-b bg-surface/60 px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <span>Item</span>
+              <span>Compromisso</span>
+              <span />
+            </div>
+            {qualidade.map((q) => (
+              <div key={q.id} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)_auto] items-center gap-2 border-b px-3 py-2 last:border-b-0">
+                <input
+                  value={q.titulo}
+                  onChange={(e) => updateQualidade(q.id, { titulo: e.target.value })}
+                  className="w-full rounded-md border bg-background px-2 py-1 text-[12px] focus:border-primary/60 focus:outline-none"
+                />
+                <input
+                  value={q.descricao}
+                  onChange={(e) => updateQualidade(q.id, { descricao: e.target.value })}
+                  className="w-full rounded-md border bg-background px-2 py-1 text-[12px] focus:border-primary/60 focus:outline-none"
+                />
+                <button
+                  onClick={() => setQualidade((prev) => prev.filter((x) => x.id !== q.id))}
+                  className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-destructive"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
               </div>
-            );
-          })}
+            ))}
+          </div>
+          <button
+            onClick={() =>
+              setQualidade((prev) => [...prev, { id: `q-${Date.now()}`, titulo: "Novo item", descricao: "Descreva o compromisso" }])
+            }
+            className="mt-2 inline-flex items-center gap-1 rounded-md border border-dashed px-2.5 py-1 text-[11px] text-muted-foreground hover:border-primary/50 hover:text-primary"
+          >
+            <Plus className="h-3 w-3" /> Adicionar item
+          </button>
+        </div>
+
+        {/* Salvar */}
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-surface/40 p-3.5">
+          <p className="text-[11px] text-muted-foreground">
+            Ao salvar, o mês é registrado no histórico (o anterior é preservado) e passa a alimentar as projeções do pipeline.
+          </p>
+          <button
+            onClick={salvar}
+            className="inline-flex h-9 items-center gap-1.5 rounded-md bg-primary px-4 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
+          >
+            <CheckCircle2 className="h-4 w-4" /> Salvar mês
+          </button>
+        </div>
+
+        {salvoMsg && (
+          <div className="rounded-lg border border-success/40 bg-success/10 px-3 py-2 text-[12px] text-success">{salvoMsg}</div>
+        )}
+
+        {/* Histórico */}
+        <div className="rounded-xl border bg-card p-4 shadow-sm">
+          <h3 className="mb-3 text-sm font-semibold tracking-tight">Histórico de planejamentos</h3>
+          {pontosControle.length === 0 ? (
+            <p className="text-[12px] text-muted-foreground">Nenhum mês registrado ainda.</p>
+          ) : (
+            <div className="space-y-2">
+              {[...pontosControle]
+                .sort((a, b) => b.criadoEm.localeCompare(a.criadoEm))
+                .map((p) => {
+                  const reunioes = p.taxaReuniaoFechamento > 0 ? Math.ceil(p.novosClientesDesejados / (p.taxaReuniaoFechamento / 100)) : 0;
+                  const prosp = p.taxaProspeccaoReuniao > 0 ? Math.ceil(reunioes / (p.taxaProspeccaoReuniao / 100)) : 0;
+                  return (
+                    <div key={p.id} className="rounded-lg border bg-surface/40 px-3 py-2.5">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="text-[12px] font-semibold">{labelMes(p.mes)}</span>
+                        <span className="font-mono text-[11px] text-muted-foreground">
+                          registrado em {new Date(p.criadoEm).toLocaleDateString("pt-BR")}
+                        </span>
+                      </div>
+                      <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
+                        <span>Meta: <span className="font-mono text-primary">{formatBRL(p.metaComercial)}</span></span>
+                        <span>Novos clientes: <span className="font-mono">{p.novosClientesDesejados}</span></span>
+                        <span>Serviços: <span className="font-mono">{p.servicosEntregar}</span></span>
+                        <span>Reuniões: <span className="font-mono">{reunioes}</span></span>
+                        <span>Prospecções: <span className="font-mono">{prosp}</span></span>
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
 }
+
+function PlanField({
+  label,
+  icon: Icon,
+  value,
+  onChange,
+  suffix,
+}: {
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  value: number;
+  onChange: (v: number) => void;
+  suffix?: string;
+}) {
+  return (
+    <div className="rounded-lg border bg-surface/50 p-3">
+      <label className="mb-1.5 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+        <Icon className="h-3 w-3" /> {label}
+      </label>
+      <div className="flex items-center gap-1">
+        <input
+          type="number"
+          min="0"
+          value={value}
+          onChange={(e) => onChange(Math.max(0, Number(e.target.value) || 0))}
+          className="w-full rounded-md border bg-background px-2.5 py-1 font-mono text-sm font-semibold focus:border-primary/60 focus:outline-none"
+        />
+        {suffix && <span className="text-xs font-semibold text-muted-foreground">{suffix}</span>}
+      </div>
+    </div>
+  );
+}
+
+// ─── Projeções do mês (derivadas do Ponto de Controle salvo) ────────────────
+function ProjecoesPipeline() {
+  const { pontoControleAtual, leads } = useDataStore();
+
+  const dados = useMemo(() => {
+    if (!pontoControleAtual) return null;
+    const pc = pontoControleAtual;
+    const hoje = new Date();
+    const mesISO = hoje.toISOString().slice(0, 7);
+    const diasNoMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).getDate();
+    const diaAtual = hoje.getDate();
+    const diasRestantes = Math.max(diasNoMes - diaAtual, 0);
+
+    const fechadosMes = leads.filter((l) => l.stage === "fechado" && l.lastActivity.slice(0, 7) === mesISO);
+    const receitaFechada = fechadosMes.reduce((s, l) => s + l.value, 0);
+    const projecao = diaAtual > 0 ? (receitaFechada / diaAtual) * diasNoMes : 0;
+
+    const reunioesNecessarias = pc.taxaReuniaoFechamento > 0 ? Math.ceil(pc.novosClientesDesejados / (pc.taxaReuniaoFechamento / 100)) : 0;
+    const prospeccoesNecessarias = pc.taxaProspeccaoReuniao > 0 ? Math.ceil(reunioesNecessarias / (pc.taxaProspeccaoReuniao / 100)) : 0;
+    const prospeccoesFeitas = leads.filter((l) => l.createdAt.slice(0, 7) === mesISO).length;
+    const faltamLeads = Math.max(prospeccoesNecessarias - prospeccoesFeitas, 0);
+    const porDia = diasRestantes > 0 ? Math.ceil(faltamLeads / diasRestantes) : faltamLeads;
+
+    return {
+      mes: pc.mes,
+      metaComercial: pc.metaComercial,
+      receitaFechada,
+      projecao,
+      diasRestantes,
+      faltamLeads,
+      porDia,
+      prospeccoesNecessarias,
+      prospeccoesFeitas,
+      reunioesNecessarias,
+    };
+  }, [pontoControleAtual, leads]);
+
+  if (!dados) return null;
+
+  return (
+    <div className="border-b bg-primary/5 px-4 py-2.5 md:px-6">
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-[11px]">
+        <span className="inline-flex items-center gap-1.5 font-semibold text-primary">
+          <Target className="h-3.5 w-3.5" /> Projeção · {labelMes(dados.mes)}
+        </span>
+        <span className="text-muted-foreground">
+          Faltam <strong className="font-mono text-foreground">{dados.faltamLeads}</strong> prospecções para bater a meta
+          {dados.diasRestantes > 0 && <> (~<span className="font-mono">{dados.porDia}</span>/dia em {dados.diasRestantes} dias)</>}
+        </span>
+        <span className="text-muted-foreground">
+          No ritmo atual você fecha <strong className="font-mono text-foreground">{formatBRL(dados.projecao)}</strong> de{" "}
+          <span className="font-mono">{formatBRL(dados.metaComercial)}</span>
+        </span>
+        <span className="text-muted-foreground">
+          Reuniões previstas: <span className="font-mono">{dados.reunioesNecessarias}</span> · Prospecções feitas:{" "}
+          <span className="font-mono">{dados.prospeccoesFeitas}/{dados.prospeccoesNecessarias}</span>
+        </span>
+      </div>
+    </div>
+  );
+}
+
 
 function Comercial() {
   const { leads, updateLeadStage, criarClienteDeVenda } = useDataStore();
