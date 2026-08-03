@@ -469,32 +469,46 @@ function DRE() {
             <FinIndicator label="Runway" value="18 meses" tone="success" />
           </div>
         </div>
-        {/* Lançamentos manuais recentes */}
+        {/* Histórico completo de lançamentos */}
         <div className="mt-4 rounded-lg border bg-card p-4">
-          <div className="mb-3 flex items-center justify-between">
-            <h3 className="text-sm font-semibold tracking-tight">Lançamentos recentes</h3>
-            <span className="text-[10px] uppercase tracking-widest text-muted-foreground">
-              Registrados manualmente
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h3 className="text-sm font-semibold tracking-tight">Histórico de lançamentos</h3>
+              <p className="text-[11px] text-muted-foreground">
+                Todas as entradas e saídas já registradas — mais recentes primeiro
+              </p>
+            </div>
+            <span className="rounded bg-surface px-2 py-0.5 font-mono text-[11px] text-muted-foreground">
+              {historico.length} lançamento{historico.length === 1 ? "" : "s"}
             </span>
           </div>
-          {expenses.length === 0 ? (
-            <p className="text-[12px] text-muted-foreground">Nenhum lançamento manual ainda.</p>
+          {historico.length === 0 ? (
+            <p className="text-[12px] text-muted-foreground">Nenhum lançamento registrado ainda.</p>
           ) : (
-            <div className="space-y-1.5">
-              {expenses.slice(0, 8).map((e) => (
+            <div className="max-h-[520px] space-y-1.5 overflow-y-auto pr-1">
+              {historico.map((e) => (
                 <div
                   key={e.id}
-                  className="flex items-center justify-between rounded-md border bg-surface/40 px-3 py-2 text-[12px]"
+                  className="flex items-center justify-between gap-3 rounded-md border bg-surface/40 px-3 py-2 text-[12px]"
                 >
                   <div className="min-w-0 flex-1">
-                    <div className="truncate font-medium">{e.description}</div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="truncate font-medium">{e.description}</span>
+                      {e.recurring && (
+                        <span className="inline-flex shrink-0 items-center gap-1 rounded bg-primary/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-primary">
+                          <Repeat className="h-2.5 w-2.5" /> Recorrente
+                        </span>
+                      )}
+                    </div>
                     <div className="text-[10px] text-muted-foreground">
-                      {e.category} {e.client ? `· ${e.client}` : ""} {e.date ? `· ${e.date}` : ""}
+                      {e.category} · {e.costCenter}
+                      {e.client ? ` · ${e.client}` : ""}
+                      {e.date ? ` · ${new Date(`${e.date}T00:00:00`).toLocaleDateString("pt-BR")}` : ""}
                     </div>
                   </div>
                   <span
                     className={cn(
-                      "font-mono",
+                      "shrink-0 font-mono",
                       e.type === "entrada" ? "text-success" : "text-destructive",
                     )}
                   >
@@ -505,6 +519,7 @@ function DRE() {
             </div>
           )}
         </div>
+
       </div>
     </AppShell>
   );
