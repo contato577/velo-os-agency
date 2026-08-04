@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import {
   User, Building2, Bell, Shield, Palette, Users, Zap, Plug, FileStack, ChevronRight, Check,
-  Sun, Moon, CalendarDays, X,
+  Sun, Moon,
 } from "lucide-react";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { serviceTemplates } from "@/lib/service-templates";
@@ -61,7 +61,6 @@ const groups: { title: string; items: Section[] }[] = [
 function Config() {
   const { theme, setTheme } = useTheme();
   const [rules, setRules] = useState(automationRules);
-  const [agendaToast, setAgendaToast] = useState<string | null>(null);
 
   const toggleRule = (id: string) =>
     setRules((prev) => prev.map((r) => (r.id === id ? { ...r, active: !r.active } : r)));
@@ -139,56 +138,6 @@ function Config() {
             })}
           </div>
         </div>
-
-        {/* Agenda — integração preparada */}
-        <div className="mt-6 rounded-xl border bg-card p-4">
-          <div className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/15">
-              <CalendarDays className="h-3.5 w-3.5 text-primary" />
-            </div>
-            <div>
-              <h3 className="text-sm font-semibold tracking-tight">Agenda</h3>
-              <p className="text-[11px] text-muted-foreground">
-                Sincronize reuniões e compromissos com sua agenda externa.
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
-            <div className="flex flex-col rounded-xl border bg-surface/30 p-4">
-              <div className="mb-3 flex items-center justify-between">
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-info/10">
-                  <CalendarDays className="h-4 w-4 text-info" />
-                </div>
-                <span className="flex items-center gap-1 rounded-full border border-destructive/20 bg-destructive/8 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-destructive/70">
-                  <span className="h-1.5 w-1.5 rounded-full bg-destructive/50" />
-                  Não conectado
-                </span>
-              </div>
-              <h4 className="text-[14px] font-semibold tracking-tight">Google Agenda</h4>
-              <p className="mt-1 flex-1 text-[12px] leading-relaxed text-muted-foreground">
-                Reuniões criadas no CRM aparecem automaticamente na sua agenda, com lembretes e link de conferência.
-              </p>
-              <div className="mt-3 grid grid-cols-2 gap-1.5">
-                {["Próximos eventos", "Reuniões do mês", "Convidados", "Última sincronização"].map((m) => (
-                  <div key={m} className="rounded-md border border-dashed bg-surface/40 px-2 py-1.5">
-                    <div className="text-[9px] uppercase tracking-wider text-muted-foreground/60">{m}</div>
-                    <div className="mt-0.5 font-mono text-[12px] text-muted-foreground/40">—</div>
-                  </div>
-                ))}
-              </div>
-              <button
-                onClick={() => setAgendaToast("Google Agenda")}
-                className="mt-3 inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-md border border-primary/40 bg-primary/10 text-xs font-medium text-primary hover:bg-primary/20"
-              >
-                <Plug className="h-3.5 w-3.5" /> Conectar Google Agenda
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {agendaToast && <IntegrationToast name={agendaToast} onClose={() => setAgendaToast(null)} />}
-
 
         {/* Templates Operacionais */}
         <div className="mt-6 rounded-xl border bg-card">
@@ -334,28 +283,5 @@ function Config() {
         </div>
       </div>
     </AppShell>
-  );
-}
-
-// Aviso de integração indisponível — mesmo padrão dos cards de Meta Ads/Google Ads
-function IntegrationToast({ name, onClose }: { name: string; onClose: () => void }) {
-  return (
-    <div
-      className="fixed bottom-6 right-6 z-50 flex items-start gap-3 rounded-xl border bg-card p-4 shadow-elegant animate-in fade-in slide-in-from-bottom-2 duration-200"
-      style={{ maxWidth: 320 }}
-    >
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-info/15">
-        <Plug className="h-4 w-4 text-info" />
-      </div>
-      <div className="flex-1">
-        <div className="text-[13px] font-semibold">Integração disponível em breve</div>
-        <p className="mt-0.5 text-[12px] text-muted-foreground">
-          A conexão com <strong>{name}</strong> requer backend com armazenamento seguro de tokens OAuth. Disponível quando o banco de dados for ativado.
-        </p>
-      </div>
-      <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
-        <X className="h-3.5 w-3.5" />
-      </button>
-    </div>
   );
 }

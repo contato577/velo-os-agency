@@ -14,6 +14,8 @@ import {
   Command,
   Brain,
   LogOut,
+  Target,
+
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { notifications } from "@/lib/mock-data";
@@ -26,7 +28,9 @@ const nav = [
   { to: "/comercial", label: "CRM", icon: Briefcase, badge: 18 },
   { to: "/clientes", label: "Clientes", icon: Users },
   { to: "/operacao", label: "Operação", icon: Layers, badge: 4 },
+  { to: "/ponto-controle", label: "Ponto de Controle", icon: Target },
   { to: "/dre", label: "DRE Inteligente", icon: BarChart3 },
+
   { to: "/central-ia", label: "Central de IA", icon: Brain, badge: "IA" },
   { to: "/configuracoes", label: "Configurações", icon: Settings },
 ] as const;

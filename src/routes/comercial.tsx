@@ -28,14 +28,12 @@ import {
   Flame,
   CheckCircle2,
   Target,
-  Users,
-  Briefcase,
-  DollarSign,
-  Columns,
 } from "lucide-react";
+
+
 import { AppShell } from "@/components/app-shell";
 import { stageOrder, stageLabels, formatBRL, type Lead, type LeadStage, type LeadPotential, type Client } from "@/lib/mock-data";
-import { useDataStore, qualidadePadrao, type QualidadeItem } from "@/lib/data-store";
+import { useDataStore } from "@/lib/data-store";
 import { useQuickActions, NewTaskButton } from "@/components/quick-actions";
 import { cn } from "@/lib/utils";
 
@@ -401,309 +399,64 @@ function VendaConfirmDialog({
   );
 }
 
-// ─── PONTO DE CONTROLE — Planejamento estratégico mensal ────────────────────
-function mesAtualISO() {
-  return new Date().toISOString().slice(0, 7);
-}
-
-function labelMes(mes: string) {
-  const [y, m] = mes.split("-");
-  const nomes = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
-  return `${nomes[Number(m) - 1] ?? m}/${y}`;
-}
-
-function PontoControleSection({ onClose }: { onClose: () => void }) {
-  const { pontosControle, pontoControleAtual, salvarPontoControle, updateMetas } = useDataStore();
-
-  const base = pontoControleAtual;
-  const [mes, setMes] = useState(mesAtualISO());
-  const [metaComercial, setMetaComercial] = useState(base?.metaComercial ?? 50000);
-  const [novosClientes, setNovosClientes] = useState(base?.novosClientesDesejados ?? 6);
-  const [servicos, setServicos] = useState(base?.servicosEntregar ?? 10);
-  const [taxaProspReuniao, setTaxaProspReuniao] = useState(base?.taxaProspeccaoReuniao ?? 20);
-  const [taxaReuniaoFech, setTaxaReuniaoFech] = useState(base?.taxaReuniaoFechamento ?? 30);
-  const [qualidade, setQualidade] = useState<QualidadeItem[]>(base?.qualidade ?? qualidadePadrao);
-  const [salvoMsg, setSalvoMsg] = useState<string | null>(null);
-
-  const reunioesNecessarias = taxaReuniaoFech > 0 ? Math.ceil(novosClientes / (taxaReuniaoFech / 100)) : 0;
-  const prospeccoesNecessarias = taxaProspReuniao > 0 ? Math.ceil(reunioesNecessarias / (taxaProspReuniao / 100)) : 0;
-  const ticketPlanejado = novosClientes > 0 ? metaComercial / novosClientes : 0;
-
-  const updateQualidade = (id: string, partial: Partial<QualidadeItem>) =>
-    setQualidade((prev) => prev.map((q) => (q.id === id ? { ...q, ...partial } : q)));
-
-  const salvar = () => {
-    salvarPontoControle({
-      mes,
-      metaComercial,
-      novosClientesDesejados: novosClientes,
-      servicosEntregar: servicos,
-      taxaProspeccaoReuniao: taxaProspReuniao,
-      taxaReuniaoFechamento: taxaReuniaoFech,
-      qualidade,
-    });
-    updateMetas({ metaComercial, novosClientesDesejados: novosClientes, servicosEntregar: servicos });
-    setSalvoMsg(`Planejamento de ${labelMes(mes)} registrado no histórico.`);
-    setTimeout(() => setSalvoMsg(null), 4000);
-  };
-
-  return (
-    <div className="flex-1 overflow-y-auto p-4 md:p-6">
-      <div className="mx-auto max-w-5xl space-y-5">
-        <div className="flex flex-wrap items-start justify-between gap-3 border-b pb-4">
-          <div>
-            <h2 className="text-xl font-bold tracking-tight">Ponto de Controle</h2>
-            <p className="max-w-xl text-xs text-muted-foreground">
-              Planejamento estratégico do mês — preenchido uma vez, na 1ª semana. Não é acompanhamento:
-              define as metas e taxas que o sistema usa para projetar o mês na aba Pipeline.
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <input
-              type="month"
-              value={mes}
-              onChange={(e) => setMes(e.target.value || mesAtualISO())}
-              className="h-8 rounded-md border bg-background px-2 font-mono text-xs focus:border-primary/60 focus:outline-none"
-            />
-            <button
-              onClick={onClose}
-              className="inline-flex h-8 items-center gap-1.5 rounded-md border bg-surface px-2.5 text-xs font-medium hover:bg-accent"
-            >
-              <Columns className="h-3.5 w-3.5" /> Voltar ao pipeline
-            </button>
-          </div>
-        </div>
-
-        {/* Planejamento comercial */}
-        <div className="rounded-xl border bg-card p-4 shadow-sm">
-          <div className="mb-3 flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
-              <Target className="h-4 w-4" />
-            </div>
-            <div>
-              <h3 className="text-sm font-semibold tracking-tight">Planejamento comercial</h3>
-              <p className="text-[11px] text-muted-foreground">Metas e taxas de conversão do mês</p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-            <PlanField label="Meta comercial (R$)" icon={DollarSign} value={metaComercial} onChange={setMetaComercial} />
-            <PlanField label="Novos clientes desejados" icon={Users} value={novosClientes} onChange={setNovosClientes} />
-            <PlanField label="Serviços a entregar" icon={Briefcase} value={servicos} onChange={setServicos} />
-            <PlanField label="Taxa prospecção → reunião (%)" icon={Target} value={taxaProspReuniao} onChange={setTaxaProspReuniao} suffix="%" />
-            <PlanField label="Taxa reunião → fechamento (%)" icon={CheckCircle2} value={taxaReuniaoFech} onChange={setTaxaReuniaoFech} suffix="%" />
-            <div className="rounded-lg border border-dashed bg-surface/40 p-3">
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Ticket médio planejado</div>
-              <div className="mt-1.5 font-mono text-lg font-semibold text-primary">{formatBRL(ticketPlanejado)}</div>
-            </div>
-          </div>
-
-          <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
-            <div className="rounded-lg border border-primary/30 bg-primary/5 p-3.5">
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Reuniões necessárias no mês</div>
-              <div className="mt-1 font-mono text-2xl font-bold text-primary">{reunioesNecessarias}</div>
-              <p className="mt-1 text-[11px] text-muted-foreground">
-                {novosClientes} clientes ÷ {taxaReuniaoFech}% de fechamento
-              </p>
-            </div>
-            <div className="rounded-lg border border-primary/30 bg-primary/5 p-3.5">
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Prospecções necessárias no mês</div>
-              <div className="mt-1 font-mono text-2xl font-bold text-primary">{prospeccoesNecessarias}</div>
-              <p className="mt-1 text-[11px] text-muted-foreground">
-                {reunioesNecessarias} reuniões ÷ {taxaProspReuniao}% de agendamento
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Metas de qualidade */}
-        <div className="rounded-xl border bg-card p-4 shadow-sm">
-          <div className="mb-3">
-            <h3 className="text-sm font-semibold tracking-tight">Metas de qualidade</h3>
-            <p className="text-[11px] text-muted-foreground">Compromissos operacionais do mês — texto editável</p>
-          </div>
-          <div className="overflow-hidden rounded-lg border">
-            <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)_auto] gap-2 border-b bg-surface/60 px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              <span>Item</span>
-              <span>Compromisso</span>
-              <span />
-            </div>
-            {qualidade.map((q) => (
-              <div key={q.id} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)_auto] items-center gap-2 border-b px-3 py-2 last:border-b-0">
-                <input
-                  value={q.titulo}
-                  onChange={(e) => updateQualidade(q.id, { titulo: e.target.value })}
-                  className="w-full rounded-md border bg-background px-2 py-1 text-[12px] focus:border-primary/60 focus:outline-none"
-                />
-                <input
-                  value={q.descricao}
-                  onChange={(e) => updateQualidade(q.id, { descricao: e.target.value })}
-                  className="w-full rounded-md border bg-background px-2 py-1 text-[12px] focus:border-primary/60 focus:outline-none"
-                />
-                <button
-                  onClick={() => setQualidade((prev) => prev.filter((x) => x.id !== q.id))}
-                  className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-destructive"
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            ))}
-          </div>
-          <button
-            onClick={() =>
-              setQualidade((prev) => [...prev, { id: `q-${Date.now()}`, titulo: "Novo item", descricao: "Descreva o compromisso" }])
-            }
-            className="mt-2 inline-flex items-center gap-1 rounded-md border border-dashed px-2.5 py-1 text-[11px] text-muted-foreground hover:border-primary/50 hover:text-primary"
-          >
-            <Plus className="h-3 w-3" /> Adicionar item
-          </button>
-        </div>
-
-        {/* Salvar */}
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-surface/40 p-3.5">
-          <p className="text-[11px] text-muted-foreground">
-            Ao salvar, o mês é registrado no histórico (o anterior é preservado) e passa a alimentar as projeções do pipeline.
-          </p>
-          <button
-            onClick={salvar}
-            className="inline-flex h-9 items-center gap-1.5 rounded-md bg-primary px-4 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
-          >
-            <CheckCircle2 className="h-4 w-4" /> Salvar mês
-          </button>
-        </div>
-
-        {salvoMsg && (
-          <div className="rounded-lg border border-success/40 bg-success/10 px-3 py-2 text-[12px] text-success">{salvoMsg}</div>
-        )}
-
-        {/* Histórico */}
-        <div className="rounded-xl border bg-card p-4 shadow-sm">
-          <h3 className="mb-3 text-sm font-semibold tracking-tight">Histórico de planejamentos</h3>
-          {pontosControle.length === 0 ? (
-            <p className="text-[12px] text-muted-foreground">Nenhum mês registrado ainda.</p>
-          ) : (
-            <div className="space-y-2">
-              {[...pontosControle]
-                .sort((a, b) => b.criadoEm.localeCompare(a.criadoEm))
-                .map((p) => {
-                  const reunioes = p.taxaReuniaoFechamento > 0 ? Math.ceil(p.novosClientesDesejados / (p.taxaReuniaoFechamento / 100)) : 0;
-                  const prosp = p.taxaProspeccaoReuniao > 0 ? Math.ceil(reunioes / (p.taxaProspeccaoReuniao / 100)) : 0;
-                  return (
-                    <div key={p.id} className="rounded-lg border bg-surface/40 px-3 py-2.5">
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <span className="text-[12px] font-semibold">{labelMes(p.mes)}</span>
-                        <span className="font-mono text-[11px] text-muted-foreground">
-                          registrado em {new Date(p.criadoEm).toLocaleDateString("pt-BR")}
-                        </span>
-                      </div>
-                      <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
-                        <span>Meta: <span className="font-mono text-primary">{formatBRL(p.metaComercial)}</span></span>
-                        <span>Novos clientes: <span className="font-mono">{p.novosClientesDesejados}</span></span>
-                        <span>Serviços: <span className="font-mono">{p.servicosEntregar}</span></span>
-                        <span>Reuniões: <span className="font-mono">{reunioes}</span></span>
-                        <span>Prospecções: <span className="font-mono">{prosp}</span></span>
-                      </div>
-                    </div>
-                  );
-                })}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function PlanField({
-  label,
-  icon: Icon,
-  value,
-  onChange,
-  suffix,
-}: {
-  label: string;
-  icon: React.ComponentType<{ className?: string }>;
-  value: number;
-  onChange: (v: number) => void;
-  suffix?: string;
-}) {
-  return (
-    <div className="rounded-lg border bg-surface/50 p-3">
-      <label className="mb-1.5 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-        <Icon className="h-3 w-3" /> {label}
-      </label>
-      <div className="flex items-center gap-1">
-        <input
-          type="number"
-          min="0"
-          value={value}
-          onChange={(e) => onChange(Math.max(0, Number(e.target.value) || 0))}
-          className="w-full rounded-md border bg-background px-2.5 py-1 font-mono text-sm font-semibold focus:border-primary/60 focus:outline-none"
-        />
-        {suffix && <span className="text-xs font-semibold text-muted-foreground">{suffix}</span>}
-      </div>
-    </div>
-  );
-}
-
-// ─── Projeções do mês (derivadas do Ponto de Controle salvo) ────────────────
 function ProjecoesPipeline() {
-  const { pontoControleAtual, leads } = useDataStore();
-
-  const dados = useMemo(() => {
-    if (!pontoControleAtual) return null;
-    const pc = pontoControleAtual;
-    const hoje = new Date();
-    const mesISO = hoje.toISOString().slice(0, 7);
-    const diasNoMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).getDate();
-    const diaAtual = hoje.getDate();
-    const diasRestantes = Math.max(diasNoMes - diaAtual, 0);
-
-    const fechadosMes = leads.filter((l) => l.stage === "fechado" && l.lastActivity.slice(0, 7) === mesISO);
-    const receitaFechada = fechadosMes.reduce((s, l) => s + l.value, 0);
-    const projecao = diaAtual > 0 ? (receitaFechada / diaAtual) * diasNoMes : 0;
-
-    const reunioesNecessarias = pc.taxaReuniaoFechamento > 0 ? Math.ceil(pc.novosClientesDesejados / (pc.taxaReuniaoFechamento / 100)) : 0;
-    const prospeccoesNecessarias = pc.taxaProspeccaoReuniao > 0 ? Math.ceil(reunioesNecessarias / (pc.taxaProspeccaoReuniao / 100)) : 0;
-    const prospeccoesFeitas = leads.filter((l) => l.createdAt.slice(0, 7) === mesISO).length;
-    const faltamLeads = Math.max(prospeccoesNecessarias - prospeccoesFeitas, 0);
-    const porDia = diasRestantes > 0 ? Math.ceil(faltamLeads / diasRestantes) : faltamLeads;
-
-    return {
-      mes: pc.mes,
-      metaComercial: pc.metaComercial,
-      receitaFechada,
-      projecao,
-      diasRestantes,
-      faltamLeads,
-      porDia,
-      prospeccoesNecessarias,
-      prospeccoesFeitas,
-      reunioesNecessarias,
-    };
-  }, [pontoControleAtual, leads]);
-
-  if (!dados) return null;
+  const { metasMensais, pontoControleAtual, leads } = useDataStore();
+  const vendasReal = useMemo(
+    () => leads.filter((l) => l.stage === "fechado").reduce((s, l) => s + l.value, 0),
+    [leads],
+  );
+  const meta = metasMensais.metaComercial;
+  const gap = Math.max(0, meta - vendasReal);
+  const pct = meta > 0 ? Math.min(Math.round((vendasReal / meta) * 100), 999) : 0;
+  const ticket = useMemo(() => {
+    const fechados = leads.filter((l) => l.stage === "fechado");
+    if (fechados.length === 0) return 0;
+    return fechados.reduce((s, l) => s + l.value, 0) / fechados.length;
+  }, [leads]);
+  const contratos = ticket > 0 ? Math.ceil(gap / ticket) : 0;
+  const leadsNecessarios = Math.ceil(contratos / 0.18);
 
   return (
-    <div className="border-b bg-primary/5 px-4 py-2.5 md:px-6">
-      <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-[11px]">
-        <span className="inline-flex items-center gap-1.5 font-semibold text-primary">
-          <Target className="h-3.5 w-3.5" /> Projeção · {labelMes(dados.mes)}
-        </span>
-        <span className="text-muted-foreground">
-          Faltam <strong className="font-mono text-foreground">{dados.faltamLeads}</strong> prospecções para bater a meta
-          {dados.diasRestantes > 0 && <> (~<span className="font-mono">{dados.porDia}</span>/dia em {dados.diasRestantes} dias)</>}
-        </span>
-        <span className="text-muted-foreground">
-          No ritmo atual você fecha <strong className="font-mono text-foreground">{formatBRL(dados.projecao)}</strong> de{" "}
-          <span className="font-mono">{formatBRL(dados.metaComercial)}</span>
-        </span>
-        <span className="text-muted-foreground">
-          Reuniões previstas: <span className="font-mono">{dados.reunioesNecessarias}</span> · Prospecções feitas:{" "}
-          <span className="font-mono">{dados.prospeccoesFeitas}/{dados.prospeccoesNecessarias}</span>
-        </span>
+    <div className="flex flex-wrap items-center gap-4 border-b bg-surface/30 px-4 py-3 md:px-6">
+      <div className="flex items-center gap-2">
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+          <Target className="h-4 w-4" />
+        </div>
+        <div className="leading-tight">
+          <div className="text-[11px] font-semibold">Meta do Ponto de Controle</div>
+          <div className="text-[10px] text-muted-foreground">
+            {pontoControleAtual
+              ? `Definida na reunião de ${pontoControleAtual.mes}`
+              : "Nenhum planejamento registrado este mês"}
+          </div>
+        </div>
       </div>
+      <div className="flex flex-wrap items-center gap-3 text-[11px]">
+        <div className="rounded-lg border bg-card px-3 py-1.5">
+          <span className="text-muted-foreground">Meta </span>
+          <span className="font-mono font-semibold">{formatBRL(meta)}</span>
+        </div>
+        <div className="rounded-lg border bg-card px-3 py-1.5">
+          <span className="text-muted-foreground">Fechado </span>
+          <span className="font-mono font-semibold text-primary">{formatBRL(vendasReal)}</span>
+          <span className="ml-1 text-muted-foreground">({pct}%)</span>
+        </div>
+        <div className="rounded-lg border bg-card px-3 py-1.5">
+          <span className="text-muted-foreground">Faltam </span>
+          <span className="font-mono font-semibold text-warning">{formatBRL(gap)}</span>
+        </div>
+        {gap > 0 && contratos > 0 && (
+          <div className="rounded-lg border border-primary/30 bg-primary/5 px-3 py-1.5 text-primary">
+            ≈ {contratos} contratos · {leadsNecessarios} leads necessários
+          </div>
+        )}
+      </div>
+      <Link
+        to="/ponto-controle"
+        className="ml-auto rounded-md border bg-surface px-2.5 py-1 text-[11px] font-medium hover:bg-accent"
+      >
+        Abrir Ponto de Controle →
+      </Link>
     </div>
   );
 }
@@ -712,7 +465,7 @@ function ProjecoesPipeline() {
 function Comercial() {
   const { leads, updateLeadStage, criarClienteDeVenda } = useDataStore();
   const { openDialog } = useQuickActions();
-  const [activeTab, setActiveTab] = useState<"kanban" | "ponto-controle">("kanban");
+  
   const [selected, setSelected] = useState<Lead | null>(null);
   const [query, setQuery] = useState("");
   const [filterOpen, setFilterOpen] = useState(false);
@@ -811,26 +564,7 @@ function Comercial() {
       <div className="flex h-[calc(100vh-3.5rem)] flex-col">
         {/* Toolbar */}
         <div className="flex flex-wrap items-center gap-3 border-b px-4 py-3 md:px-6">
-          <div className="flex items-center gap-2 border-r pr-3">
-            <span className="inline-flex items-center gap-1.5 rounded-md bg-surface px-2.5 py-1 text-xs font-semibold">
-              <Columns className="h-3.5 w-3.5 text-primary" /> Pipeline
-            </span>
-            <button
-              onClick={() => setActiveTab(activeTab === "ponto-controle" ? "kanban" : "ponto-controle")}
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition-all",
-                activeTab === "ponto-controle"
-                  ? "border-primary bg-primary/10 text-primary"
-                  : "border-dashed text-muted-foreground hover:border-primary/50 hover:text-primary",
-              )}
-            >
-              <Target className="h-3.5 w-3.5" /> Ponto de Controle · Planejamento do mês
-            </button>
-          </div>
 
-
-          {activeTab === "kanban" && (
-            <>
               <div className="hidden min-w-0 md:block">
                 <p className="text-xs text-muted-foreground">
                   {filteredLeads.length} de {leads.length} leads ·{" "}
@@ -900,49 +634,44 @@ function Comercial() {
                   )}
                 </div>
               </div>
-            </>
-          )}
         </div>
 
+        <ProjecoesPipeline />
+
         {/* Content View */}
-        {activeTab === "kanban" ? (
-          <>
-            <ProjecoesPipeline />
-            <DndContext
-              sensors={sensors}
-              onDragStart={handleDragStart}
-              onDragEnd={handleDragEnd}
-              onDragCancel={() => setActiveId(null)}
-            >
-              <div className="flex-1 overflow-x-auto overflow-y-hidden">
-                <div className="flex h-full min-w-max gap-3 p-4 md:p-6">
-                  {stageOrder.map((stage) => (
-                    <StageColumn
-                      key={stage}
-                      stage={stage}
-                      leads={filteredLeads.filter((l) => l.stage === stage)}
-                      onCardClick={setSelected}
-                      justMovedId={justMovedId}
-                      onAdd={(s) => openDialog("lead", s)}
-                    />
-                  ))}
-                </div>
-              </div>
-              <DragOverlay dropAnimation={{ duration: 200, easing: "cubic-bezier(0.18, 0.67, 0.6, 1.22)" }}>
-                {activeLead ? (
-                  <LeadCard
-                    lead={activeLead}
-                    onClick={() => {}}
-                    justMoved={false}
-                    isOverlay
+
+
+          <DndContext
+            sensors={sensors}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+            onDragCancel={() => setActiveId(null)}
+          >
+            <div className="flex-1 overflow-x-auto overflow-y-hidden">
+              <div className="flex h-full min-w-max gap-3 p-4 md:p-6">
+                {stageOrder.map((stage) => (
+                  <StageColumn
+                    key={stage}
+                    stage={stage}
+                    leads={filteredLeads.filter((l) => l.stage === stage)}
+                    onCardClick={setSelected}
+                    justMovedId={justMovedId}
+                    onAdd={(s) => openDialog("lead", s)}
                   />
-                ) : null}
-              </DragOverlay>
-            </DndContext>
-          </>
-        ) : (
-          <PontoControleSection onClose={() => setActiveTab("kanban")} />
-        )}
+                ))}
+              </div>
+            </div>
+            <DragOverlay dropAnimation={{ duration: 200, easing: "cubic-bezier(0.18, 0.67, 0.6, 1.22)" }}>
+              {activeLead ? (
+                <LeadCard
+                  lead={activeLead}
+                  onClick={() => {}}
+                  justMoved={false}
+                  isOverlay
+                />
+              ) : null}
+            </DragOverlay>
+        </DndContext>
 
 
         <div className="border-t bg-surface/30 px-4 py-2 text-[10px] text-muted-foreground md:px-6">

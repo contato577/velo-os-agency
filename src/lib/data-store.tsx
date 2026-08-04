@@ -22,33 +22,59 @@ import { gerarInsights, type Insight } from "./ai-engine";
 export interface MetasMensais {
   metaComercial: number;
   metaOperacional: number;
-  novosClientesDesejados: number;
-  servicosEntregar: number;
-}
-
-export interface QualidadeItem {
-  id: string;
-  titulo: string;
-  descricao: string;
 }
 
 export interface PontoControle {
   id: string;
-  mes: string; // "YYYY-MM"
+  mes: string; // YYYY-MM
+  ano: number;
   criadoEm: string;
+  /** Análise do mês anterior */
+  analiseAnterior: string;
+  funcionou: string;
+  naoFuncionou: string;
+  /** Planejamento do mês */
+  objetivos: string;
   metaComercial: number;
-  novosClientesDesejados: number;
-  servicosEntregar: number;
-  taxaProspeccaoReuniao: number; // %
-  taxaReuniaoFechamento: number; // %
-  qualidade: QualidadeItem[];
+  metaOperacional: number;
+  metaOperacionalDescricao: string;
+  prioridades: string;
+  proximosPassos: string;
 }
 
-export const qualidadePadrao: QualidadeItem[] = [
-  { id: "q-1", titulo: "Clientes ativos", descricao: "Manter 100% clientes na base" },
-  { id: "q-2", titulo: "Relatórios semanais", descricao: "Entregar 100% relatórios semanais" },
-  { id: "q-3", titulo: "Entregas de serviços", descricao: "Entregar 100% serviços no prazo" },
-];
+const PC_STORAGE_KEY = "veloce.pontos-controle.v1";
+
+export function mesAtualISO(d = new Date()) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+export function formatMesLabel(mes: string) {
+  const [y, m] = mes.split("-");
+  const nomes = [
+    "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+    "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
+  ];
+  return `${nomes[Number(m) - 1] ?? m} ${y}`;
+}
+
+function loadPontos(): PontoControle[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(PC_STORAGE_KEY);
+    return raw ? (JSON.parse(raw) as PontoControle[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function persistPontos(list: PontoControle[]) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(PC_STORAGE_KEY, JSON.stringify(list));
+  } catch {
+    /* ignore */
+  }
+}
 
 interface DataStoreContextValue {
   leads: Lead[];
@@ -60,8 +86,9 @@ interface DataStoreContextValue {
   metasMensais: MetasMensais;
   pontosControle: PontoControle[];
   pontoControleAtual: PontoControle | null;
-  salvarPontoControle: (dados: Omit<PontoControle, "id" | "criadoEm">) => PontoControle;
+  salvarPontoControle: (pc: Omit<PontoControle, "id" | "criadoEm" | "ano">) => PontoControle;
   updateMetas: (partial: Partial<MetasMensais>) => void;
+
   addLead: (partial: Omit<Lead, "id" | "createdAt" | "lastActivity"> & { stage?: LeadStage }) => Lead;
   updateLeadStage: (id: string, stage: LeadStage) => void;
   addTask: (partial: Omit<Task, "id">) => Task;
@@ -77,7 +104,6 @@ interface DataStoreContextValue {
   toggleChecklistItem: (projectId: string, itemId: string) => void;
 }
 
-
 const DataStoreContext = createContext<DataStoreContextValue | null>(null);
 
 export function DataStoreProvider({ children }: { children: ReactNode }) {
@@ -86,32 +112,46 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
   const [clients, setClients] = useState<Client[]>(seedClients);
   const [expenses, setExpenses] = useState<FinanceEntry[]>(seedExpenses);
   const [projects, setProjects] = useState<Project[]>(seedProjects);
-  const [metasMensais, setMetasMensais] = useState<MetasMensais>({
+  const [pontosControle, setPontosControle] = useState<PontoControle[]>(() => loadPontos());
+  const [metasFallback, setMetasFallback] = useState<MetasMensais>({
     metaComercial: 50000,
     metaOperacional: 5,
-    novosClientesDesejados: 6,
-    servicosEntregar: 10,
   });
 
-  const [pontosControle, setPontosControle] = useState<PontoControle[]>([]);
+  const mesAtual = mesAtualISO();
+  const pontoControleAtual = useMemo(
+    () => pontosControle.find((p) => p.mes === mesAtual) ?? null,
+    [pontosControle, mesAtual],
+  );
 
-  const pontoControleAtual = useMemo(() => {
-    if (pontosControle.length === 0) return null;
-    return [...pontosControle].sort((a, b) => b.mes.localeCompare(a.mes))[0];
-  }, [pontosControle]);
-
-  const salvarPontoControle: DataStoreContextValue["salvarPontoControle"] = (dados) => {
-    const registro: PontoControle = {
-      id: `pc-${Date.now()}`,
-      criadoEm: new Date().toISOString(),
-      ...dados,
-    };
-    setPontosControle((prev) => [registro, ...prev]);
-    return registro;
-  };
+  const metasMensais: MetasMensais = pontoControleAtual
+    ? {
+        metaComercial: pontoControleAtual.metaComercial,
+        metaOperacional: pontoControleAtual.metaOperacional,
+      }
+    : metasFallback;
 
   const updateMetas: DataStoreContextValue["updateMetas"] = (partial) => {
-    setMetasMensais((prev) => ({ ...prev, ...partial }));
+    setMetasFallback((prev) => ({ ...prev, ...partial }));
+  };
+
+  const salvarPontoControle: DataStoreContextValue["salvarPontoControle"] = (input) => {
+    const registro: PontoControle = {
+      ...input,
+      id: `pc-${input.mes}`,
+      ano: Number(input.mes.slice(0, 4)),
+      criadoEm: new Date().toISOString(),
+    };
+    setPontosControle((prev) => {
+      const existente = prev.find((p) => p.mes === input.mes);
+      const next = existente
+        ? prev.map((p) => (p.mes === input.mes ? { ...registro, criadoEm: p.criadoEm } : p))
+        : [registro, ...prev];
+      const sorted = [...next].sort((a, b) => b.mes.localeCompare(a.mes));
+      persistPontos(sorted);
+      return sorted;
+    });
+    return registro;
   };
 
 
@@ -481,8 +521,8 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
         pontosControle,
         pontoControleAtual,
         salvarPontoControle,
-
         updateMetas,
+
         addLead,
         updateLeadStage,
         addTask,
