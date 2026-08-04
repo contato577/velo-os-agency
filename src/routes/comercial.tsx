@@ -28,11 +28,7 @@ import {
   Flame,
   CheckCircle2,
   Target,
-  Users,
-  Briefcase,
-  DollarSign,
-  Columns,
-} from "lucide-react";
+
 import { AppShell } from "@/components/app-shell";
 import { stageOrder, stageLabels, formatBRL, type Lead, type LeadStage, type LeadPotential, type Client } from "@/lib/mock-data";
 import { useDataStore } from "@/lib/data-store";
@@ -401,162 +397,73 @@ function VendaConfirmDialog({
   );
 }
 
-function PontoDeControleView() {
-  const { metasMensais, updateMetas, leads, clients, projects } = useDataStore();
-
+function ProjecoesPipeline() {
+  const { metasMensais, pontoControleAtual, leads } = useDataStore();
   const vendasReal = useMemo(
     () => leads.filter((l) => l.stage === "fechado").reduce((s, l) => s + l.value, 0),
     [leads],
   );
-  const clientesAtivosReal = useMemo(
-    () => clients.filter((c) => c.status === "ativo").length,
-    [clients],
-  );
-  const novosClientesReal = useMemo(
-    () => clients.length,
-    [clients],
-  );
-  const servicosEntregarReal = useMemo(
-    () => projects.filter((p) => p.status === "entregue").length,
-    [projects],
-  );
-
-  const cards = [
-    {
-      key: "metaComercial" as const,
-      title: "Meta Comercial do Mês",
-      subtitle: "Faturamento em vendas fechadas",
-      icon: DollarSign,
-      isCurrency: true,
-      target: metasMensais.metaComercial,
-      current: vendasReal,
-      unit: "",
-    },
-    {
-      key: "metaOperacional" as const,
-      title: "Meta Operacional do Mês",
-      subtitle: "Clientes migrados de onboarding para ativo",
-      icon: Target,
-      isCurrency: false,
-      target: metasMensais.metaOperacional,
-      current: clientesAtivosReal,
-      unit: "clientes ativos",
-    },
-    {
-      key: "novosClientesDesejados" as const,
-      title: "Novos Clientes Desejados",
-      subtitle: "Quantidade de novos clientes no mês",
-      icon: Users,
-      isCurrency: false,
-      target: metasMensais.novosClientesDesejados,
-      current: novosClientesReal,
-      unit: "clientes criados",
-    },
-    {
-      key: "servicosEntregar" as const,
-      title: "Serviços a Entregar",
-      subtitle: "Quantidade de entregas de serviços/projetos",
-      icon: Briefcase,
-      isCurrency: false,
-      target: metasMensais.servicosEntregar,
-      current: servicosEntregarReal,
-      unit: "serviços entregues",
-    },
-  ];
+  const meta = metasMensais.metaComercial;
+  const gap = Math.max(0, meta - vendasReal);
+  const pct = meta > 0 ? Math.min(Math.round((vendasReal / meta) * 100), 999) : 0;
+  const ticket = useMemo(() => {
+    const fechados = leads.filter((l) => l.stage === "fechado");
+    if (fechados.length === 0) return 0;
+    return fechados.reduce((s, l) => s + l.value, 0) / fechados.length;
+  }, [leads]);
+  const contratos = ticket > 0 ? Math.ceil(gap / ticket) : 0;
+  const leadsNecessarios = Math.ceil(contratos / 0.18);
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 md:p-6">
-      <div className="mx-auto max-w-5xl space-y-6">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b pb-4">
-          <div>
-            <h2 className="text-xl font-bold tracking-tight">Ponto de Controle Comercial</h2>
-            <p className="text-xs text-muted-foreground">
-              Acompanhe e ajuste as metas do mês com indicadores em tempo real.
-            </p>
-          </div>
-          <div className="rounded-lg border bg-surface/60 px-3 py-1.5 font-mono text-xs text-muted-foreground">
-            Período: Mês Vigente
-          </div>
+    <div className="flex flex-wrap items-center gap-4 border-b bg-surface/30 px-4 py-3 md:px-6">
+      <div className="flex items-center gap-2">
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+          <Target className="h-4 w-4" />
         </div>
-
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          {cards.map((card) => {
-            const Icon = card.icon;
-            const percent = card.target > 0 ? Math.min(Math.round((card.current / card.target) * 100), 999) : 0;
-
-            return (
-              <div
-                key={card.key}
-                className="group relative flex flex-col justify-between rounded-xl border bg-card p-5 shadow-sm transition-all hover:border-primary/40 hover:shadow-md"
-              >
-                <div>
-                  <div className="mb-3 flex items-start justify-between">
-                    <div className="flex items-center gap-2.5">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                        <Icon className="h-5 w-5" />
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-semibold tracking-tight">{card.title}</h3>
-                        <p className="text-[11px] text-muted-foreground">{card.subtitle}</p>
-                      </div>
-                    </div>
-                    <span className="rounded-full bg-accent px-2.5 py-0.5 font-mono text-[11px] font-semibold text-primary">
-                      {percent}%
-                    </span>
-                  </div>
-
-                  <div className="mt-4 grid grid-cols-2 gap-3 rounded-lg border bg-surface/50 p-3">
-                    <div>
-                      <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                        Meta Editável
-                      </label>
-                      <div className="flex items-center gap-1">
-                        {card.isCurrency && <span className="text-xs font-semibold text-muted-foreground">R$</span>}
-                        <input
-                          type="number"
-                          min="0"
-                          value={card.target}
-                          onChange={(e) => updateMetas({ [card.key]: Math.max(0, Number(e.target.value) || 0) })}
-                          className="w-full rounded-md border bg-background px-2.5 py-1 font-mono text-sm font-semibold focus:border-primary/60 focus:outline-none"
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                        Progresso Real
-                      </span>
-                      <div className="py-1 font-mono text-sm font-bold text-primary">
-                        {card.isCurrency ? formatBRL(card.current) : `${card.current} ${card.unit}`}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-4">
-                  <div className="mb-1 flex justify-between text-[10px] text-muted-foreground">
-                    <span>Atingimento da Meta</span>
-                    <span className="font-mono">{card.current} / {card.isCurrency ? formatBRL(card.target) : card.target}</span>
-                  </div>
-                  <div className="h-2 w-full overflow-hidden rounded-full bg-accent">
-                    <div
-                      className="h-full rounded-full bg-gradient-to-r from-primary to-brand-deep transition-all duration-500"
-                      style={{ width: `${Math.min(percent, 100)}%` }}
-                    />
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+        <div className="leading-tight">
+          <div className="text-[11px] font-semibold">Meta do Ponto de Controle</div>
+          <div className="text-[10px] text-muted-foreground">
+            {pontoControleAtual
+              ? `Definida na reunião de ${pontoControleAtual.mes}`
+              : "Nenhum planejamento registrado este mês"}
+          </div>
         </div>
       </div>
+      <div className="flex flex-wrap items-center gap-3 text-[11px]">
+        <div className="rounded-lg border bg-card px-3 py-1.5">
+          <span className="text-muted-foreground">Meta </span>
+          <span className="font-mono font-semibold">{formatBRL(meta)}</span>
+        </div>
+        <div className="rounded-lg border bg-card px-3 py-1.5">
+          <span className="text-muted-foreground">Fechado </span>
+          <span className="font-mono font-semibold text-primary">{formatBRL(vendasReal)}</span>
+          <span className="ml-1 text-muted-foreground">({pct}%)</span>
+        </div>
+        <div className="rounded-lg border bg-card px-3 py-1.5">
+          <span className="text-muted-foreground">Faltam </span>
+          <span className="font-mono font-semibold text-warning">{formatBRL(gap)}</span>
+        </div>
+        {gap > 0 && contratos > 0 && (
+          <div className="rounded-lg border border-primary/30 bg-primary/5 px-3 py-1.5 text-primary">
+            ≈ {contratos} contratos · {leadsNecessarios} leads necessários
+          </div>
+        )}
+      </div>
+      <Link
+        to="/ponto-controle"
+        className="ml-auto rounded-md border bg-surface px-2.5 py-1 text-[11px] font-medium hover:bg-accent"
+      >
+        Abrir Ponto de Controle →
+      </Link>
     </div>
   );
 }
 
+
 function Comercial() {
   const { leads, updateLeadStage, criarClienteDeVenda } = useDataStore();
   const { openDialog } = useQuickActions();
-  const [activeTab, setActiveTab] = useState<"kanban" | "ponto-controle">("kanban");
+  
   const [selected, setSelected] = useState<Lead | null>(null);
   const [query, setQuery] = useState("");
   const [filterOpen, setFilterOpen] = useState(false);
@@ -655,35 +562,8 @@ function Comercial() {
       <div className="flex h-[calc(100vh-3.5rem)] flex-col">
         {/* Toolbar */}
         <div className="flex flex-wrap items-center gap-3 border-b px-4 py-3 md:px-6">
-          <div className="flex items-center rounded-lg border bg-surface p-0.5">
-            <button
-              onClick={() => setActiveTab("kanban")}
-              className={cn(
-                "flex items-center gap-1.5 rounded-md px-3 py-1 text-xs transition-all",
-                activeTab === "kanban"
-                  ? "bg-background font-semibold text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              <Columns className="h-3.5 w-3.5" />
-              Kanban
-            </button>
-            <button
-              onClick={() => setActiveTab("ponto-controle")}
-              className={cn(
-                "flex items-center gap-1.5 rounded-md px-3 py-1 text-xs transition-all",
-                activeTab === "ponto-controle"
-                  ? "bg-background font-semibold text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              <Target className="h-3.5 w-3.5 text-primary" />
-              Ponto de Controle
-            </button>
-          </div>
+          <>
 
-          {activeTab === "kanban" && (
-            <>
               <div className="hidden min-w-0 md:block">
                 <p className="text-xs text-muted-foreground">
                   {filteredLeads.length} de {leads.length} leads ·{" "}
@@ -753,12 +633,15 @@ function Comercial() {
                   )}
                 </div>
               </div>
-            </>
-          )}
+          </>
+
         </div>
 
+        <ProjecoesPipeline />
+
         {/* Content View */}
-        {activeTab === "kanban" ? (
+        <DndContext
+
           <DndContext
             sensors={sensors}
             onDragStart={handleDragStart}
@@ -789,10 +672,8 @@ function Comercial() {
                 />
               ) : null}
             </DragOverlay>
-          </DndContext>
-        ) : (
-          <PontoDeControleView />
-        )}
+        </DndContext>
+
 
         <div className="border-t bg-surface/30 px-4 py-2 text-[10px] text-muted-foreground md:px-6">
           Dados mantidos durante a sessão. Persistência real será ativada com o banco de dados.
