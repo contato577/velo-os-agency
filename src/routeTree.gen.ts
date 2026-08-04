@@ -17,6 +17,7 @@ import { Route as ComercialRouteImport } from './routes/comercial'
 import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
 import { Route as DreRouteImport } from './routes/dre'
 import { Route as OperacaoRouteImport } from './routes/operacao'
+import { Route as PontoControleRouteImport } from './routes/ponto-controle'
 import { Route as ClientesIndexRouteImport } from './routes/clientes.index'
 import { Route as ClientesClientIdRouteImport } from './routes/clientes.$clientId'
 
@@ -60,6 +61,11 @@ const OperacaoRoute = OperacaoRouteImport.update({
   path: '/operacao',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PontoControleRoute = PontoControleRouteImport.update({
+  id: '/ponto-controle',
+  path: '/ponto-controle',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ClientesIndexRoute = ClientesIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -80,6 +86,7 @@ export interface FileRoutesByFullPath {
   '/configuracoes': typeof ConfiguracoesRoute
   '/dre': typeof DreRoute
   '/operacao': typeof OperacaoRoute
+  '/ponto-controle': typeof PontoControleRoute
   '/clientes/$clientId': typeof ClientesClientIdRoute
   '/clientes/': typeof ClientesIndexRoute
 }
@@ -91,6 +98,7 @@ export interface FileRoutesByTo {
   '/configuracoes': typeof ConfiguracoesRoute
   '/dre': typeof DreRoute
   '/operacao': typeof OperacaoRoute
+  '/ponto-controle': typeof PontoControleRoute
   '/clientes/$clientId': typeof ClientesClientIdRoute
   '/clientes': typeof ClientesIndexRoute
 }
@@ -104,6 +112,7 @@ export interface FileRoutesById {
   '/configuracoes': typeof ConfiguracoesRoute
   '/dre': typeof DreRoute
   '/operacao': typeof OperacaoRoute
+  '/ponto-controle': typeof PontoControleRoute
   '/clientes/$clientId': typeof ClientesClientIdRoute
   '/clientes/': typeof ClientesIndexRoute
 }
@@ -118,6 +127,7 @@ export interface FileRouteTypes {
     | '/configuracoes'
     | '/dre'
     | '/operacao'
+    | '/ponto-controle'
     | '/clientes/$clientId'
     | '/clientes/'
   fileRoutesByTo: FileRoutesByTo
@@ -129,6 +139,7 @@ export interface FileRouteTypes {
     | '/configuracoes'
     | '/dre'
     | '/operacao'
+    | '/ponto-controle'
     | '/clientes/$clientId'
     | '/clientes'
   id:
@@ -141,6 +152,7 @@ export interface FileRouteTypes {
     | '/configuracoes'
     | '/dre'
     | '/operacao'
+    | '/ponto-controle'
     | '/clientes/$clientId'
     | '/clientes/'
   fileRoutesById: FileRoutesById
@@ -154,6 +166,7 @@ export interface RootRouteChildren {
   ConfiguracoesRoute: typeof ConfiguracoesRoute
   DreRoute: typeof DreRoute
   OperacaoRoute: typeof OperacaoRoute
+  PontoControleRoute: typeof PontoControleRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -214,6 +227,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OperacaoRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/ponto-controle': {
+      id: '/ponto-controle'
+      path: '/ponto-controle'
+      fullPath: '/ponto-controle'
+      preLoaderRoute: typeof PontoControleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/clientes/': {
       id: '/clientes/'
       path: '/'
@@ -254,6 +274,7 @@ const rootRouteChildren: RootRouteChildren = {
   ConfiguracoesRoute: ConfiguracoesRoute,
   DreRoute: DreRoute,
   OperacaoRoute: OperacaoRoute,
+  PontoControleRoute: PontoControleRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
