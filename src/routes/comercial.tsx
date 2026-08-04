@@ -28,6 +28,8 @@ import {
   Flame,
   CheckCircle2,
   Target,
+} from "lucide-react";
+
 
 import { AppShell } from "@/components/app-shell";
 import { stageOrder, stageLabels, formatBRL, type Lead, type LeadStage, type LeadPotential, type Client } from "@/lib/mock-data";
@@ -562,7 +564,6 @@ function Comercial() {
       <div className="flex h-[calc(100vh-3.5rem)] flex-col">
         {/* Toolbar */}
         <div className="flex flex-wrap items-center gap-3 border-b px-4 py-3 md:px-6">
-          <>
 
               <div className="hidden min-w-0 md:block">
                 <p className="text-xs text-muted-foreground">
@@ -633,14 +634,12 @@ function Comercial() {
                   )}
                 </div>
               </div>
-          </>
-
         </div>
 
         <ProjecoesPipeline />
 
         {/* Content View */}
-        <DndContext
+
 
           <DndContext
             sensors={sensors}
