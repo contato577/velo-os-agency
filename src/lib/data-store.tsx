@@ -112,16 +112,48 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
   const [clients, setClients] = useState<Client[]>(seedClients);
   const [expenses, setExpenses] = useState<FinanceEntry[]>(seedExpenses);
   const [projects, setProjects] = useState<Project[]>(seedProjects);
-  const [metasMensais, setMetasMensais] = useState<MetasMensais>({
+  const [pontosControle, setPontosControle] = useState<PontoControle[]>(() => loadPontos());
+  const [metasFallback, setMetasFallback] = useState<MetasMensais>({
     metaComercial: 50000,
     metaOperacional: 5,
-    novosClientesDesejados: 6,
-    servicosEntregar: 10,
   });
 
+  const mesAtual = mesAtualISO();
+  const pontoControleAtual = useMemo(
+    () => pontosControle.find((p) => p.mes === mesAtual) ?? null,
+    [pontosControle, mesAtual],
+  );
+
+  const metasMensais: MetasMensais = pontoControleAtual
+    ? {
+        metaComercial: pontoControleAtual.metaComercial,
+        metaOperacional: pontoControleAtual.metaOperacional,
+      }
+    : metasFallback;
+
   const updateMetas: DataStoreContextValue["updateMetas"] = (partial) => {
-    setMetasMensais((prev) => ({ ...prev, ...partial }));
+    setMetasFallback((prev) => ({ ...prev, ...partial }));
   };
+
+  const salvarPontoControle: DataStoreContextValue["salvarPontoControle"] = (input) => {
+    const registro: PontoControle = {
+      ...input,
+      id: `pc-${input.mes}`,
+      ano: Number(input.mes.slice(0, 4)),
+      criadoEm: new Date().toISOString(),
+    };
+    setPontosControle((prev) => {
+      const existente = prev.find((p) => p.mes === input.mes);
+      const next = existente
+        ? prev.map((p) => (p.mes === input.mes ? { ...registro, criadoEm: p.criadoEm } : p))
+        : [registro, ...prev];
+      const sorted = [...next].sort((a, b) => b.mes.localeCompare(a.mes));
+      persistPontos(sorted);
+      return sorted;
+    });
+    return registro;
+  };
+
 
   const insights = useMemo(
     () =>
@@ -486,7 +518,11 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
         projects,
         insights,
         metasMensais,
+        pontosControle,
+        pontoControleAtual,
+        salvarPontoControle,
         updateMetas,
+
         addLead,
         updateLeadStage,
         addTask,
