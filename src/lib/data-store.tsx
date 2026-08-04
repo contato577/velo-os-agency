@@ -22,8 +22,58 @@ import { gerarInsights, type Insight } from "./ai-engine";
 export interface MetasMensais {
   metaComercial: number;
   metaOperacional: number;
-  novosClientesDesejados: number;
-  servicosEntregar: number;
+}
+
+export interface PontoControle {
+  id: string;
+  mes: string; // YYYY-MM
+  ano: number;
+  criadoEm: string;
+  /** Análise do mês anterior */
+  analiseAnterior: string;
+  funcionou: string;
+  naoFuncionou: string;
+  /** Planejamento do mês */
+  objetivos: string;
+  metaComercial: number;
+  metaOperacional: number;
+  metaOperacionalDescricao: string;
+  prioridades: string;
+  proximosPassos: string;
+}
+
+const PC_STORAGE_KEY = "veloce.pontos-controle.v1";
+
+export function mesAtualISO(d = new Date()) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+export function formatMesLabel(mes: string) {
+  const [y, m] = mes.split("-");
+  const nomes = [
+    "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+    "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
+  ];
+  return `${nomes[Number(m) - 1] ?? m} ${y}`;
+}
+
+function loadPontos(): PontoControle[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(PC_STORAGE_KEY);
+    return raw ? (JSON.parse(raw) as PontoControle[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function persistPontos(list: PontoControle[]) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(PC_STORAGE_KEY, JSON.stringify(list));
+  } catch {
+    /* ignore */
+  }
 }
 
 interface DataStoreContextValue {
@@ -34,7 +84,11 @@ interface DataStoreContextValue {
   projects: Project[];
   insights: Insight[];
   metasMensais: MetasMensais;
+  pontosControle: PontoControle[];
+  pontoControleAtual: PontoControle | null;
+  salvarPontoControle: (pc: Omit<PontoControle, "id" | "criadoEm" | "ano">) => PontoControle;
   updateMetas: (partial: Partial<MetasMensais>) => void;
+
   addLead: (partial: Omit<Lead, "id" | "createdAt" | "lastActivity"> & { stage?: LeadStage }) => Lead;
   updateLeadStage: (id: string, stage: LeadStage) => void;
   addTask: (partial: Omit<Task, "id">) => Task;
