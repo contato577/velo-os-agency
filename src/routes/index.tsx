@@ -265,7 +265,7 @@ function MetaCard({ vendas }: { vendas: number }) {
             <h3 className="text-sm font-semibold tracking-tight">Meta do mês</h3>
           </div>
           <p className="mt-1 text-[11px] text-muted-foreground">
-            Julho 2026 · {DIAS_RESTANTES} dias restantes
+            {pontoControleAtual ? "Meta do Ponto de Controle" : "Meta padrão"} · {DIAS_RESTANTES} dias restantes
           </p>
         </div>
         <span
