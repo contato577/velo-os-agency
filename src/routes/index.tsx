@@ -249,6 +249,11 @@ function PulseCard({
 }
 
 function MetaCard({ vendas }: { vendas: number }) {
+  const { metasMensais, pontoControleAtual } = useDataStore();
+  const META = metasMensais.metaComercial;
+  const PCT = META > 0 ? Math.min(100, (RECEITA / META) * 100) : 0;
+  const NO_RITMO = PROJECAO >= META;
+
   return (
     <div className="rounded-xl border bg-card p-5 lg:col-span-2">
       <div className="flex items-start justify-between gap-3">
