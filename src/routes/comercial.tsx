@@ -414,7 +414,10 @@ function ProjecoesPipeline() {
     return fechados.reduce((s, l) => s + l.value, 0) / fechados.length;
   }, [leads]);
   const contratos = ticket > 0 ? Math.ceil(gap / ticket) : 0;
-  const leadsNecessarios = Math.ceil(contratos / 0.18);
+  const taxaReuniaoFech = pontoControleAtual?.taxaReuniaoFechamento || 30;
+  const taxaProspReuniao = pontoControleAtual?.taxaProspeccaoReuniao || 20;
+  const reunioesNecessarias = taxaReuniaoFech > 0 ? Math.ceil(contratos / (taxaReuniaoFech / 100)) : 0;
+  const leadsNecessarios = taxaProspReuniao > 0 ? Math.ceil(reunioesNecessarias / (taxaProspReuniao / 100)) : 0;
 
   return (
     <div className="flex flex-wrap items-center gap-4 border-b bg-surface/30 px-4 py-3 md:px-6">
@@ -465,7 +468,7 @@ function ProjecoesPipeline() {
 function Comercial() {
   const { leads, updateLeadStage, criarClienteDeVenda } = useDataStore();
   const { openDialog } = useQuickActions();
-  
+
   const [selected, setSelected] = useState<Lead | null>(null);
   const [query, setQuery] = useState("");
   const [filterOpen, setFilterOpen] = useState(false);
@@ -565,75 +568,75 @@ function Comercial() {
         {/* Toolbar */}
         <div className="flex flex-wrap items-center gap-3 border-b px-4 py-3 md:px-6">
 
-              <div className="hidden min-w-0 md:block">
-                <p className="text-xs text-muted-foreground">
-                  {filteredLeads.length} de {leads.length} leads ·{" "}
-                  <span className="font-mono text-primary">{formatBRL(totalPipeline)}</span> em aberto
-                </p>
-              </div>
-              <div className="ml-auto flex items-center gap-2">
-                <div className="relative">
-                  <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-                  <input
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Filtrar leads…"
-                    className="h-8 w-44 rounded-md border bg-surface pl-7 pr-2 text-xs focus:border-primary/60 focus:outline-none md:w-52"
-                  />
-                </div>
-                <div className="relative">
-                  <button
-                    onClick={() => setFilterOpen((v) => !v)}
-                    className={cn(
-                      "inline-flex h-8 items-center gap-1.5 rounded-md border px-2.5 text-xs font-medium hover:bg-accent",
-                      potFilter.size > 0 || ownerFilter ? "border-primary/50 bg-primary/10 text-primary" : "bg-surface",
-                    )}
-                  >
-                    <Filter className="h-3.5 w-3.5" /> Filtrar
-                    {potFilter.size + (ownerFilter ? 1 : 0) > 0 && (
-                      <span className="rounded bg-primary px-1 font-mono text-[10px] text-primary-foreground">
-                        {potFilter.size + (ownerFilter ? 1 : 0)}
-                      </span>
-                    )}
-                  </button>
-                  {filterOpen && (
-                    <>
-                      <div className="fixed inset-0 z-30" onClick={() => setFilterOpen(false)} />
-                      <div className="absolute right-0 top-9 z-40 w-64 rounded-lg border bg-popover p-3 shadow-elegant">
-                        <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Potencial</div>
-                        <div className="mb-3 flex flex-col gap-1">
-                          {(["alto", "medio", "baixo"] as LeadPotential[]).map((p) => (
-                            <label key={p} className="flex items-center gap-2 text-[12px] capitalize">
-                              <input type="checkbox" checked={potFilter.has(p)} onChange={() => togglePot(p)} className="h-3 w-3" />
-                              {potencialStyles[p].label}
-                            </label>
-                          ))}
-                        </div>
-                        <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Responsável</div>
-                        <select
-                          value={ownerFilter}
-                          onChange={(e) => setOwnerFilter(e.target.value)}
-                          className="w-full rounded-md border bg-background px-2 py-1 text-[12px]"
-                        >
-                          <option value="">Todos</option>
-                          {owners.map((o) => (
-                            <option key={o} value={o}>{o}</option>
-                          ))}
-                        </select>
-                        <button
-                          onClick={() => {
-                            setPotFilter(new Set());
-                            setOwnerFilter("");
-                          }}
-                          className="mt-3 w-full rounded-md border bg-surface py-1 text-[11px] text-muted-foreground hover:bg-accent"
-                        >
-                          Limpar filtros
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </div>
-              </div>
+          <div className="hidden min-w-0 md:block">
+            <p className="text-xs text-muted-foreground">
+              {filteredLeads.length} de {leads.length} leads ·{" "}
+              <span className="font-mono text-primary">{formatBRL(totalPipeline)}</span> em aberto
+            </p>
+          </div>
+          <div className="ml-auto flex items-center gap-2">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Filtrar leads…"
+                className="h-8 w-44 rounded-md border bg-surface pl-7 pr-2 text-xs focus:border-primary/60 focus:outline-none md:w-52"
+              />
+            </div>
+            <div className="relative">
+              <button
+                onClick={() => setFilterOpen((v) => !v)}
+                className={cn(
+                  "inline-flex h-8 items-center gap-1.5 rounded-md border px-2.5 text-xs font-medium hover:bg-accent",
+                  potFilter.size > 0 || ownerFilter ? "border-primary/50 bg-primary/10 text-primary" : "bg-surface",
+                )}
+              >
+                <Filter className="h-3.5 w-3.5" /> Filtrar
+                {potFilter.size + (ownerFilter ? 1 : 0) > 0 && (
+                  <span className="rounded bg-primary px-1 font-mono text-[10px] text-primary-foreground">
+                    {potFilter.size + (ownerFilter ? 1 : 0)}
+                  </span>
+                )}
+              </button>
+              {filterOpen && (
+                <>
+                  <div className="fixed inset-0 z-30" onClick={() => setFilterOpen(false)} />
+                  <div className="absolute right-0 top-9 z-40 w-64 rounded-lg border bg-popover p-3 shadow-elegant">
+                    <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Potencial</div>
+                    <div className="mb-3 flex flex-col gap-1">
+                      {(["alto", "medio", "baixo"] as LeadPotential[]).map((p) => (
+                        <label key={p} className="flex items-center gap-2 text-[12px] capitalize">
+                          <input type="checkbox" checked={potFilter.has(p)} onChange={() => togglePot(p)} className="h-3 w-3" />
+                          {potencialStyles[p].label}
+                        </label>
+                      ))}
+                    </div>
+                    <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Responsável</div>
+                    <select
+                      value={ownerFilter}
+                      onChange={(e) => setOwnerFilter(e.target.value)}
+                      className="w-full rounded-md border bg-background px-2 py-1 text-[12px]"
+                    >
+                      <option value="">Todos</option>
+                      {owners.map((o) => (
+                        <option key={o} value={o}>{o}</option>
+                      ))}
+                    </select>
+                    <button
+                      onClick={() => {
+                        setPotFilter(new Set());
+                        setOwnerFilter("");
+                      }}
+                      className="mt-3 w-full rounded-md border bg-surface py-1 text-[11px] text-muted-foreground hover:bg-accent"
+                    >
+                      Limpar filtros
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
         </div>
 
         <ProjecoesPipeline />
@@ -641,36 +644,36 @@ function Comercial() {
         {/* Content View */}
 
 
-          <DndContext
-            sensors={sensors}
-            onDragStart={handleDragStart}
-            onDragEnd={handleDragEnd}
-            onDragCancel={() => setActiveId(null)}
-          >
-            <div className="flex-1 overflow-x-auto overflow-y-hidden">
-              <div className="flex h-full min-w-max gap-3 p-4 md:p-6">
-                {stageOrder.map((stage) => (
-                  <StageColumn
-                    key={stage}
-                    stage={stage}
-                    leads={filteredLeads.filter((l) => l.stage === stage)}
-                    onCardClick={setSelected}
-                    justMovedId={justMovedId}
-                    onAdd={(s) => openDialog("lead", s)}
-                  />
-                ))}
-              </div>
-            </div>
-            <DragOverlay dropAnimation={{ duration: 200, easing: "cubic-bezier(0.18, 0.67, 0.6, 1.22)" }}>
-              {activeLead ? (
-                <LeadCard
-                  lead={activeLead}
-                  onClick={() => {}}
-                  justMoved={false}
-                  isOverlay
+        <DndContext
+          sensors={sensors}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+          onDragCancel={() => setActiveId(null)}
+        >
+          <div className="flex-1 overflow-x-auto overflow-y-hidden">
+            <div className="flex h-full min-w-max gap-3 p-4 md:p-6">
+              {stageOrder.map((stage) => (
+                <StageColumn
+                  key={stage}
+                  stage={stage}
+                  leads={filteredLeads.filter((l) => l.stage === stage)}
+                  onCardClick={setSelected}
+                  justMovedId={justMovedId}
+                  onAdd={(s) => openDialog("lead", s)}
                 />
-              ) : null}
-            </DragOverlay>
+              ))}
+            </div>
+          </div>
+          <DragOverlay dropAnimation={{ duration: 200, easing: "cubic-bezier(0.18, 0.67, 0.6, 1.22)" }}>
+            {activeLead ? (
+              <LeadCard
+                lead={activeLead}
+                onClick={() => { }}
+                justMoved={false}
+                isOverlay
+              />
+            ) : null}
+          </DragOverlay>
         </DndContext>
 
 

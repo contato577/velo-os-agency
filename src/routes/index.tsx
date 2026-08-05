@@ -27,47 +27,46 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Comercial · Veloce" },
+      { title: "Dashboard · Veloce" },
       { name: "description", content: "Como está sua agência hoje: pulso da operação em tempo real." },
     ],
   }),
   component: Dashboard,
 });
 
-// ─── Contexto do dia (calculado dinamicamente) ────────────────────────────────
-const META = dashboardKPIs.metaMes;
-const RECEITA = dashboardKPIs.vendasMes;
-const DIA_ATUAL = 20;
-const DIAS_NO_MES = 31;
-const DIAS_RESTANTES = DIAS_NO_MES - DIA_ATUAL;
-const RITMO_DIA = RECEITA / DIA_ATUAL;
-const PROJECAO = Math.round(RITMO_DIA * DIAS_NO_MES);
-const GAP = Math.max(0, META - RECEITA);
-const PCT = Math.min(100, (RECEITA / META) * 100);
-const NO_RITMO = PROJECAO >= META;
-
-// Taxa de conversão média (mock realista)
-const TAXA_CONVERSAO = 0.18;
-const TICKET_MEDIO = dashboardKPIs.ticketMedio;
-const CONTRATOS_NECESSARIOS = Math.max(0, Math.ceil(GAP / TICKET_MEDIO));
-const PROPOSTAS_NECESSARIAS = Math.ceil(CONTRATOS_NECESSARIOS / 0.6);
-const REUNIOES_NECESSARIAS = Math.ceil(PROPOSTAS_NECESSARIAS / 0.45);
-const PROSPECCOES_NECESSARIAS = Math.ceil(REUNIOES_NECESSARIAS / TAXA_CONVERSAO);
-
 type PulseTone = "primary" | "warning" | "info" | "destructive" | "success";
 
 function Dashboard() {
-  const { leads, tasks, clients, insights } = useDataStore();
+  const { leads, tasks, clients, insights, metasMensais, pontoControleAtual } = useDataStore();
   const leadsNovos = leads.filter((l) => l.stage === "novo").length;
   const leadsAguardando = leads.filter((l) => l.stage === "contato").length;
   const followupsPendentes = dashboardKPIs.followupsPendentes;
-  const hojeISO = new Date().toISOString().slice(0, 10);
+  const hoje = new Date();
+  const hojeISO = hoje.toISOString().slice(0, 10);
+  const diaAtual = hoje.getDate();
+  const diasNoMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).getDate();
   const reunioesHoje = agendaEvents.filter((e) => e.date === hojeISO && e.type === "reuniao").length;
   const tarefasAtrasadas = tasks.filter(
     (t) => t.status !== "concluida" && new Date(t.dueDate) < new Date(hojeISO),
   ).length;
-  const cobrancasPendentes = clients.filter((c) => c.status === "ativo" && c.paymentDay <= DIA_ATUAL).length;
-  const vendasMes = leads.filter((l) => l.stage === "fechado").length;
+  const cobrancasPendentes = clients.filter((c) => c.status === "ativo" && c.paymentDay <= diaAtual).length;
+
+  const fechados = leads.filter((l) => l.stage === "fechado");
+  const vendasMes = fechados.length;
+  const receita = fechados.reduce((s, l) => s + l.value, 0);
+  const meta = metasMensais.metaComercial;
+  const diasRestantes = Math.max(0, diasNoMes - diaAtual);
+  const ritmoDia = diaAtual > 0 ? receita / diaAtual : 0;
+  const projecao = Math.round(ritmoDia * diasNoMes);
+  const pct = meta > 0 ? Math.min(100, (receita / meta) * 100) : 0;
+  const noRitmo = projecao >= meta;
+  const gap = Math.max(0, meta - receita);
+  const ticketMedio = fechados.length > 0 ? receita / fechados.length : 0;
+  const contratosNecessarios = ticketMedio > 0 ? Math.max(0, Math.ceil(gap / ticketMedio)) : 0;
+  const taxaReuniaoFech = pontoControleAtual?.taxaReuniaoFechamento || 30;
+  const taxaProspReuniao = pontoControleAtual?.taxaProspeccaoReuniao || 20;
+  const reunioesNecessarias = taxaReuniaoFech > 0 ? Math.ceil(contratosNecessarios / (taxaReuniaoFech / 100)) : 0;
+  const prospeccoesNecessarias = taxaProspReuniao > 0 ? Math.ceil(reunioesNecessarias / (taxaProspReuniao / 100)) : 0;
 
 
   const pulse: { label: string; value: number | string; icon: typeof Sparkles; tone: PulseTone; to: string }[] = [
@@ -97,7 +96,7 @@ function Dashboard() {
 
 
   return (
-    <AppShell title="Comercial" subtitle="Como está sua agência hoje">
+    <AppShell title="Dashboard" subtitle="Como está sua agência hoje">
       <div className="px-4 py-6 md:px-6">
         <PageHeader title="Bom dia, Rafael" subtitle="Aqui está o pulso da operação — atualizado agora.">
           <Link
@@ -117,8 +116,18 @@ function Dashboard() {
 
         {/* Meta + IA Executiva */}
         <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-5">
-          <MetaCard vendas={vendasMes} />
-          <IAExecutivaCard />
+          <MetaCard vendas={vendasMes} meta={meta} receita={receita} projecao={projecao} pct={pct} noRitmo={noRitmo} diasRestantes={diasRestantes} />
+          <IAExecutivaCard
+            meta={meta}
+            projecao={projecao}
+            noRitmo={noRitmo}
+            diasRestantes={diasRestantes}
+            taxaReuniaoFech={taxaReuniaoFech}
+            taxaProspReuniao={taxaProspReuniao}
+            prospeccoes={prospeccoesNecessarias}
+            reunioes={reunioesNecessarias}
+            fechamentos={contratosNecessarios}
+          />
         </div>
 
         {/* Próximas ações + Hoje */}
@@ -248,11 +257,24 @@ function PulseCard({
   );
 }
 
-function MetaCard({ vendas }: { vendas: number }) {
-  const { metasMensais, pontoControleAtual } = useDataStore();
-  const META = metasMensais.metaComercial;
-  const PCT = META > 0 ? Math.min(100, (RECEITA / META) * 100) : 0;
-  const NO_RITMO = PROJECAO >= META;
+function MetaCard({
+  vendas,
+  meta,
+  receita,
+  projecao,
+  pct,
+  noRitmo,
+  diasRestantes,
+}: {
+  vendas: number;
+  meta: number;
+  receita: number;
+  projecao: number;
+  pct: number;
+  noRitmo: boolean;
+  diasRestantes: number;
+}) {
+  const { pontoControleAtual } = useDataStore();
 
   return (
     <div className="rounded-xl border bg-card p-5 lg:col-span-2">
@@ -265,34 +287,34 @@ function MetaCard({ vendas }: { vendas: number }) {
             <h3 className="text-sm font-semibold tracking-tight">Meta do mês</h3>
           </div>
           <p className="mt-1 text-[11px] text-muted-foreground">
-            {pontoControleAtual ? "Meta do Ponto de Controle" : "Meta padrão"} · {DIAS_RESTANTES} dias restantes
+            {pontoControleAtual ? "Meta do Ponto de Controle" : "Meta padrão — defina no Ponto de Controle"} · {diasRestantes} dias restantes
           </p>
         </div>
         <span
           className={cn(
             "rounded-md border px-2 py-0.5 font-mono text-[11px]",
-            NO_RITMO
+            noRitmo
               ? "border-success/40 bg-success/10 text-success"
               : "border-warning/40 bg-warning/10 text-warning",
           )}
         >
-          {PCT.toFixed(0)}% da meta
+          {pct.toFixed(0)}% da meta
         </span>
       </div>
 
       <div className="mt-4 grid grid-cols-3 gap-2 text-[11px]">
         <div className="rounded-md bg-surface/60 px-2.5 py-2">
           <div className="text-muted-foreground">Meta</div>
-          <div className="font-mono text-[15px] font-semibold">{formatBRL(META)}</div>
+          <div className="font-mono text-[15px] font-semibold">{formatBRL(meta)}</div>
         </div>
         <div className="rounded-md bg-surface/60 px-2.5 py-2">
           <div className="text-muted-foreground">Receita atual</div>
-          <div className="font-mono text-[15px] font-semibold text-primary">{formatBRL(RECEITA)}</div>
+          <div className="font-mono text-[15px] font-semibold text-primary">{formatBRL(receita)}</div>
         </div>
         <div className="rounded-md bg-surface/60 px-2.5 py-2">
           <div className="text-muted-foreground">Receita prevista</div>
-          <div className={cn("font-mono text-[15px] font-semibold", NO_RITMO ? "text-success" : "text-warning")}>
-            {formatBRL(PROJECAO)}
+          <div className={cn("font-mono text-[15px] font-semibold", noRitmo ? "text-success" : "text-warning")}>
+            {formatBRL(projecao)}
           </div>
         </div>
       </div>
@@ -300,21 +322,38 @@ function MetaCard({ vendas }: { vendas: number }) {
       <div className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-surface">
         <div
           className="h-full rounded-full bg-gradient-to-r from-primary/70 to-primary transition-all"
-          style={{ width: `${PCT}%` }}
+          style={{ width: `${pct}%` }}
         />
       </div>
 
       <div className="mt-3 flex items-center justify-between text-[11px] text-muted-foreground">
         <span>{vendas} contratos fechados no mês</span>
-        <span className="inline-flex items-center gap-1 text-success">
-          <TrendingUp className="h-3 w-3" /> +12% MoM
-        </span>
       </div>
     </div>
   );
 }
 
-function IAExecutivaCard() {
+function IAExecutivaCard({
+  meta,
+  projecao,
+  noRitmo,
+  diasRestantes,
+  taxaReuniaoFech,
+  taxaProspReuniao,
+  prospeccoes,
+  reunioes,
+  fechamentos,
+}: {
+  meta: number;
+  projecao: number;
+  noRitmo: boolean;
+  diasRestantes: number;
+  taxaReuniaoFech: number;
+  taxaProspReuniao: number;
+  prospeccoes: number;
+  reunioes: number;
+  fechamentos: number;
+}) {
   return (
     <div className="relative overflow-hidden rounded-xl border bg-gradient-to-br from-primary/15 via-card to-card p-5 shadow-elegant lg:col-span-3">
       <div className="pointer-events-none absolute -right-16 -top-16 h-40 w-40 rounded-full bg-primary/20 blur-3xl" />
@@ -328,23 +367,22 @@ function IAExecutivaCard() {
               IA Executiva
             </div>
             <h3 className="mt-0.5 text-[15px] font-semibold leading-snug tracking-tight md:text-base">
-              Para bater {formatBRL(META)}, faltam {DIAS_RESTANTES} dias.
+              Para bater {formatBRL(meta)}, faltam {diasRestantes} dias.
               {" "}
-              <span className={cn(NO_RITMO ? "text-success" : "text-warning")}>
-                Ritmo atual projeta {formatBRL(PROJECAO)}.
+              <span className={cn(noRitmo ? "text-success" : "text-warning")}>
+                Ritmo atual projeta {formatBRL(projecao)}.
               </span>
             </h3>
             <p className="mt-2 text-[12.5px] leading-relaxed text-muted-foreground">
-              Com sua taxa de conversão média de {(TAXA_CONVERSAO * 100).toFixed(0)}%, recomendo executar hoje:
+              Com {taxaProspReuniao}% de agendamento e {taxaReuniaoFech}% de fechamento (do seu Ponto de Controle), recomendo executar hoje:
             </p>
           </div>
         </div>
 
-        <div className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-4">
-          <Recommendation label="Prospecções" value={PROSPECCOES_NECESSARIAS} />
-          <Recommendation label="Reuniões" value={REUNIOES_NECESSARIAS} />
-          <Recommendation label="Propostas" value={PROPOSTAS_NECESSARIAS} />
-          <Recommendation label="Fechamentos" value={CONTRATOS_NECESSARIOS} highlight />
+        <div className="mt-4 grid grid-cols-3 gap-2">
+          <Recommendation label="Prospecções" value={prospeccoes} />
+          <Recommendation label="Reuniões" value={reunioes} />
+          <Recommendation label="Fechamentos" value={fechamentos} highlight />
         </div>
 
         <div className="mt-4 flex flex-wrap items-center gap-2">

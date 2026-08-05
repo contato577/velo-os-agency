@@ -21,8 +21,19 @@ import { gerarInsights, type Insight } from "./ai-engine";
 
 export interface MetasMensais {
   metaComercial: number;
-  metaOperacional: number;
 }
+
+export interface QualidadeItem {
+  id: string;
+  titulo: string;
+  descricao: string;
+}
+
+export const qualidadePadrao: QualidadeItem[] = [
+  { id: "q-clientes-ativos", titulo: "Clientes ativos", descricao: "Manter 100% clientes na base" },
+  { id: "q-relatorios", titulo: "Relatórios semanais", descricao: "Entregar 100% relatórios semanais" },
+  { id: "q-entregas", titulo: "Entregas de serviços", descricao: "Entregar 100% serviços no prazo" },
+];
 
 export interface PontoControle {
   id: string;
@@ -36,8 +47,11 @@ export interface PontoControle {
   /** Planejamento do mês */
   objetivos: string;
   metaComercial: number;
-  metaOperacional: number;
-  metaOperacionalDescricao: string;
+  novosClientesDesejados: number;
+  servicosEntregar: number;
+  taxaProspeccaoReuniao: number;
+  taxaReuniaoFechamento: number;
+  qualidade: QualidadeItem[];
   prioridades: string;
   proximosPassos: string;
 }
@@ -115,7 +129,6 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
   const [pontosControle, setPontosControle] = useState<PontoControle[]>(() => loadPontos());
   const [metasFallback, setMetasFallback] = useState<MetasMensais>({
     metaComercial: 50000,
-    metaOperacional: 5,
   });
 
   const mesAtual = mesAtualISO();
@@ -125,10 +138,7 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
   );
 
   const metasMensais: MetasMensais = pontoControleAtual
-    ? {
-        metaComercial: pontoControleAtual.metaComercial,
-        metaOperacional: pontoControleAtual.metaOperacional,
-      }
+    ? { metaComercial: pontoControleAtual.metaComercial }
     : metasFallback;
 
   const updateMetas: DataStoreContextValue["updateMetas"] = (partial) => {
