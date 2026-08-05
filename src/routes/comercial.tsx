@@ -27,7 +27,7 @@ import {
   Building2,
   Flame,
   CheckCircle2,
-  Target,
+
 } from "lucide-react";
 
 
