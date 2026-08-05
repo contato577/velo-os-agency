@@ -176,9 +176,15 @@ export function gerarInsights(input: AIInputs): Insight[] {
     const saidas = doMes.filter((e) => e.type === "saida").reduce((s, e) => s + e.amount, 0);
     return { entradas, saidas, saldo: entradas - saidas, temDados: doMes.length > 0 };
   };
+  // Prioriza o mês ATUAL do calendário (evita que uma cobrança futura, com data mais distante,
+  // "sequestre" a análise pra um mês que ainda nem começou de verdade).
+  const hojeMesISO = new Date().toISOString().slice(0, 7);
   const mesesComDados = [...new Set(input.expenses.map((e) => e.date.slice(0, 7)))].sort();
-  const mesRef = mesesComDados[mesesComDados.length - 1];
-  const mesAnteriorRef = mesesComDados.length >= 2 ? mesesComDados[mesesComDados.length - 2] : null;
+  const mesRef = mesesComDados.includes(hojeMesISO)
+    ? hojeMesISO
+    : mesesComDados[mesesComDados.length - 1];
+  const mesRefIdx = mesRef ? mesesComDados.indexOf(mesRef) : -1;
+  const mesAnteriorRef = mesRefIdx > 0 ? mesesComDados[mesRefIdx - 1] : null;
 
   if (mesRef) {
     const atual = porMes(mesRef);

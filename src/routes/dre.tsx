@@ -22,11 +22,19 @@ function DRE() {
   const { insights: aiInsights, expenses, clients } = useDataStore();
   const [openNew, setOpenNew] = useState(false);
 
-  // Mês de referência = o mês mais recente que tem lançamentos reais (não mais fixo em julho).
-  // Assim que houver dado de agosto, o DRE passa a mostrar agosto sozinho, sem precisar mexer no código.
+  // Mês de referência = o mês ATUAL do calendário, se houver algum lançamento nele.
+  // (antes pegava sempre "o lançamento mais recente" — mas cobranças futuras, como a mensalidade
+  // gerada 30 dias à frente ao fechar uma venda, tinham data mais distante e "sequestravam" a tela
+  // inteira pro mês seguinte, fazendo lançamentos reais do mês atual sumirem dos cards.)
+  // Só cai pro mês mais recente com dado como alternativa quando o mês atual está totalmente vazio
+  // (ex: ambiente de demonstração, antes de qualquer lançamento real).
+  const hojeMesISO = new Date().toISOString().slice(0, 7);
   const mesesComDados = [...new Set(expenses.map((f) => f.date.slice(0, 7)))].sort();
-  const mesRef = mesesComDados[mesesComDados.length - 1] ?? new Date().toISOString().slice(0, 7);
-  const mesAnteriorRef = mesesComDados.length >= 2 ? mesesComDados[mesesComDados.length - 2] : null;
+  const mesRef = mesesComDados.includes(hojeMesISO)
+    ? hojeMesISO
+    : (mesesComDados[mesesComDados.length - 1] ?? hojeMesISO);
+  const mesRefIdx = mesesComDados.indexOf(mesRef);
+  const mesAnteriorRef = mesRefIdx > 0 ? mesesComDados[mesRefIdx - 1] : null;
   const referencia = expenses.filter((f) => f.date.startsWith(mesRef));
   const [refAno, refMesNum] = mesRef.split("-").map(Number);
   const nomeMesRef = new Date(refAno, refMesNum - 1, 1).toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
