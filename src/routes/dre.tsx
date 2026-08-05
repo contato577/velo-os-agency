@@ -31,24 +31,29 @@ function DRE() {
   const [refAno, refMesNum] = mesRef.split("-").map(Number);
   const nomeMesRef = new Date(refAno, refMesNum - 1, 1).toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
 
+  // Antes, "Consultorias" e "Serviços Extras" ficavam travados em R$ 0, mesmo com lançamento real —
+  // o filtro simplesmente não existia pra essas 2 categorias. Corrigido: agora somam de verdade.
   const receitas = {
     Mensalidades: referencia.filter((f) => f.category === "Mensalidade").reduce((s, f) => s + f.amount, 0),
     Projetos: referencia.filter((f) => f.category === "Projeto").reduce((s, f) => s + f.amount, 0),
-    Consultorias: 0,
-    "Serviços Extras": 0,
+    Consultorias: referencia.filter((f) => f.category === "Consultoria").reduce((s, f) => s + f.amount, 0),
+    "Serviços Extras": referencia.filter((f) => f.category === "Serviço Extra").reduce((s, f) => s + f.amount, 0),
   };
   const receitaBruta = Object.values(receitas).reduce((a, b) => a + b, 0);
   const receitaRecorrente = receitas.Mensalidades;
   const receitaExtra = receitaBruta - receitaRecorrente;
 
+  // Mesmo problema aqui: "Operacional", "Administrativo" e "Investimentos" eram opções reais
+  // no formulário de lançamento, mas travadas em R$ 0 no DRE — um lançamento nessas categorias
+  // simplesmente desaparecia dos totais. Corrigido: agora somam pelo costCenter real.
   const despesas = {
     Marketing: referencia.filter((f) => f.costCenter === "Marketing").reduce((s, f) => s + f.amount, 0),
     Ferramentas: referencia.filter((f) => f.costCenter === "Ferramentas").reduce((s, f) => s + f.amount, 0),
     Equipe: referencia.filter((f) => f.costCenter === "Equipe").reduce((s, f) => s + f.amount, 0),
     Impostos: referencia.filter((f) => f.costCenter === "Impostos").reduce((s, f) => s + f.amount, 0),
-    Operacional: 0,
-    Administrativo: 0,
-    Investimentos: 0,
+    Operacional: referencia.filter((f) => f.costCenter === "Operacional").reduce((s, f) => s + f.amount, 0),
+    Administrativo: referencia.filter((f) => f.costCenter === "Administrativo").reduce((s, f) => s + f.amount, 0),
+    Investimentos: referencia.filter((f) => f.costCenter === "Investimentos").reduce((s, f) => s + f.amount, 0),
   };
   const totalDespesas = Object.values(despesas).reduce((a, b) => a + b, 0);
   const impostos = despesas.Impostos;
@@ -123,12 +128,11 @@ function DRE() {
   }));
 
   // Insights de IA vindos da mesma engine central, filtrados por Financeiro
-  // ── Churn, CAC e LTV — calculados com dados reais ──────────────────────
-  const hojeISO = new Date().toISOString().slice(0, 10);
-  const mesAtual = hojeISO.slice(0, 7); // "YYYY-MM"
-
+  // ── Churn, CAC e LTV — calculados com dados reais, no MESMO mês de referência do resto da tela ──
+  // (antes usava "hoje" no calendário, que podia divergir do mês mostrado em Receitas/Despesas
+  // se algum lançamento fosse feito com data retroativa — agora tudo aponta pro mesmo mês: mesRef)
   const clientesAtivos = clients.filter((c) => c.status === "ativo" || c.status === "onboarding");
-  const clientesCanceladosMes = clients.filter((c) => c.canceledAt?.startsWith(mesAtual));
+  const clientesCanceladosMes = clients.filter((c) => c.canceledAt?.startsWith(mesRef));
   const baseInicioMes = clientesAtivos.length + clientesCanceladosMes.length;
   const churnMensal = baseInicioMes > 0 ? clientesCanceladosMes.length / baseInicioMes : null;
 
@@ -138,10 +142,8 @@ function DRE() {
       : 0;
   const ltv = churnMensal && churnMensal > 0 ? ticketMedio / churnMensal : null;
 
-  const gastoMarketingMes = expenses
-    .filter((e) => e.type === "saida" && e.costCenter === "Marketing" && e.date.startsWith(mesAtual))
-    .reduce((s, e) => s + e.amount, 0);
-  const novosClientesMes = clients.filter((c) => c.since.startsWith(mesAtual)).length;
+  const gastoMarketingMes = despesas.Marketing;
+  const novosClientesMes = clients.filter((c) => c.since.startsWith(mesRef)).length;
   const cac = novosClientesMes > 0 ? gastoMarketingMes / novosClientesMes : null;
 
   const ltvCac = ltv && cac ? ltv / cac : null;
