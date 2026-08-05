@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { ArrowUpRight, ArrowDownRight, TrendingUp, Brain, ArrowRight, Plus, X } from "lucide-react";
 import { AppShell, PageHeader } from "@/components/app-shell";
-import { financeEntries, formatBRL, monthlyRevenue } from "@/lib/mock-data";
+import { formatBRL, monthlyRevenue } from "@/lib/mock-data";
 import { useDataStore } from "@/lib/data-store";
 import { LancamentoForm } from "@/components/lancamento-form";
 import { cn } from "@/lib/utils";
@@ -21,10 +21,19 @@ export const Route = createFileRoute("/dre")({
 function DRE() {
   const { insights: aiInsights, expenses, clients } = useDataStore();
   const [openNew, setOpenNew] = useState(false);
-  const july = financeEntries.filter((f) => f.date.startsWith("2026-07"));
+
+  // Mês de referência = o mês mais recente que tem lançamentos reais (não mais fixo em julho).
+  // Assim que houver dado de agosto, o DRE passa a mostrar agosto sozinho, sem precisar mexer no código.
+  const mesesComDados = [...new Set(expenses.map((f) => f.date.slice(0, 7)))].sort();
+  const mesRef = mesesComDados[mesesComDados.length - 1] ?? new Date().toISOString().slice(0, 7);
+  const mesAnteriorRef = mesesComDados.length >= 2 ? mesesComDados[mesesComDados.length - 2] : null;
+  const referencia = expenses.filter((f) => f.date.startsWith(mesRef));
+  const [refAno, refMesNum] = mesRef.split("-").map(Number);
+  const nomeMesRef = new Date(refAno, refMesNum - 1, 1).toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+
   const receitas = {
-    Mensalidades: july.filter((f) => f.category === "Mensalidade").reduce((s, f) => s + f.amount, 0),
-    Projetos: july.filter((f) => f.category === "Projeto").reduce((s, f) => s + f.amount, 0),
+    Mensalidades: referencia.filter((f) => f.category === "Mensalidade").reduce((s, f) => s + f.amount, 0),
+    Projetos: referencia.filter((f) => f.category === "Projeto").reduce((s, f) => s + f.amount, 0),
     Consultorias: 0,
     "Serviços Extras": 0,
   };
@@ -33,10 +42,10 @@ function DRE() {
   const receitaExtra = receitaBruta - receitaRecorrente;
 
   const despesas = {
-    Marketing: july.filter((f) => f.costCenter === "Marketing").reduce((s, f) => s + f.amount, 0),
-    Ferramentas: july.filter((f) => f.costCenter === "Ferramentas").reduce((s, f) => s + f.amount, 0),
-    Equipe: july.filter((f) => f.costCenter === "Equipe").reduce((s, f) => s + f.amount, 0),
-    Impostos: july.filter((f) => f.costCenter === "Impostos").reduce((s, f) => s + f.amount, 0),
+    Marketing: referencia.filter((f) => f.costCenter === "Marketing").reduce((s, f) => s + f.amount, 0),
+    Ferramentas: referencia.filter((f) => f.costCenter === "Ferramentas").reduce((s, f) => s + f.amount, 0),
+    Equipe: referencia.filter((f) => f.costCenter === "Equipe").reduce((s, f) => s + f.amount, 0),
+    Impostos: referencia.filter((f) => f.costCenter === "Impostos").reduce((s, f) => s + f.amount, 0),
     Operacional: 0,
     Administrativo: 0,
     Investimentos: 0,
@@ -47,18 +56,22 @@ function DRE() {
   const custoOperacional = totalDespesas - impostos;
   const lucroBruto = receitaLiquida - despesas.Marketing - despesas.Ferramentas;
   const lucroLiquido = receitaLiquida - custoOperacional;
-  const margem = (lucroLiquido / receitaBruta) * 100;
+  const margem = receitaBruta > 0 ? (lucroLiquido / receitaBruta) * 100 : 0;
   const ebitda = lucroLiquido + impostos;
 
-  // Mês anterior (mockado a partir de monthlyRevenue)
-  const receitaAnterior = monthlyRevenue[monthlyRevenue.length - 2]?.receita ?? 48500;
-  const margemAnterior = 22.4;
-  const lucroAnterior = 12600;
+  // Mês anterior: só existe comparativo se houver dado real do mês anterior.
+  // Antes isso vinha de números fixos (48500, 22.4%, 12600) — agora ou é real, ou não aparece.
+  const anteriorEntries = mesAnteriorRef ? expenses.filter((f) => f.date.startsWith(mesAnteriorRef)) : [];
+  const temMesAnterior = anteriorEntries.length > 0;
+  const receitaAnterior = anteriorEntries.filter((f) => f.type === "entrada").reduce((s, f) => s + f.amount, 0);
+  const despesasAnterior = anteriorEntries.filter((f) => f.type === "saida").reduce((s, f) => s + f.amount, 0);
+  const lucroAnterior = receitaAnterior - despesasAnterior;
+  const margemAnterior = receitaAnterior > 0 ? (lucroAnterior / receitaAnterior) * 100 : 0;
 
-  // Comparativos
-  const deltaReceita = ((receitaBruta - receitaAnterior) / receitaAnterior) * 100;
-  const deltaMargem = margem - margemAnterior;
-  const deltaLucro = ((lucroLiquido - lucroAnterior) / lucroAnterior) * 100;
+  // Comparativos — undefined quando não há mês anterior real (o card some sozinho, sem inventar número)
+  const deltaReceita = temMesAnterior && receitaAnterior > 0 ? ((receitaBruta - receitaAnterior) / receitaAnterior) * 100 : undefined;
+  const deltaMargem = temMesAnterior && receitaAnterior > 0 ? margem - margemAnterior : undefined;
+  const deltaLucro = temMesAnterior && lucroAnterior !== 0 ? ((lucroLiquido - lucroAnterior) / lucroAnterior) * 100 : undefined;
 
   const indicators = [
     { label: "Receita Bruta", value: receitaBruta, tone: "primary" as const, delta: deltaReceita },
@@ -90,17 +103,20 @@ function DRE() {
     .sort((a, b) => b.monthlyValue - a.monthlyValue)
     .slice(0, 10);
 
-  // Fluxo de caixa projetado (próximos 6 meses)
-  const fluxoProjetado = [
-    { mes: "Jul", entrada: receitaBruta, saida: totalDespesas, saldo: receitaBruta - totalDespesas },
-    { mes: "Ago", entrada: 54000, saida: 36000, saldo: 18000 },
-    { mes: "Set", entrada: 58500, saida: 37500, saldo: 21000 },
-    { mes: "Out", entrada: 62000, saida: 38200, saldo: 23800 },
-    { mes: "Nov", entrada: 66500, saida: 39800, saldo: 26700 },
-    { mes: "Dez", entrada: 72000, saida: 42500, saldo: 29500 },
-  ];
+  // Fluxo de caixa por mês — só com dados reais registrados (antes tinha 5 meses futuros inventados).
+  // Sem histórico suficiente ainda para projetar tendência de crescimento com segurança.
+  const fluxoReal = mesesComDados.map((m) => {
+    const doMes = expenses.filter((f) => f.date.startsWith(m));
+    const entrada = doMes.filter((f) => f.type === "entrada").reduce((s, f) => s + f.amount, 0);
+    const saida = doMes.filter((f) => f.type === "saida").reduce((s, f) => s + f.amount, 0);
+    const [ano, mesNum] = m.split("-").map(Number);
+    const label = new Date(ano, mesNum - 1, 1).toLocaleDateString("pt-BR", { month: "short" });
+    return { mes: label.charAt(0).toUpperCase() + label.slice(1).replace(".", ""), entrada, saida, saldo: entrada - saida };
+  });
+  const fluxoProjetado = fluxoReal;
+  const temHistoricoSuficiente = fluxoReal.length >= 2;
 
-  // Margem histórica por mês
+  // Margem histórica por mês — dado de exemplo (ilustrativo) até existir histórico real de vários meses
   const margemHistorica = monthlyRevenue.map((m, i) => ({
     month: m.month,
     margem: 18 + Math.sin(i) * 3 + i * 0.6,
@@ -132,18 +148,36 @@ function DRE() {
 
   const insights = useMemo(() => {
     const financeiros = aiInsights.filter((i) => i.area === "Financeiro");
-    // Fallback: garantir 2 insights positivos junto aos alertas
-    const complementos = [
-      { id: "loc-1", titulo: "Receita recorrente cresceu", descricao: "O lucro aumentou porque o MRR cresceu 8% e diluiu o custo fixo.", prioridade: "baixa" as const },
-      { id: "loc-2", titulo: "Lucro acima da média", descricao: `Seu lucro líquido de ${formatBRL(lucroLiquido)} está acima da média dos últimos 6 meses.`, prioridade: "baixa" as const },
-    ];
+    // Complementos: só entram quando dão pra sustentar com dado real do mês anterior.
+    // Antes eram 2 frases fixas ("MRR cresceu 8%", "lucro acima da média de 6 meses") que apareciam sempre, mesmo sem base real.
+    const complementos: { id: string; titulo: string; descricao: string; prioridade: "baixa" }[] = [];
+    if (temMesAnterior) {
+      const mensalidadeAnterior = anteriorEntries.filter((f) => f.category === "Mensalidade").reduce((s, f) => s + f.amount, 0);
+      if (mensalidadeAnterior > 0 && receitaRecorrente > mensalidadeAnterior) {
+        const crescimentoMrr = ((receitaRecorrente - mensalidadeAnterior) / mensalidadeAnterior) * 100;
+        complementos.push({
+          id: "loc-1",
+          titulo: "Receita recorrente cresceu",
+          descricao: `O MRR cresceu ${crescimentoMrr.toFixed(1)}% em relação ao mês anterior (${formatBRL(mensalidadeAnterior)} → ${formatBRL(receitaRecorrente)}).`,
+          prioridade: "baixa",
+        });
+      }
+      if (lucroAnterior > 0 && lucroLiquido > lucroAnterior) {
+        complementos.push({
+          id: "loc-2",
+          titulo: "Lucro líquido melhorou",
+          descricao: `Seu lucro líquido de ${formatBRL(lucroLiquido)} é maior que o do mês anterior (${formatBRL(lucroAnterior)}).`,
+          prioridade: "baixa",
+        });
+      }
+    }
     return [...financeiros.map((i) => ({ id: i.id, titulo: i.titulo, descricao: i.descricao, prioridade: i.prioridade })), ...complementos];
-  }, [aiInsights, lucroLiquido]);
+  }, [aiInsights, lucroLiquido, temMesAnterior, anteriorEntries, receitaRecorrente, lucroAnterior]);
 
   return (
     <AppShell title="DRE Inteligente" subtitle="Análise gerencial automática">
       <div className="px-4 py-6 md:px-6">
-        <PageHeader title="DRE · Julho 2026" subtitle="Calculado automaticamente a partir do financeiro">
+        <PageHeader title={`DRE · ${nomeMesRef}`} subtitle="Calculado automaticamente a partir do financeiro">
           <button
             onClick={() => setOpenNew(true)}
             className="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary/90"
@@ -251,11 +285,18 @@ function DRE() {
             <div className="mb-3 flex items-center justify-between">
               <div>
                 <h3 className="text-sm font-semibold tracking-tight">Evolução anual</h3>
-                <p className="text-[11px] text-muted-foreground">Receita e meta nos últimos 7 meses</p>
+                <p className="text-[11px] text-muted-foreground">
+                  Receita e meta nos últimos 7 meses{" "}
+                  <span className="rounded bg-warning/15 px-1.5 py-0.5 text-warning">dado de exemplo</span>
+                </p>
               </div>
-              <div className="inline-flex items-center gap-1 rounded bg-success/10 px-2 py-0.5 text-[11px] font-medium text-success">
-                <TrendingUp className="h-3 w-3" /> +{deltaReceita.toFixed(1)}% MoM
-              </div>
+              {deltaReceita !== undefined ? (
+                <div className={cn("inline-flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-medium", deltaReceita >= 0 ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive")}>
+                  <TrendingUp className="h-3 w-3" /> {deltaReceita >= 0 ? "+" : ""}{deltaReceita.toFixed(1)}% MoM
+                </div>
+              ) : (
+                <span className="rounded bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">Sem mês anterior p/ comparar</span>
+              )}
             </div>
             <div className="h-[240px]">
               <ResponsiveContainer width="100%" height="100%">
@@ -274,7 +315,10 @@ function DRE() {
           <div className="rounded-lg border bg-card p-4">
             <div className="mb-3">
               <h3 className="text-sm font-semibold tracking-tight">Margem por mês</h3>
-              <p className="text-[11px] text-muted-foreground">Margem líquida (%) — evolução</p>
+              <p className="text-[11px] text-muted-foreground">
+                Margem líquida (%) — evolução{" "}
+                <span className="rounded bg-warning/15 px-1.5 py-0.5 text-warning">dado de exemplo</span>
+              </p>
             </div>
             <div className="h-[240px]">
               <ResponsiveContainer width="100%" height="100%">
@@ -294,8 +338,10 @@ function DRE() {
         <div className="mt-4 rounded-lg border bg-card p-4">
           <div className="mb-3 flex items-center justify-between">
             <div>
-              <h3 className="text-sm font-semibold tracking-tight">Fluxo de caixa projetado</h3>
-              <p className="text-[11px] text-muted-foreground">Próximos 6 meses — entradas × saídas × saldo</p>
+              <h3 className="text-sm font-semibold tracking-tight">Fluxo de caixa</h3>
+              <p className="text-[11px] text-muted-foreground">
+                {temHistoricoSuficiente ? "Entradas × saídas × saldo, por mês (dados reais)" : "Ainda com apenas 1 mês de dado real — projeção de tendência aparece a partir de 2 meses de histórico"}
+              </p>
             </div>
             <span className="rounded bg-primary/10 px-2 py-0.5 text-[11px] font-mono text-primary">
               Saldo final: {formatBRL(fluxoProjetado.reduce((s, f) => s + f.saldo, 0))}
@@ -327,7 +373,7 @@ function DRE() {
           <div className="rounded-lg border bg-card p-4">
             <div className="mb-3 flex items-center justify-between">
               <h3 className="text-sm font-semibold tracking-tight">Top 10 despesas</h3>
-              <span className="text-[10px] uppercase tracking-widest text-muted-foreground">Julho</span>
+              <span className="text-[10px] uppercase tracking-widest text-muted-foreground">{nomeMesRef}</span>
             </div>
             <div className="space-y-2">
               {topDespesas.map(([nome, valor], i) => {
