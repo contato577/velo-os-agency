@@ -168,39 +168,72 @@ export function gerarInsights(input: AIInputs): Insight[] {
     });
   }
 
-  insights.push({
-    id: "d-margem",
-    area: "Financeiro",
-    titulo: "Margem caiu 4% vs mês anterior",
-    descricao:
-      "Aumento das despesas com ferramentas explica boa parte da queda. Reavaliar contratos.",
-    prioridade: "media",
-    impacto: "Impacto estimado: R$ 2.4k",
-    acaoLabel: "Abrir DRE",
-    to: "/dre",
-  });
+  // ── Margem e fluxo de caixa: calculados a partir dos lançamentos reais ──
+  // (antes eram textos fixos; agora só aparecem quando há dado real que sustente a afirmação)
+  const porMes = (mes: string) => {
+    const doMes = input.expenses.filter((e) => e.date.startsWith(mes));
+    const entradas = doMes.filter((e) => e.type === "entrada").reduce((s, e) => s + e.amount, 0);
+    const saidas = doMes.filter((e) => e.type === "saida").reduce((s, e) => s + e.amount, 0);
+    return { entradas, saidas, saldo: entradas - saidas, temDados: doMes.length > 0 };
+  };
+  const mesesComDados = [...new Set(input.expenses.map((e) => e.date.slice(0, 7)))].sort();
+  const mesRef = mesesComDados[mesesComDados.length - 1];
+  const mesAnteriorRef = mesesComDados.length >= 2 ? mesesComDados[mesesComDados.length - 2] : null;
 
-  insights.push({
-    id: "d-fluxo",
-    area: "Financeiro",
-    titulo: "Fluxo de caixa negativo em 8 dias",
-    descricao: "Projeção indica saldo negativo caso 2 recebimentos atrasem. Antecipe cobranças.",
-    prioridade: "critica",
-    impacto: "Saldo projetado: -R$ 4.8k",
-    acaoLabel: "Abrir DRE",
-    to: "/dre",
-  });
+  if (mesRef) {
+    const atual = porMes(mesRef);
 
-  insights.push({
-    id: "d-conversao",
-    area: "Comercial",
-    titulo: "Conversão do funil caiu 6%",
-    descricao: "Reunião → Proposta perdeu eficiência. Reveja o script de diagnóstico.",
-    prioridade: "media",
-    impacto: "Menos 2 fechamentos/mês",
-    acaoLabel: "Abrir CRM",
-    to: "/comercial",
-  });
+    if (atual.saldo < 0) {
+      insights.push({
+        id: "d-fluxo",
+        area: "Financeiro",
+        titulo: "Fluxo de caixa negativo no mês",
+        descricao: `As saídas (${BRL(atual.saidas)}) superaram as entradas (${BRL(atual.entradas)}) no mês. Antecipe cobranças ou revise despesas.`,
+        prioridade: "critica",
+        impacto: `Saldo do mês: ${BRL(atual.saldo)}`,
+        acaoLabel: "Abrir DRE",
+        to: "/dre",
+      });
+    }
+
+    if (mesAnteriorRef) {
+      const anterior = porMes(mesAnteriorRef);
+      if (atual.entradas > 0 && anterior.entradas > 0) {
+        const margemAtual = (atual.saldo / atual.entradas) * 100;
+        const margemAnterior = (anterior.saldo / anterior.entradas) * 100;
+        const delta = margemAtual - margemAnterior;
+        if (delta < -0.5) {
+          insights.push({
+            id: "d-margem",
+            area: "Financeiro",
+            titulo: `Margem caiu ${Math.abs(delta).toFixed(1)}pp vs mês anterior`,
+            descricao: `Margem líquida foi de ${margemAnterior.toFixed(1)}% para ${margemAtual.toFixed(1)}%. Revise despesas do período.`,
+            prioridade: "media",
+            impacto: `Margem atual: ${margemAtual.toFixed(1)}%`,
+            acaoLabel: "Abrir DRE",
+            to: "/dre",
+          });
+        }
+      }
+    }
+  }
+
+  // ── Conversão do funil: taxa real com base nos leads já decididos (fechado/perdido) ──
+  const leadsDecididos = leads.filter((l) => l.stage === "fechado" || l.stage === "perdido");
+  if (leadsDecididos.length >= 3) {
+    const fechados = leadsDecididos.filter((l) => l.stage === "fechado").length;
+    const taxaConversao = (fechados / leadsDecididos.length) * 100;
+    insights.push({
+      id: "d-conversao",
+      area: "Comercial",
+      titulo: `Taxa de conversão do funil: ${taxaConversao.toFixed(0)}%`,
+      descricao: `${fechados} de ${leadsDecididos.length} leads decididos viraram cliente. ${taxaConversao < 30 ? "Vale revisar o script de diagnóstico e proposta." : "Ritmo saudável de fechamento."}`,
+      prioridade: taxaConversao < 30 ? "media" : "baixa",
+      impacto: `${fechados} fechamentos de ${leadsDecididos.length} decisões`,
+      acaoLabel: "Abrir CRM",
+      to: "/comercial",
+    });
+  }
 
   const clientePausado = clients.find((c) => c.status === "pausado");
   if (clientePausado) {
