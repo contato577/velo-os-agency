@@ -27,7 +27,7 @@ import {
   Building2,
   Flame,
   CheckCircle2,
-  Target,
+
 } from "lucide-react";
 
 
@@ -399,72 +399,6 @@ function VendaConfirmDialog({
   );
 }
 
-function ProjecoesPipeline() {
-  const { metasMensais, pontoControleAtual, leads } = useDataStore();
-  const vendasReal = useMemo(
-    () => leads.filter((l) => l.stage === "fechado").reduce((s, l) => s + l.value, 0),
-    [leads],
-  );
-  const meta = metasMensais.metaComercial;
-  const gap = Math.max(0, meta - vendasReal);
-  const pct = meta > 0 ? Math.min(Math.round((vendasReal / meta) * 100), 999) : 0;
-  const ticket = useMemo(() => {
-    const fechados = leads.filter((l) => l.stage === "fechado");
-    if (fechados.length === 0) return 0;
-    return fechados.reduce((s, l) => s + l.value, 0) / fechados.length;
-  }, [leads]);
-  const contratos = ticket > 0 ? Math.ceil(gap / ticket) : 0;
-  const taxaReuniaoFech = pontoControleAtual?.taxaReuniaoFechamento || 30;
-  const taxaProspReuniao = pontoControleAtual?.taxaProspeccaoReuniao || 20;
-  const reunioesNecessarias = taxaReuniaoFech > 0 ? Math.ceil(contratos / (taxaReuniaoFech / 100)) : 0;
-  const leadsNecessarios = taxaProspReuniao > 0 ? Math.ceil(reunioesNecessarias / (taxaProspReuniao / 100)) : 0;
-
-  return (
-    <div className="flex flex-wrap items-center gap-4 border-b bg-surface/30 px-4 py-3 md:px-6">
-      <div className="flex items-center gap-2">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
-          <Target className="h-4 w-4" />
-        </div>
-        <div className="leading-tight">
-          <div className="text-[11px] font-semibold">Meta do Ponto de Controle</div>
-          <div className="text-[10px] text-muted-foreground">
-            {pontoControleAtual
-              ? `Definida na reunião de ${pontoControleAtual.mes}`
-              : "Nenhum planejamento registrado este mês"}
-          </div>
-        </div>
-      </div>
-      <div className="flex flex-wrap items-center gap-3 text-[11px]">
-        <div className="rounded-lg border bg-card px-3 py-1.5">
-          <span className="text-muted-foreground">Meta </span>
-          <span className="font-mono font-semibold">{formatBRL(meta)}</span>
-        </div>
-        <div className="rounded-lg border bg-card px-3 py-1.5">
-          <span className="text-muted-foreground">Fechado </span>
-          <span className="font-mono font-semibold text-primary">{formatBRL(vendasReal)}</span>
-          <span className="ml-1 text-muted-foreground">({pct}%)</span>
-        </div>
-        <div className="rounded-lg border bg-card px-3 py-1.5">
-          <span className="text-muted-foreground">Faltam </span>
-          <span className="font-mono font-semibold text-warning">{formatBRL(gap)}</span>
-        </div>
-        {gap > 0 && contratos > 0 && (
-          <div className="rounded-lg border border-primary/30 bg-primary/5 px-3 py-1.5 text-primary">
-            ≈ {contratos} contratos · {leadsNecessarios} leads necessários
-          </div>
-        )}
-      </div>
-      <Link
-        to="/ponto-controle"
-        className="ml-auto rounded-md border bg-surface px-2.5 py-1 text-[11px] font-medium hover:bg-accent"
-      >
-        Abrir Ponto de Controle →
-      </Link>
-    </div>
-  );
-}
-
-
 function Comercial() {
   const { leads, updateLeadStage, criarClienteDeVenda } = useDataStore();
   const { openDialog } = useQuickActions();
@@ -639,7 +573,6 @@ function Comercial() {
           </div>
         </div>
 
-        <ProjecoesPipeline />
 
         {/* Content View */}
 
