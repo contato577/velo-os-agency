@@ -35,7 +35,13 @@ function DRE() {
     : (mesesComDados[mesesComDados.length - 1] ?? hojeMesISO);
   const mesRefIdx = mesesComDados.indexOf(mesRef);
   const mesAnteriorRef = mesRefIdx > 0 ? mesesComDados[mesRefIdx - 1] : null;
-  const referencia = expenses.filter((f) => f.date.startsWith(mesRef));
+
+  // Lançamentos recorrentes contam em TODOS os meses a partir do mês em que foram criados —
+  // não só no mês exato do lançamento original.
+  const entriesForMonth = (mes: string) =>
+    expenses.filter((f) => f.date.startsWith(mes) || (f.recurring && f.date.slice(0, 7) < mes));
+
+  const referencia = entriesForMonth(mesRef);
   const [refAno, refMesNum] = mesRef.split("-").map(Number);
   const nomeMesRef = new Date(refAno, refMesNum - 1, 1).toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
 
@@ -74,7 +80,7 @@ function DRE() {
 
   // Mês anterior: só existe comparativo se houver dado real do mês anterior.
   // Antes isso vinha de números fixos (48500, 22.4%, 12600) — agora ou é real, ou não aparece.
-  const anteriorEntries = mesAnteriorRef ? expenses.filter((f) => f.date.startsWith(mesAnteriorRef)) : [];
+  const anteriorEntries = mesAnteriorRef ? entriesForMonth(mesAnteriorRef) : [];
   const temMesAnterior = anteriorEntries.length > 0;
   const receitaAnterior = anteriorEntries.filter((f) => f.type === "entrada").reduce((s, f) => s + f.amount, 0);
   const despesasAnterior = anteriorEntries.filter((f) => f.type === "saida").reduce((s, f) => s + f.amount, 0);
@@ -119,7 +125,7 @@ function DRE() {
   // Fluxo de caixa por mês — só com dados reais registrados (antes tinha 5 meses futuros inventados).
   // Sem histórico suficiente ainda para projetar tendência de crescimento com segurança.
   const fluxoReal = mesesComDados.map((m) => {
-    const doMes = expenses.filter((f) => f.date.startsWith(m));
+    const doMes = entriesForMonth(m);
     const entrada = doMes.filter((f) => f.type === "entrada").reduce((s, f) => s + f.amount, 0);
     const saida = doMes.filter((f) => f.type === "saida").reduce((s, f) => s + f.amount, 0);
     const [ano, mesNum] = m.split("-").map(Number);
@@ -194,12 +200,6 @@ function DRE() {
           >
             <Plus className="h-3.5 w-3.5" /> Novo Lançamento
           </button>
-          <Link
-            to="/central-ia"
-            className="inline-flex h-8 items-center gap-1.5 rounded-md border border-primary/40 bg-primary/10 px-2.5 text-xs font-medium text-primary hover:bg-primary/20"
-          >
-            <Brain className="h-3.5 w-3.5" /> Central de IA
-          </Link>
         </PageHeader>
 
         {openNew && <NovoLancamentoDialog onClose={() => setOpenNew(false)} />}
@@ -438,7 +438,7 @@ function DRE() {
         {/* Indicadores financeiros */}
         <div className="mt-4 rounded-lg border bg-card p-4">
           <h3 className="mb-3 text-sm font-semibold tracking-tight">Indicadores financeiros</h3>
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
             <FinIndicator label="LTV médio" value={ltv ? formatBRL(ltv) : "Sem dados"} />
             <FinIndicator label="CAC" value={cac ? formatBRL(cac) : "Sem dados"} />
             <FinIndicator label="LTV/CAC" value={ltvCac ? `${ltvCac.toFixed(1)}x` : "Sem dados"} tone={ltvCac && ltvCac >= 3 ? "success" : undefined} />
@@ -447,8 +447,6 @@ function DRE() {
               value={churnMensal !== null ? `${(churnMensal * 100).toFixed(1)}%` : "Sem dados"}
               tone={churnMensal !== null && churnMensal > 0.05 ? "warning" : churnMensal !== null ? "success" : undefined}
             />
-            <FinIndicator label="Burn multiple" value="0.4x" tone="success" />
-            <FinIndicator label="Runway" value="18 meses" tone="success" />
           </div>
         </div>
         {/* Lançamentos manuais recentes */}
@@ -462,28 +460,30 @@ function DRE() {
           {expenses.length === 0 ? (
             <p className="text-[12px] text-muted-foreground">Nenhum lançamento manual ainda.</p>
           ) : (
-            <div className="space-y-1.5">
-              {expenses.slice(0, 8).map((e) => (
-                <div
-                  key={e.id}
-                  className="flex items-center justify-between rounded-md border bg-surface/40 px-3 py-2 text-[12px]"
-                >
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate font-medium">{e.description}</div>
-                    <div className="text-[10px] text-muted-foreground">
-                      {e.category} {e.client ? `· ${e.client}` : ""} {e.date ? `· ${e.date}` : ""}
-                    </div>
-                  </div>
-                  <span
-                    className={cn(
-                      "font-mono",
-                      e.type === "entrada" ? "text-success" : "text-destructive",
-                    )}
+            <div className="max-h-[420px] space-y-1.5 overflow-y-auto pr-1">
+              {[...expenses]
+                .sort((a, b) => b.date.localeCompare(a.date))
+                .map((e) => (
+                  <div
+                    key={e.id}
+                    className="flex items-center justify-between rounded-md border bg-surface/40 px-3 py-2 text-[12px]"
                   >
-                    {e.type === "entrada" ? "+" : "−"} {formatBRL(e.amount)}
-                  </span>
-                </div>
-              ))}
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate font-medium">{e.description}</div>
+                      <div className="text-[10px] text-muted-foreground">
+                        {e.category} {e.client ? `· ${e.client}` : ""} {e.date ? `· ${e.date}` : ""}
+                      </div>
+                    </div>
+                    <span
+                      className={cn(
+                        "font-mono",
+                        e.type === "entrada" ? "text-success" : "text-destructive",
+                      )}
+                    >
+                      {e.type === "entrada" ? "+" : "−"} {formatBRL(e.amount)}
+                    </span>
+                  </div>
+                ))}
             </div>
           )}
         </div>
