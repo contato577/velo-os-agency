@@ -5,7 +5,6 @@ import {
   Plus,
   UserPlus,
   Building2,
-  DollarSign,
   Receipt,
   CheckSquare,
   Search,
