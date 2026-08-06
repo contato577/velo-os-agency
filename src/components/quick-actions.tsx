@@ -14,11 +14,12 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { leads, clients, owners } from "@/lib/mock-data";
+import { owners } from "@/lib/mock-data";
 import type { LeadStage, LeadPotential, Task } from "@/lib/mock-data";
 import { useDataStore } from "@/lib/data-store";
 
-export type QuickKind = "lead" | "cliente" | "venda" | "despesa" | "tarefa";
+export type QuickKind = "lead" | "despesa" | "tarefa";
+
 
 // ─── Context ─────────────────────────────────────────────────────────────────
 
