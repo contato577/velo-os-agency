@@ -256,8 +256,16 @@ function TabGeral({ client }: { client: Client }) {
         <div className="space-y-3">
           <div>
             <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Plano contratado</div>
-            <div className="mt-1 text-[15px] font-semibold">{client.plan}</div>
+            <div className="mt-1 flex flex-wrap items-center gap-2">
+              <span className="text-[15px] font-semibold">{client.plano || client.plan}</span>
+              {client.plano && (
+                <span className="rounded bg-surface px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                  Faixa {client.plan}
+                </span>
+              )}
+            </div>
           </div>
+
           <div>
             <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Mensalidade</div>
             <div className="mt-1 font-mono text-[20px] font-semibold text-primary">{formatBRL(client.monthlyValue)}</div>
