@@ -1,6 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
-  Sparkles,
   AlertTriangle,
   Users2,
   Wallet,
@@ -11,22 +10,17 @@ import {
   Brain,
   Zap,
   BadgeCheck,
+  Send,
+  Bot,
+  User,
+  Megaphone,
+  BarChart3,
+  Facebook,
+  Plug,
+  FileText,
 } from "lucide-react";
-import {
-  Area,
-  AreaChart,
-  CartesianGrid,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-  RadialBar,
-  RadialBarChart,
-  PolarAngleAxis,
-} from "recharts";
 import { useMemo, useState } from "react";
 import { AppShell, PageHeader } from "@/components/app-shell";
-import { dashboardKPIs, formatBRL } from "@/lib/mock-data";
 import { automationRules, actionLabels, triggerLabels } from "@/lib/automation-engine";
 import {
   sortByPriority,
@@ -41,7 +35,7 @@ export const Route = createFileRoute("/central-ia")({
   head: () => ({
     meta: [
       { title: "Central de IA · Veloce" },
-      { name: "description", content: "Diretor executivo em IA: diagnósticos, recomendações e previsão do mês." },
+      { name: "description", content: "Diagnósticos automáticos, assistente e relatórios de mídia paga." },
     ],
   }),
   component: CentralIA,
@@ -56,10 +50,21 @@ const areaIcons: Record<InsightArea, typeof AlertTriangle> = {
   Metas: Target,
 };
 
+// ─── Conectores de mídia paga — UI pronta, aguardando back-end ───────────────
+// Cada plataforma exige um fluxo de autorização (OAuth) e armazenamento seguro
+// de token de acesso, então a extração de dados real só existe quando o
+// back-end estiver conectado. Por enquanto isso é só a interface preparada.
+type ConectorStatus = "nao_conectado";
+const conectores: { id: string; nome: string; descricao: string; icon: typeof Megaphone; status: ConectorStatus }[] = [
+  { id: "google-ads", nome: "Google Ads", descricao: "Campanhas, custo e conversões", icon: Megaphone, status: "nao_conectado" },
+  { id: "meta-ads", nome: "Meta Ads", descricao: "Facebook e Instagram Ads", icon: Facebook, status: "nao_conectado" },
+  { id: "analytics", nome: "Google Analytics", descricao: "Tráfego e comportamento no site", icon: BarChart3, status: "nao_conectado" },
+];
+
+type ChatMessage = { id: string; role: "user" | "assistant"; text: string };
+
 function CentralIA() {
   const { insights } = useDataStore();
-  const meta = dashboardKPIs.metaMes;
-  const receita = dashboardKPIs.vendasMes;
 
   const areas: (InsightArea | "Todas")[] = [
     "Todas",
@@ -79,37 +84,31 @@ function CentralIA() {
 
   const criticos = insights.filter((d) => d.prioridade === "critica").length;
 
-  const [recs, setRecs] = useState([
-    { id: "r1", text: "Cobrar Empresa Alpha — fatura em atraso há 3 dias", done: false },
-    { id: "r2", text: "Agendar reunião com Cliente Beta — renovação em 20 dias", done: false },
-    { id: "r3", text: "Entrar em contato com Lead Gamma — proposta parada", done: true },
-    { id: "r4", text: "Antecipar pagamento do fornecedor Delta — desconto 3%", done: false },
-    { id: "r5", text: "Revisar criativos Andrade Fitness — CTR abaixo da média", done: false },
-    { id: "r6", text: "Ativar automação de renovação para contratos < 30d", done: false },
+  // ─── Chat com a IA — interface real, aguardando conexão com back-end ───────
+  const [messages, setMessages] = useState<ChatMessage[]>([
+    {
+      id: "m0",
+      role: "assistant",
+      text: "Olá! Ainda não estou conectada a um modelo de IA de verdade — assim que o back-end for configurado, vou poder ler todo o seu sistema (leads, clientes, financeiro, tarefas) e responder perguntas com dados reais, além de montar relatórios pros seus clientes.",
+    },
   ]);
+  const [chatInput, setChatInput] = useState("");
 
-  const previsao = useMemo(() => {
-    const diaAtual = 3;
-    const diasNoMes = 31;
-    const diasRestantes = diasNoMes - diaAtual;
-    const ritmoDiario = receita / diaAtual;
-    const projecao = Math.round(ritmoDiario * diasNoMes);
-    const falta = Math.max(0, meta - receita);
-    const ticketMedio = dashboardKPIs.ticketMedio;
-    const contratosNecessarios = Math.ceil(falta / ticketMedio);
-    const probabilidade = Math.min(100, Math.max(0, Math.round((projecao / meta) * 100)));
-    const forecastData = Array.from({ length: diasNoMes }, (_, i) => {
-      const day = i + 1;
-      const realizado = day <= diaAtual ? Math.round((receita / diaAtual) * day) : null;
-      const projetado = Math.round(ritmoDiario * day);
-      const metaLinha = Math.round((meta / diasNoMes) * day);
-      return { day: `${day}`, realizado, projetado, meta: metaLinha };
-    });
-    return { diasRestantes, projecao, falta, contratosNecessarios, probabilidade, forecastData };
-  }, [receita, meta]);
+  const handleSend = () => {
+    const texto = chatInput.trim();
+    if (!texto) return;
+    const userMsg: ChatMessage = { id: `u-${Date.now()}`, role: "user", text: texto };
+    const reply: ChatMessage = {
+      id: `a-${Date.now()}`,
+      role: "assistant",
+      text: "Recebi sua mensagem, mas ainda não tenho acesso a um modelo de IA real pra responder com informações do sistema. Isso é ligado quando o back-end for conectado.",
+    };
+    setMessages((prev) => [...prev, userMsg, reply]);
+    setChatInput("");
+  };
 
   return (
-    <AppShell title="Central de IA" subtitle="Diretor executivo em IA da Veloce">
+    <AppShell title="Central de IA" subtitle="Diagnósticos, assistente e relatórios de mídia paga">
       <div className="px-4 py-6 md:px-6">
         <PageHeader title="Central de IA" subtitle="Diagnóstico automático da sua operação — atualizado agora">
           <div className="inline-flex items-center gap-1.5 rounded-md border border-primary/30 bg-primary/10 px-2.5 py-1 text-[11px] font-medium text-primary">
@@ -121,6 +120,7 @@ function CentralIA() {
           </div>
         </PageHeader>
 
+        {/* Resumo executivo — só com dado real (removido o "Confiança IA 92%" fixo que existia aqui) */}
         <div className="mb-6 overflow-hidden rounded-xl border bg-gradient-to-br from-primary/10 via-card to-card p-5 shadow-elegant">
           <div className="flex items-start gap-4">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/20 ring-1 ring-primary/30">
@@ -130,21 +130,21 @@ function CentralIA() {
               <div className="text-[11px] uppercase tracking-widest text-primary/80">Resumo executivo</div>
               <h2 className="mt-1 text-lg font-semibold tracking-tight md:text-xl">
                 Sua operação tem{" "}
-                <span className="text-warning">{criticos} ponto{criticos === 1 ? "" : "s"} crítico{criticos === 1 ? "" : "s"}</span>{" "}
-                e uma projeção {previsao.probabilidade >= 100 ? "acima" : "abaixo"} da meta.
+                <span className={criticos > 0 ? "text-warning" : "text-success"}>
+                  {criticos} ponto{criticos === 1 ? "" : "s"} crítico{criticos === 1 ? "" : "s"}
+                </span>{" "}
+                em aberto agora.
               </h2>
               <p className="mt-2 max-w-3xl text-[13px] leading-relaxed text-muted-foreground">
-                A IA identificou {insights.length} diagnósticos e {recs.filter((r) => !r.done).length} ações recomendadas para hoje.
-                Focando nos itens críticos, o impacto estimado é de +{formatBRL(previsao.falta)} até o fim do mês.
+                A IA identificou {insights.length} diagnóstico{insights.length === 1 ? "" : "s"} com base nos dados atuais do
+                seu sistema. Revise os itens abaixo pra manter a operação no rumo certo — pra números de faturamento e meta
+                em tempo real, veja a Dashboard.
               </p>
-            </div>
-            <div className="hidden shrink-0 flex-col items-end gap-1 md:flex">
-              <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Confiança IA</div>
-              <div className="font-mono text-2xl font-semibold text-primary">92%</div>
             </div>
           </div>
         </div>
 
+        {/* Diagnósticos — reais, calculados a partir do sistema */}
         <div className="mb-4 flex flex-wrap gap-1.5">
           {areas.map((a) => (
             <button
@@ -162,128 +162,114 @@ function CentralIA() {
           ))}
         </div>
 
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {filtered.map((d) => <DiagnosticCard key={d.id} d={d} />)}
-        </div>
+        {filtered.length > 0 ? (
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {filtered.map((d) => <DiagnosticCard key={d.id} d={d} />)}
+          </div>
+        ) : (
+          <div className="rounded-xl border bg-card p-6 text-center text-[13px] text-muted-foreground">
+            Nenhum diagnóstico {filter !== "Todas" ? `em "${filter}"` : ""} no momento. Tudo tranquilo por aqui.
+          </div>
+        )}
 
-
-        {/* Recomendações + Previsão */}
-        <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-5">
-          {/* Recomendações */}
-          <div className="rounded-xl border bg-card p-4 lg:col-span-2">
-            <div className="mb-3 flex items-center gap-2">
+        {/* Assistente IA — interface pronta, resposta real depende do back-end */}
+        <div className="mt-6 rounded-xl border bg-card p-4">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
               <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/15">
-                <Zap className="h-3.5 w-3.5 text-primary" />
+                <Bot className="h-3.5 w-3.5 text-primary" />
               </div>
               <div>
-                <h3 className="text-sm font-semibold tracking-tight">Hoje recomendamos</h3>
-                <p className="text-[11px] text-muted-foreground">
-                  {recs.filter((r) => !r.done).length} de {recs.length} pendentes
-                </p>
+                <h3 className="text-sm font-semibold tracking-tight">Assistente IA</h3>
+                <p className="text-[11px] text-muted-foreground">Converse sobre a sua operação — respostas reais após conectar o back-end</p>
               </div>
             </div>
-            <ul className="space-y-1">
-              {recs.map((r) => (
-                <li key={r.id}>
-                  <button
-                    onClick={() =>
-                      setRecs((prev) => prev.map((x) => (x.id === r.id ? { ...x, done: !x.done } : x)))
-                    }
-                    className="flex w-full items-start gap-2.5 rounded-md p-2 text-left transition-colors hover:bg-accent"
-                  >
-                    <span
-                      className={cn(
-                        "mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors",
-                        r.done ? "border-primary bg-primary text-primary-foreground" : "border-border",
-                      )}
-                    >
-                      {r.done && <CheckSquare className="h-2.5 w-2.5" />}
-                    </span>
-                    <span
-                      className={cn(
-                        "text-[13px] leading-relaxed",
-                        r.done && "text-muted-foreground line-through",
-                      )}
-                    >
-                      {r.text}
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
+            <span className="rounded bg-warning/15 px-2 py-0.5 text-[11px] font-medium text-warning">Aguardando conexão</span>
           </div>
 
-          {/* Previsão do mês */}
-          <div className="rounded-xl border bg-card p-4 lg:col-span-3">
-            <div className="mb-3 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/15">
-                  <Sparkles className="h-3.5 w-3.5 text-primary" />
+          <div className="flex max-h-[360px] min-h-[160px] flex-col gap-2.5 overflow-y-auto rounded-lg border bg-surface/40 p-3">
+            {messages.map((m) => (
+              <div key={m.id} className={cn("flex items-start gap-2", m.role === "user" && "flex-row-reverse")}>
+                <div
+                  className={cn(
+                    "flex h-6 w-6 shrink-0 items-center justify-center rounded-md",
+                    m.role === "assistant" ? "bg-primary/15 text-primary" : "bg-accent text-foreground",
+                  )}
+                >
+                  {m.role === "assistant" ? <Bot className="h-3.5 w-3.5" /> : <User className="h-3.5 w-3.5" />}
                 </div>
-                <div>
-                  <h3 className="text-sm font-semibold tracking-tight">Previsão do mês</h3>
-                  <p className="text-[11px] text-muted-foreground">Cálculo automático baseado no ritmo atual</p>
-                </div>
-              </div>
-              <span className="rounded bg-primary/10 px-2 py-0.5 font-mono text-[11px] text-primary">
-                Julho 2026
-              </span>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2 md:grid-cols-5">
-              <MiniStat label="Meta" value={formatBRL(meta)} />
-              <MiniStat label="Receita atual" value={formatBRL(receita)} tone="primary" />
-              <MiniStat label="Falta" value={formatBRL(previsao.falta)} tone="warning" />
-              <MiniStat label="Contratos p/ meta" value={String(previsao.contratosNecessarios)} />
-              <MiniStat label="Projeção fim mês" value={formatBRL(previsao.projecao)} tone={previsao.projecao >= meta ? "success" : "warning"} />
-            </div>
-
-            <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
-              <div className="md:col-span-2">
-                <div className="h-[180px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={previsao.forecastData} margin={{ top: 5, right: 8, left: -20, bottom: 0 }}>
-                      <defs>
-                        <linearGradient id="g-real" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="oklch(0.72 0.19 155)" stopOpacity={0.5} />
-                          <stop offset="100%" stopColor="oklch(0.72 0.19 155)" stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.22 0.010 155)" />
-                      <XAxis dataKey="day" stroke="oklch(0.68 0.02 155)" fontSize={10} tickLine={false} axisLine={false} interval={4} />
-                      <YAxis stroke="oklch(0.68 0.02 155)" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(v) => `${Math.round(v / 1000)}k`} />
-                      <Tooltip
-                        contentStyle={{ background: "oklch(0.14 0.008 155)", border: "1px solid oklch(0.22 0.010 155)", borderRadius: 8, fontSize: 11 }}
-                        formatter={(v: unknown) => (v == null ? "—" : formatBRL(Number(v)))}
-                      />
-                      <Area type="monotone" dataKey="meta" stroke="oklch(0.55 0.02 155)" strokeDasharray="4 4" fill="transparent" />
-                      <Area type="monotone" dataKey="projetado" stroke="oklch(0.72 0.19 155 / 0.5)" strokeDasharray="2 3" fill="transparent" />
-                      <Area type="monotone" dataKey="realizado" stroke="oklch(0.72 0.19 155)" strokeWidth={2} fill="url(#g-real)" />
-                    </AreaChart>
-                  </ResponsiveContainer>
+                <div
+                  className={cn(
+                    "max-w-[85%] rounded-lg px-3 py-2 text-[12.5px] leading-relaxed",
+                    m.role === "assistant" ? "bg-card border" : "bg-primary/15 text-foreground",
+                  )}
+                >
+                  {m.text}
                 </div>
               </div>
+            ))}
+          </div>
 
-              <div className="flex flex-col items-center justify-center rounded-lg border bg-surface/40 p-3">
-                <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Probabilidade</div>
-                <div className="h-[120px] w-[120px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <RadialBarChart innerRadius="70%" outerRadius="100%" data={[{ v: previsao.probabilidade }]} startAngle={90} endAngle={-270}>
-                      <PolarAngleAxis type="number" domain={[0, 100]} tick={false} />
-                      <RadialBar dataKey="v" cornerRadius={10} fill="oklch(0.72 0.19 155)" background={{ fill: "oklch(0.22 0.010 155)" }} />
-                    </RadialBarChart>
-                  </ResponsiveContainer>
-                </div>
-                <div className="-mt-[85px] font-mono text-2xl font-semibold text-primary">{previsao.probabilidade}%</div>
-                <div className="mt-8 text-center text-[11px] text-muted-foreground">
-                  de atingir a meta<br />em {previsao.diasRestantes} dias
-                </div>
-              </div>
-            </div>
+          <div className="mt-3 flex items-center gap-2">
+            <input
+              value={chatInput}
+              onChange={(e) => setChatInput(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleSend()}
+              placeholder="Pergunte algo sobre sua operação..."
+              className="h-9 flex-1 rounded-md border bg-surface px-3 text-[13px] outline-none focus:ring-1 focus:ring-primary/50"
+            />
+            <button
+              onClick={handleSend}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground transition-colors hover:bg-primary/90"
+            >
+              <Send className="h-3.5 w-3.5" />
+            </button>
           </div>
         </div>
 
-        {/* Automações ativas — motor declarativo */}
+        {/* Relatórios de mídia paga — conectores prontos, extração real depende do back-end */}
+        <div className="mt-6 rounded-xl border bg-card p-4">
+          <div className="mb-3 flex items-center gap-2">
+            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/15">
+              <Plug className="h-3.5 w-3.5 text-primary" />
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold tracking-tight">Relatórios de clientes</h3>
+              <p className="text-[11px] text-muted-foreground">
+                Conecte suas contas de mídia paga pra gerar relatórios simples e automáticos pros seus clientes
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
+            {conectores.map((c) => (
+              <div key={c.id} className="rounded-lg border bg-surface/40 p-3">
+                <div className="flex items-center gap-2">
+                  <c.icon className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-[13px] font-medium">{c.nome}</span>
+                </div>
+                <p className="mt-1 text-[11px] text-muted-foreground">{c.descricao}</p>
+                <button
+                  disabled
+                  title="Disponível assim que o back-end for conectado"
+                  className="mt-3 w-full cursor-not-allowed rounded-md border border-dashed px-2 py-1.5 text-[11px] font-medium text-muted-foreground"
+                >
+                  Conectar (em breve)
+                </button>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-3 flex items-start gap-2 rounded-lg border bg-surface/40 p-3">
+            <FileText className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+            <p className="text-[11px] leading-relaxed text-muted-foreground">
+              Assim que conectadas, essas contas vão alimentar um modelo padrão de relatório (investimento, resultados e
+              principais aprendizados do período) gerado automaticamente por cliente — sem precisar montar nada manualmente.
+            </p>
+          </div>
+        </div>
+
+        {/* Automações ativas — motor declarativo, real */}
         <div className="mt-6 rounded-xl border bg-card p-4">
           <div className="mb-3 flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">
@@ -338,21 +324,6 @@ function CentralIA() {
         </div>
       </div>
     </AppShell>
-  );
-}
-
-function MiniStat({ label, value, tone = "default" }: { label: string; value: string; tone?: "default" | "primary" | "warning" | "success" }) {
-  const toneClass = {
-    default: "text-foreground",
-    primary: "text-primary",
-    warning: "text-warning",
-    success: "text-success",
-  }[tone];
-  return (
-    <div className="rounded-lg border bg-surface/40 p-2.5">
-      <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{label}</div>
-      <div className={cn("mt-1 font-mono text-[15px] font-semibold tracking-tight", toneClass)}>{value}</div>
-    </div>
   );
 }
 
