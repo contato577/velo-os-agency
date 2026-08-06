@@ -85,18 +85,18 @@ function Config() {
                 {g.items.map((s) => {
                   const Icon = s.icon;
                   return (
-                    <button
+                    <div
                       key={s.title}
-                      className="group flex items-start gap-3 rounded-lg border bg-card p-4 text-left transition-all hover:border-primary/40 hover:bg-surface/40"
+                      className="flex items-start gap-3 rounded-lg border bg-card p-4 text-left"
                     >
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary transition-colors group-hover:bg-primary/20">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
                         <Icon className="h-4 w-4" />
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="text-[13px] font-medium">{s.title}</div>
                         <div className="mt-0.5 text-[11px] text-muted-foreground">{s.desc}</div>
                       </div>
-                    </button>
+                    </div>
                   );
                 })}
               </div>
