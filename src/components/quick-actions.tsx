@@ -5,7 +5,6 @@ import {
   Plus,
   UserPlus,
   Building2,
-  DollarSign,
   Receipt,
   CheckSquare,
   Search,
@@ -14,11 +13,12 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { leads, clients, owners } from "@/lib/mock-data";
+import { owners } from "@/lib/mock-data";
 import type { LeadStage, LeadPotential, Task } from "@/lib/mock-data";
 import { useDataStore } from "@/lib/data-store";
 
-export type QuickKind = "lead" | "cliente" | "venda" | "despesa" | "tarefa";
+export type QuickKind = "lead" | "despesa" | "tarefa";
+
 
 // ─── Context ─────────────────────────────────────────────────────────────────
 
@@ -42,13 +42,10 @@ const items: {
   icon: typeof UserPlus;
   hint: string;
   shortcut: string;
-  real: boolean;
 }[] = [
-    { key: "lead", label: "Novo Lead", icon: UserPlus, hint: "Adicionar oportunidade ao CRM", shortcut: "L", real: true },
-    { key: "tarefa", label: "Nova Tarefa", icon: CheckSquare, hint: "Criar tarefa rápida", shortcut: "T", real: true },
-    { key: "despesa", label: "Nova Despesa", icon: Receipt, hint: "Lançar despesa no financeiro", shortcut: "D", real: true },
-    { key: "cliente", label: "Novo Cliente", icon: Building2, hint: "Em breve — use o Kanban do CRM", shortcut: "C", real: false },
-    { key: "venda", label: "Nova Venda", icon: DollarSign, hint: "Em breve — feche pelo Kanban do CRM", shortcut: "V", real: false },
+    { key: "lead", label: "Novo Lead", icon: UserPlus, hint: "Adicionar oportunidade ao CRM", shortcut: "L" },
+    { key: "tarefa", label: "Nova Tarefa", icon: CheckSquare, hint: "Criar tarefa rápida", shortcut: "T" },
+    { key: "despesa", label: "Nova Despesa", icon: Receipt, hint: "Lançar despesa no financeiro", shortcut: "D" },
   ];
 
 // ─── Main Component ──────────────────────────────────────────────────────────
@@ -156,20 +153,13 @@ export function QuickActionsButton() {
                       <div
                         className={cn(
                           "flex h-7 w-7 items-center justify-center rounded-md",
-                          it.real ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground",
+                          "bg-primary/10 text-primary",
                         )}
                       >
                         <Icon className="h-3.5 w-3.5" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5 font-medium">
-                          {it.label}
-                          {!it.real && (
-                            <span className="rounded-full bg-muted px-1.5 py-0.5 text-[9px] font-normal uppercase tracking-wide text-muted-foreground">
-                              em breve
-                            </span>
-                          )}
-                        </div>
+                        <div className="font-medium">{it.label}</div>
                         <div className="text-[10px] text-muted-foreground">{it.hint}</div>
                       </div>
                       <kbd className="rounded border bg-surface px-1 py-0.5 font-mono text-[9px] text-muted-foreground">
@@ -198,6 +188,7 @@ export function QuickActionsButton() {
 
 function CommandPalette({ onClose, onCreate }: { onClose: () => void; onCreate: (k: QuickKind) => void }) {
   const navigate = useNavigate();
+  const { leads, clients } = useDataStore();
   const [query, setQuery] = useState("");
 
   const nav = [
@@ -218,7 +209,7 @@ function CommandPalette({ onClose, onCreate }: { onClose: () => void; onCreate: 
       leads: leads.filter((l) => l.name.toLowerCase().includes(q) || l.company.toLowerCase().includes(q)).slice(0, 5),
       clients: clients.filter((c) => c.company.toLowerCase().includes(q) || c.name.toLowerCase().includes(q)).slice(0, 5),
     };
-  }, [query]);
+  }, [query, leads, clients]);
 
   return (
     <>
@@ -348,9 +339,7 @@ function Row({
 
 const kindMeta: Record<QuickKind, { title: string; desc: string }> = {
   lead: { title: "Novo Lead", desc: "Adicionar oportunidade ao CRM" },
-  cliente: { title: "Novo Cliente", desc: "Cadastrar cliente diretamente" },
-  venda: { title: "Nova Venda", desc: "Registrar venda fechada — cria cliente, projeto e primeira cobrança" },
-  despesa: { title: "Nova Despesa", desc: "Salva no financeiro (ainda não entra nos gráficos do DRE)" },
+  despesa: { title: "Nova Despesa", desc: "Lançar despesa no financeiro (entra no DRE)" },
   tarefa: { title: "Nova Tarefa", desc: "Adicionar item à sua lista de execução" },
 };
 
@@ -375,8 +364,6 @@ function QuickDialog({
   const [leadData, setLeadData] = useState<LeadFormData>(emptyLeadForm);
   const [tarefaData, setTarefaData] = useState<TarefaFormData>({ ...emptyTarefaForm, dueDate: defaultDate ?? "" });
   const [despesaData, setDespesaData] = useState<DespesaFormData>(emptyDespesaForm);
-
-  const isReal = kind === "lead" || kind === "tarefa" || kind === "despesa";
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -444,12 +431,6 @@ function QuickDialog({
           </button>
         </div>
 
-        {!isReal && (
-          <div className="mx-4 mt-3 flex items-center gap-2 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-[11px] text-warning">
-            Este formulário ainda não salva de verdade — em desenvolvimento.
-          </div>
-        )}
-
         {saved ? (
           <div className="flex flex-col items-center gap-2 px-6 py-10 text-center">
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-success/15 text-success">
@@ -457,9 +438,7 @@ function QuickDialog({
             </div>
             <div className="text-sm font-semibold">Salvo com sucesso</div>
             <div className="text-[12px] text-muted-foreground">
-              {kind === "venda"
-                ? "Cliente, projeto, checklist e primeira cobrança criados automaticamente."
-                : "As automações vinculadas foram disparadas."}
+              As automações vinculadas foram disparadas.
             </div>
           </div>
         ) : (
@@ -467,8 +446,6 @@ function QuickDialog({
             {kind === "lead" && (
               <LeadForm data={leadData} onChange={setLeadData} defaultStage={defaultStage} />
             )}
-            {kind === "cliente" && <ClienteForm />}
-            {kind === "venda" && <VendaForm />}
             {kind === "despesa" && <DespesaForm data={despesaData} onChange={setDespesaData} />}
             {kind === "tarefa" && (
               <TarefaForm data={tarefaData} onChange={setTarefaData} defaultContext={defaultContext} clients={realClients} />
@@ -652,52 +629,6 @@ function LeadForm({
           </div>
         </F>
       )}
-    </>
-  );
-}
-
-function ClienteForm() {
-  return (
-    <>
-      <Row2>
-        <F label="Nome"><input required placeholder="André Pereira" className={cls} /></F>
-        <F label="Empresa"><input placeholder="Pereira Ortopedia" className={cls} /></F>
-      </Row2>
-      <Row2>
-        <F label="Plano">
-          <select className={cls}><option>Starter</option><option>Growth</option><option>Scale</option><option>Enterprise</option></select>
-        </F>
-        <F label="Mensalidade (R$)"><input type="number" placeholder="0" className={cls} /></F>
-      </Row2>
-      <Row2>
-        <F label="Dia de pagamento"><input type="number" min="1" max="31" placeholder="5" className={cls} /></F>
-        <F label="Início do contrato"><input type="date" className={cls} /></F>
-      </Row2>
-    </>
-  );
-}
-
-function VendaForm() {
-  return (
-    <>
-      <F label="Lead / Cliente"><input required placeholder="Buscar…" className={cls} /></F>
-      <Row2>
-        <F label="Valor (R$)"><input type="number" required className={cls} /></F>
-        <F label="Data de fechamento"><input type="date" className={cls} /></F>
-      </Row2>
-      <F label="Serviços vendidos">
-        <div className="grid grid-cols-2 gap-1.5 rounded-md border bg-surface/40 p-2 text-[12px]">
-          {["Gestão de Tráfego", "Landing Page", "Site Institucional", "Consultoria"].map((s) => (
-            <label key={s} className="flex items-center gap-2">
-              <input type="checkbox" className="h-3 w-3 accent-primary" defaultChecked={s === "Gestão de Tráfego"} />
-              {s}
-            </label>
-          ))}
-        </div>
-        <div className="mt-1 text-[10px] text-muted-foreground">
-          A operação (cliente, projeto, checklist e cobrança) será criada automaticamente a partir dos templates.
-        </div>
-      </F>
     </>
   );
 }
