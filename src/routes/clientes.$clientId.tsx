@@ -1340,53 +1340,24 @@ function JornadaCliente({
         </div>
       )}
 
-      {/* Checklist real dos projetos */}
+      {/* Resumo de progresso — detalhamento fica em Operação › Projetos Ativos */}
       {allItems.length > 0 && (
         <>
           <div className="mb-2 flex items-center justify-between">
-            <span className="text-[11px] text-muted-foreground">Checklist de entregas</span>
-            <span className="font-mono text-[10px] text-muted-foreground">{doneCount}/{totalCount}</span>
+            <span className="text-[11px] text-muted-foreground">Progresso das entregas</span>
+            <span className="font-mono text-[10px] text-muted-foreground">
+              {doneCount}/{totalCount} itens concluídos
+            </span>
           </div>
-          {/* Progress bar */}
-          <div className="mb-3 h-1 overflow-hidden rounded-full bg-border">
+          <div className="h-1 overflow-hidden rounded-full bg-border">
             <div
               className="h-full rounded-full bg-primary transition-all"
               style={{ width: totalCount > 0 ? `${(doneCount / totalCount) * 100}%` : "0%" }}
             />
           </div>
-          <ul className="space-y-1">
-            {allItems.map((item) => (
-              <li
-                key={`${item.projectId}-${item.id}`}
-                className="flex cursor-pointer items-center gap-2.5 rounded-md p-1.5 hover:bg-accent"
-                onClick={() => toggleChecklistItem(item.projectId, item.id)}
-              >
-                <span
-                  className={cn(
-                    "flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors",
-                    item.done
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "border-border",
-                  )}
-                >
-                  {item.done && <span className="text-[9px] font-bold">✓</span>}
-                </span>
-                <span
-                  className={cn(
-                    "min-w-0 flex-1 truncate text-[12px]",
-                    item.done && "text-muted-foreground line-through",
-                  )}
-                >
-                  {item.text}
-                </span>
-                <span className="shrink-0 rounded bg-surface px-1.5 py-0.5 text-[9px] text-muted-foreground">
-                  {item.projectName.replace(/ — .*/, "")}
-                </span>
-              </li>
-            ))}
-          </ul>
         </>
       )}
+
 
       {allItems.length === 0 && stages.length > 0 && (
         <p className="text-center text-[11px] text-muted-foreground">
