@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Plus, Search, Filter, Calendar, ChevronRight } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Search, Calendar, ChevronRight } from "lucide-react";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { formatBRL } from "@/lib/mock-data";
 import { useDataStore } from "@/lib/data-store";
@@ -24,7 +25,16 @@ const statusColor = {
 
 function ClientesList() {
   const { clients } = useDataStore();
+  const [query, setQuery] = useState("");
   const mrr = clients.filter((c) => c.status === "ativo").reduce((s, c) => s + c.monthlyValue, 0);
+
+  const visible = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return clients;
+    return clients.filter(
+      (c) => c.company.toLowerCase().includes(q) || c.name.toLowerCase().includes(q),
+    );
+  }, [clients, query]);
 
   return (
     <AppShell title="Clientes" subtitle="Carteira ativa">
@@ -32,14 +42,13 @@ function ClientesList() {
         <PageHeader title="Clientes" subtitle={`${clients.length} clientes · MRR ${formatBRL(mrr)}`}>
           <div className="relative">
             <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-            <input placeholder="Buscar cliente…" className="h-8 w-52 rounded-md border bg-surface pl-7 pr-2 text-xs focus:border-primary/60 focus:outline-none" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Buscar cliente…"
+              className="h-8 w-52 rounded-md border bg-surface pl-7 pr-2 text-xs focus:border-primary/60 focus:outline-none"
+            />
           </div>
-          <button className="inline-flex h-8 items-center gap-1.5 rounded-md border bg-surface px-2.5 text-xs font-medium hover:bg-accent">
-            <Filter className="h-3.5 w-3.5" /> Filtrar
-          </button>
-          <button className="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary/90">
-            <Plus className="h-3.5 w-3.5" /> Novo Cliente
-          </button>
         </PageHeader>
 
         <div className="overflow-hidden rounded-lg border bg-card">
