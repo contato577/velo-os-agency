@@ -1,13 +1,5 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import {
-  AlertTriangle,
-  Users2,
-  Wallet,
-  Target,
-  Calendar,
-  CheckSquare,
-  ArrowRight,
-  BadgeCheck,
   Send,
   Bot,
   Megaphone,
@@ -17,35 +9,19 @@ import {
   FileText,
   Sparkles,
 } from "lucide-react";
-import { useMemo, useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import { AppShell, PageHeader } from "@/components/app-shell";
-import {
-  sortByPriority,
-  priorityStyles,
-  type Insight,
-  type InsightArea,
-} from "@/lib/ai-engine";
-import { useDataStore } from "@/lib/data-store";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/central-ia")({
   head: () => ({
     meta: [
       { title: "Central de IA · Veloce" },
-      { name: "description", content: "Diagnósticos automáticos, assistente e relatórios de mídia paga." },
+      { name: "description", content: "Assistente inteligente e relatórios de mídia paga." },
     ],
   }),
   component: CentralIA,
 });
-
-const areaIcons: Record<InsightArea, typeof AlertTriangle> = {
-  Comercial: Users2,
-  Financeiro: Wallet,
-  Operacional: CheckSquare,
-  Clientes: BadgeCheck,
-  Agenda: Calendar,
-  Metas: Target,
-};
 
 // ─── Conectores de mídia paga — UI pronta, aguardando back-end ───────────────
 // Cada plataforma exige um fluxo de autorização (OAuth) e armazenamento seguro
@@ -71,25 +47,6 @@ type ChatMessage = { id: string; role: "user" | "assistant"; text: string; hora:
 const horaAgora = () => new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 
 function CentralIA() {
-  const { insights } = useDataStore();
-
-  const areas: (InsightArea | "Todas")[] = [
-    "Todas",
-    "Comercial",
-    "Financeiro",
-    "Operacional",
-    "Clientes",
-    "Agenda",
-    "Metas",
-  ];
-  const [filter, setFilter] = useState<InsightArea | "Todas">("Todas");
-
-  const filtered = useMemo(() => {
-    const list = filter === "Todas" ? insights : insights.filter((d) => d.area === filter);
-    return sortByPriority(list);
-  }, [insights, filter]);
-
-  // ─── Chat com a IA — interface real, estilo WhatsApp, aguardando back-end ──
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: "m0",
@@ -120,70 +77,42 @@ function CentralIA() {
   };
 
   return (
-    <AppShell title="Central de IA" subtitle="Diagnósticos, assistente e relatórios de mídia paga">
-      <div className="px-4 py-6 md:px-6">
-        <PageHeader title="Central de IA" subtitle="Diagnóstico automático da sua operação — atualizado agora" />
+    <AppShell title="Central de IA" subtitle="Assistente inteligente da Veloce">
+      <div className="flex h-[calc(100vh-3.5rem)] flex-col px-4 py-6 md:px-6">
+        <PageHeader title="Central de IA" subtitle="Converse com o assistente sobre a sua operação" />
 
-        {/* Diagnósticos — reais, calculados a partir do sistema */}
-        <div className="mb-4 flex flex-wrap gap-1.5">
-          {areas.map((a) => (
-            <button
-              key={a}
-              onClick={() => setFilter(a)}
-              className={cn(
-                "rounded-md border px-2.5 py-1 text-[11px] font-medium transition-colors",
-                filter === a
-                  ? "border-primary/50 bg-primary/15 text-primary"
-                  : "bg-surface text-muted-foreground hover:bg-accent hover:text-foreground",
-              )}
-            >
-              {a}
-            </button>
-          ))}
-        </div>
-
-        {filtered.length > 0 ? (
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {filtered.map((d) => <DiagnosticCard key={d.id} d={d} />)}
-          </div>
-        ) : (
-          <div className="rounded-xl border bg-card p-6 text-center text-[13px] text-muted-foreground">
-            Nenhum diagnóstico {filter !== "Todas" ? `em "${filter}"` : ""} no momento. Tudo tranquilo por aqui.
-          </div>
-        )}
-
-        {/* ─── Assistente IA — protagonista da tela, estilo WhatsApp ─────────── */}
-        <div className="mt-6 overflow-hidden rounded-xl border bg-card">
+        {/* ─── Assistente IA — protagonista absoluto da tela ─────────────────── */}
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border bg-card">
           {/* Cabeçalho tipo app de conversa */}
-          <div className="flex items-center justify-between gap-3 border-b bg-surface/60 px-4 py-3">
-            <div className="flex items-center gap-2.5">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/20 ring-1 ring-primary/30">
-                <Bot className="h-4.5 w-4.5 text-primary" />
+          <div className="flex items-center justify-between gap-3 border-b bg-surface/60 px-5 py-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/20 ring-1 ring-primary/30">
+                <Bot className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <div className="text-[13px] font-semibold leading-tight">Assistente Veloce</div>
-                <div className="text-[11px] text-muted-foreground">Sua operação, em uma conversa</div>
+                <div className="text-[15px] font-semibold leading-tight">Assistente Veloce</div>
+                <div className="text-[12px] text-muted-foreground">Sua operação, em uma conversa</div>
               </div>
             </div>
-            <span className="rounded-full bg-warning/15 px-2.5 py-1 text-[10px] font-medium uppercase tracking-wider text-warning">
+            <span className="rounded-full bg-warning/15 px-3 py-1.5 text-[11px] font-medium uppercase tracking-wider text-warning">
               Aguardando conexão
             </span>
           </div>
 
-          {/* Área de mensagens — grande, rolável, bolhas */}
-          <div ref={scrollRef} className="flex h-[520px] flex-col gap-3 overflow-y-auto bg-background/40 px-4 py-5 md:h-[560px]">
+          {/* Área de mensagens — ocupa todo o espaço disponível */}
+          <div ref={scrollRef} className="flex flex-1 flex-col gap-3 overflow-y-auto bg-background/40 px-5 py-6">
             {messages.map((m) => (
               <div key={m.id} className={cn("flex", m.role === "user" ? "justify-end" : "justify-start")}>
                 <div
                   className={cn(
-                    "max-w-[75%] rounded-2xl px-3.5 py-2.5 text-[13.5px] leading-relaxed shadow-sm",
+                    "max-w-[70%] rounded-2xl px-4 py-3 text-[14px] leading-relaxed shadow-sm",
                     m.role === "assistant"
                       ? "rounded-tl-sm border bg-card text-foreground"
                       : "rounded-tr-sm bg-primary/25 text-foreground",
                   )}
                 >
                   {m.text}
-                  <div className={cn("mt-1 text-[10px] text-muted-foreground", m.role === "user" && "text-right")}>
+                  <div className={cn("mt-1.5 text-[10px] text-muted-foreground", m.role === "user" && "text-right")}>
                     {m.hora}
                   </div>
                 </div>
@@ -192,7 +121,7 @@ function CentralIA() {
           </div>
 
           {/* Sugestões rápidas */}
-          <div className="flex flex-wrap gap-1.5 border-t bg-surface/40 px-4 pt-3">
+          <div className="flex flex-wrap gap-1.5 border-t bg-surface/40 px-5 pt-3">
             {sugestoes.map((s) => (
               <button
                 key={s}
@@ -205,19 +134,19 @@ function CentralIA() {
           </div>
 
           {/* Campo de digitação — estilo app de mensagens */}
-          <div className="flex items-center gap-2 bg-surface/40 px-4 py-3">
+          <div className="flex items-center gap-2 bg-surface/40 px-5 py-4">
             <input
               value={chatInput}
               onChange={(e) => setChatInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && enviarMensagem(chatInput)}
               placeholder="Escreva uma mensagem..."
-              className="h-11 flex-1 rounded-full border bg-card px-4 text-[13.5px] outline-none focus:ring-1 focus:ring-primary/50"
+              className="h-12 flex-1 rounded-full border bg-card px-4 text-[14px] outline-none focus:ring-1 focus:ring-primary/50"
             />
             <button
               onClick={() => enviarMensagem(chatInput)}
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition-colors hover:bg-primary/90"
+              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition-colors hover:bg-primary/90"
             >
-              <Send className="h-4 w-4" />
+              <Send className="h-4.5 w-4.5" />
             </button>
           </div>
         </div>
@@ -265,43 +194,5 @@ function CentralIA() {
         </div>
       </div>
     </AppShell>
-  );
-}
-
-function DiagnosticCard({ d }: { d: Insight }) {
-  const Icon = areaIcons[d.area] ?? AlertTriangle;
-  const ps = priorityStyles[d.prioridade];
-  const isCritico = d.prioridade === "critica";
-  return (
-    <div
-      className={cn(
-        "group relative flex flex-col rounded-lg border bg-card p-4 transition-all hover:-translate-y-0.5 hover:shadow-elegant",
-        isCritico ? `${ps.border} ${ps.ring}` : `hover:ring-1 ${ps.ring}`,
-      )}
-    >
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <div className={cn("flex h-7 w-7 items-center justify-center rounded-md", ps.chip)}>
-            <Icon className="h-3.5 w-3.5" />
-          </div>
-          <span className="text-[10px] uppercase tracking-widest text-muted-foreground">{d.area}</span>
-        </div>
-        <span className={cn("rounded px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider", ps.chip)}>
-          {ps.label}
-        </span>
-      </div>
-      <h3 className="text-[14px] font-semibold leading-snug tracking-tight">{d.titulo}</h3>
-      <p className="mt-1.5 text-[12px] leading-relaxed text-muted-foreground">{d.descricao}</p>
-      <div className="mt-3 flex items-center justify-between border-t pt-3">
-        <span className="text-[11px] font-mono text-muted-foreground">{d.impacto}</span>
-        <Link
-          to={d.to}
-          {...(d.search ? { search: d.search as never } : {})}
-          className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-1 text-[11px] font-medium text-primary transition-colors hover:bg-primary/20"
-        >
-          {d.acaoLabel} <ArrowRight className="h-3 w-3" />
-        </Link>
-      </div>
-    </div>
   );
 }
