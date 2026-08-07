@@ -43,7 +43,7 @@ import { formatBRL, type Client } from "@/lib/mock-data";
 import { useDataStore } from "@/lib/data-store";
 import { gerarResumoCliente, exportarRelatorioPDF, linkWhatsApp } from "@/lib/client-report";
 import { cn } from "@/lib/utils";
-import { serviceTemplates } from "@/lib/service-templates";
+
 
 export const Route = createFileRoute("/clientes/$clientId")({
   head: () => ({
@@ -1376,12 +1376,12 @@ function JornadaCliente({
 
 // ─── FINANCEIRO ──────────────────────────────────────────────────────────────
 function TabFinanceiro({ client }: { client: Client }) {
-  const pagamentos = Array.from({ length: 6 }, (_, i) => ({
-    id: `pg-${i}`,
-    date: new Date(2026, 6 - i, client.paymentDay).toLocaleDateString("pt-BR"),
-    value: client.monthlyValue,
-    status: i === 0 ? "pendente" : "pago",
-  }));
+  const { expenses } = useDataStore();
+
+  const lancamentos = expenses
+    .filter((e) => e.client && (e.client === client.company || e.client === client.name))
+    .slice()
+    .sort((a, b) => (a.date < b.date ? 1 : -1));
 
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
@@ -1391,24 +1391,34 @@ function TabFinanceiro({ client }: { client: Client }) {
         <div className="mt-1 text-[12px] text-muted-foreground">Vence dia {client.paymentDay} de cada mês</div>
       </div>
       <div className="rounded-xl border bg-card p-4 lg:col-span-2">
-        <h3 className="mb-3 text-sm font-semibold tracking-tight">Últimos pagamentos</h3>
-        <ul className="space-y-1">
-          {pagamentos.map((p) => (
-            <li key={p.id} className="flex items-center gap-3 rounded-md border bg-surface/50 px-3 py-2 text-[13px]">
-              <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-              <span className="font-mono">{p.date}</span>
-              <span className="ml-auto font-mono text-primary">{formatBRL(p.value)}</span>
-              <span
-                className={cn(
-                  "rounded px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider",
-                  p.status === "pago" ? "bg-success/15 text-success" : "bg-warning/15 text-warning",
-                )}
-              >
-                {p.status}
-              </span>
-            </li>
-          ))}
-        </ul>
+        <h3 className="mb-3 text-sm font-semibold tracking-tight">Lançamentos do cliente</h3>
+        {lancamentos.length === 0 ? (
+          <p className="rounded-md border border-dashed bg-surface/40 px-3 py-6 text-center text-[12px] text-muted-foreground">
+            Nenhum lançamento registrado ainda
+          </p>
+        ) : (
+          <ul className="space-y-1">
+            {lancamentos.map((l) => (
+              <li key={l.id} className="flex items-center gap-3 rounded-md border bg-surface/50 px-3 py-2 text-[13px]">
+                <Calendar className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                <span className="font-mono">{new Date(l.date).toLocaleDateString("pt-BR")}</span>
+                <span className="min-w-0 flex-1 truncate text-muted-foreground">{l.description}</span>
+                <span className={cn("font-mono", l.type === "entrada" ? "text-success" : "text-destructive")}>
+                  {l.type === "entrada" ? "+" : "−"}
+                  {formatBRL(l.amount)}
+                </span>
+                <span
+                  className={cn(
+                    "rounded px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider",
+                    l.type === "entrada" ? "bg-success/15 text-success" : "bg-destructive/15 text-destructive",
+                  )}
+                >
+                  {l.type}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </div>
   );
