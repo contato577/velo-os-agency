@@ -24,10 +24,33 @@ export interface RelatorioCliente {
   integracoes: IntegracaoAds[];
 }
 
+// Nome do mês atual, em português — antes vinha travado em "julho de 2026" sempre.
+function periodoAtual(): string {
+  return new Date().toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+}
+
+// Classificação simples de sentimento — usada pra dar um resumo objetivo
+// ("indo bem" / "precisa de atenção") sem inventar número nenhum:
+// olha só prazo estourado e progresso médio dos projetos ativos.
+export function classificarSentimento(projetos: Project[]): { status: "bom" | "atencao"; motivo: string } {
+  const ativos = projetos.filter((p) => p.status !== "entregue");
+  if (ativos.length === 0) return { status: "bom", motivo: "Nenhum projeto em aberto no momento." };
+  const hoje = new Date();
+  const atrasados = ativos.filter((p) => new Date(p.deadline) < hoje);
+  if (atrasados.length > 0) {
+    return { status: "atencao", motivo: `${atrasados.length} projeto${atrasados.length === 1 ? "" : "s"} com prazo estourado.` };
+  }
+  const progressoMedio = ativos.reduce((s, p) => s + p.progress, 0) / ativos.length;
+  if (progressoMedio < 30) {
+    return { status: "atencao", motivo: "Progresso ainda baixo nos projetos ativos — vale reforçar o ritmo." };
+  }
+  return { status: "bom", motivo: "Projetos dentro do prazo, progresso saudável." };
+}
+
 export function gerarResumoCliente(
   client: Client,
   projetos: Project[],
-  periodo = "julho de 2026",
+  periodo = periodoAtual(),
 ): RelatorioCliente {
   const projetosAtivos = projetos.filter((p) => p.status !== "entregue");
   const entregas = projetos
