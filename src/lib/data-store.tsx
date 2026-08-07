@@ -16,7 +16,7 @@ import {
   type Project,
   type LeadStage,
 } from "./mock-data";
-import { serviceTemplates, type ServiceTemplate } from "./service-templates";
+import { serviceTemplates as seedTemplates, type ServiceTemplate } from "./service-templates";
 import { gerarInsights, type Insight } from "./ai-engine";
 
 export interface MetasMensais {
@@ -57,6 +57,14 @@ export interface PontoControle {
 }
 
 const PC_STORAGE_KEY = "veloce.pontos-controle.v1";
+
+function addMonths(base: Date, months: number) {
+  const d = new Date(base.getTime());
+  const day = d.getDate();
+  d.setMonth(d.getMonth() + months);
+  if (d.getDate() < day) d.setDate(0);
+  return d;
+}
 
 export function mesAtualISO(d = new Date()) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
@@ -114,7 +122,9 @@ interface DataStoreContextValue {
   updateClientInfo: (clientId: string, partial: Partial<Pick<Client, "name" | "company" | "email" | "phone" | "contratoArquivo">>) => void;
   addComentario: (clientId: string, texto: string, autor: string) => void;
   removeComentario: (clientId: string, comentarioId: string) => void;
-  criarClienteDeVenda: (lead: Lead, servicos: string[], plano?: string) => Client;
+  criarClienteDeVenda: (lead: Lead, servicos: string[], plano?: string, contratoMeses?: number) => Client;
+  serviceTemplates: ServiceTemplate[];
+  updateServiceTemplate: (id: string, partial: Partial<Omit<ServiceTemplate, "id">>) => void;
   toggleChecklistItem: (projectId: string, itemId: string) => void;
 }
 
@@ -126,6 +136,7 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
   const [clients, setClients] = useState<Client[]>(seedClients);
   const [expenses, setExpenses] = useState<FinanceEntry[]>(seedExpenses);
   const [projects, setProjects] = useState<Project[]>(seedProjects);
+  const [serviceTemplates, setServiceTemplates] = useState<ServiceTemplate[]>(seedTemplates);
   const [pontosControle, setPontosControle] = useState<PontoControle[]>(() => loadPontos());
   const [metasFallback, setMetasFallback] = useState<MetasMensais>({
     metaComercial: 50000,
@@ -321,7 +332,11 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
     );
   };
 
-  const criarClienteDeVenda = (lead: Lead, servicos: string[], plano?: string): Client => {
+  const updateServiceTemplate: DataStoreContextValue["updateServiceTemplate"] = (id, partial) => {
+    setServiceTemplates((prev) => prev.map((t) => (t.id === id ? { ...t, ...partial } : t)));
+  };
+
+  const criarClienteDeVenda = (lead: Lead, servicos: string[], plano?: string, contratoMeses = 12): Client => {
     const hoje = new Date();
     const dataInicioJornada = hoje.toISOString().slice(0, 10);
 
@@ -362,7 +377,8 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
       plano,
       monthlyValue: lead.value,
       paymentDay: 5,
-      renewalDate: new Date(hoje.getTime() + 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+      renewalDate: addMonths(hoje, contratoMeses).toISOString().slice(0, 10),
+      contratoMeses,
       owner: lead.owner,
       status: "onboarding",
       since: dataInicioJornada,
@@ -545,6 +561,8 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
         addComentario,
         removeComentario,
         criarClienteDeVenda,
+        serviceTemplates,
+        updateServiceTemplate,
         toggleChecklistItem,
       }}
     >
