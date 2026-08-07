@@ -115,6 +115,7 @@ export interface Client {
   monthlyValue: number;
   paymentDay: number;
   renewalDate: string;
+  contratoMeses?: number;
   owner: string;
   status: "ativo" | "onboarding" | "pausado" | "cancelado";
   since: string;

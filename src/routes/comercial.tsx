@@ -296,12 +296,13 @@ function VendaConfirmDialog({
   onCancel,
 }: {
   lead: Lead;
-  onConfirm: (servicos: string[], plano: string, valor: number) => void;
+  onConfirm: (servicos: string[], plano: string, valor: number, contratoMeses: number) => void;
   onCancel: () => void;
 }) {
   const [servicos, setServicos] = useState<string[]>(["Gestão de Tráfego"]);
   const [plano, setPlano] = useState<string>("Plano Crescimento");
   const [valor, setValor] = useState<number>(lead.value > 0 ? lead.value : 890);
+  const [contratoMeses, setContratoMeses] = useState<number>(12);
 
   const toggle = (s: string) =>
     setServicos((prev) => (prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]));
@@ -365,6 +366,24 @@ function VendaConfirmDialog({
           </div>
 
           <div>
+            <div className="mb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+              Duração do contrato (meses)
+            </div>
+            <input
+              type="number"
+              min={1}
+              max={120}
+              value={contratoMeses}
+              onChange={(e) => setContratoMeses(Math.max(1, Number(e.target.value) || 1))}
+              className="w-full rounded-md border bg-background px-3 py-1.5 font-mono text-sm focus:border-primary/60 focus:outline-none"
+            />
+            <p className="mt-1 text-[10px] text-muted-foreground">
+              Renovação prevista para{" "}
+              {new Date(new Date().setMonth(new Date().getMonth() + contratoMeses)).toLocaleDateString("pt-BR")}
+            </p>
+          </div>
+
+          <div>
             <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
               Serviços vendidos
             </div>
@@ -388,7 +407,7 @@ function VendaConfirmDialog({
             Cancelar
           </button>
           <button
-            onClick={() => onConfirm(servicos, plano, valor)}
+            onClick={() => onConfirm(servicos, plano, valor, contratoMeses)}
             disabled={servicos.length === 0}
             className="rounded-md bg-success px-3 py-1.5 text-xs font-medium text-success-foreground hover:opacity-90 disabled:opacity-50"
           >
@@ -479,12 +498,12 @@ function Comercial() {
     setTimeout(() => setJustMovedId(null), 1500);
   };
 
-  const confirmarVenda = (servicos: string[], plano: string, valor: number) => {
+  const confirmarVenda = (servicos: string[], plano: string, valor: number, contratoMeses: number) => {
     if (!pendingWin) return;
     const updatedLead = { ...pendingWin, value: valor };
 
     // 1. Criar o cliente com prazo, datas, etapa, projetos, checklist, cobrança, timeline e plano
-    const client = criarClienteDeVenda(updatedLead, servicos, plano);
+    const client = criarClienteDeVenda(updatedLead, servicos, plano, contratoMeses);
     playSuccess();
 
     // 2. Atualizar estágio do lead para fechado

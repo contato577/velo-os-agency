@@ -1,11 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
-  User, Building2, Bell, Shield, Palette, Users, Zap, Plug, FileStack, ChevronRight, Check,
-  Sun, Moon,
+  Palette, Zap, FileStack, ChevronRight, Check, Plus, Trash2, Sun, Moon,
 } from "lucide-react";
 import { AppShell, PageHeader } from "@/components/app-shell";
-import { serviceTemplates } from "@/lib/service-templates";
+import { useDataStore } from "@/lib/data-store";
+import type { ServiceTemplate } from "@/lib/service-templates";
 import { automationRules, triggerLabels, actionLabels, type AutomationRule } from "@/lib/automation-engine";
 import { useTheme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
@@ -14,52 +14,241 @@ export const Route = createFileRoute("/configuracoes")({
   head: () => ({
     meta: [
       { title: "Configurações · Veloce" },
-      { name: "description", content: "Perfil, workspace, templates operacionais, integrações e automações." },
+      { name: "description", content: "Aparência, templates operacionais editáveis e automações do sistema." },
+      { property: "og:title", content: "Configurações · Veloce OS" },
+      { property: "og:description", content: "Ajuste tema, templates operacionais e automações da sua agência." },
     ],
   }),
   component: Config,
 });
 
-interface Section {
-  icon: typeof User;
-  title: string;
-  desc: string;
+const inputCls =
+  "w-full rounded-md border bg-background px-2.5 py-1.5 text-[12px] focus:border-primary/60 focus:outline-none";
+
+const prioridades = ["media", "alta", "urgente"] as const;
+
+function ListEditor({
+  label,
+  items,
+  onChange,
+  placeholder,
+}: {
+  label: string;
+  items: string[];
+  onChange: (items: string[]) => void;
+  placeholder: string;
+}) {
+  return (
+    <div>
+      <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">{label}</div>
+      <div className="space-y-1.5">
+        {items.map((item, i) => (
+          <div key={i} className="flex items-center gap-1.5">
+            <input
+              className={inputCls}
+              value={item}
+              placeholder={placeholder}
+              onChange={(e) => onChange(items.map((x, j) => (j === i ? e.target.value : x)))}
+            />
+            <button
+              type="button"
+              onClick={() => onChange(items.filter((_, j) => j !== i))}
+              className="shrink-0 rounded-md border bg-surface p-1.5 text-muted-foreground hover:text-destructive"
+              aria-label={`Remover ${label}`}
+            >
+              <Trash2 className="h-3 w-3" />
+            </button>
+          </div>
+        ))}
+        <button
+          type="button"
+          onClick={() => onChange([...items, ""])}
+          className="inline-flex items-center gap-1 rounded-md border border-dashed px-2 py-1 text-[11px] text-muted-foreground hover:text-foreground"
+        >
+          <Plus className="h-3 w-3" /> Adicionar
+        </button>
+      </div>
+    </div>
+  );
 }
 
-const groups: { title: string; items: Section[] }[] = [
-  {
-    title: "Minha conta",
-    items: [
-      { icon: User, title: "Perfil", desc: "Nome, avatar, e-mail e preferências pessoais" },
-      { icon: Shield, title: "Segurança", desc: "Senha, 2FA e sessões ativas" },
-    ],
-  },
-  {
-    title: "Workspace",
-    items: [
-      { icon: Building2, title: "Workspace", desc: "Dados da agência, logotipo e domínio" },
-      { icon: Users, title: "Usuários e Permissões", desc: "Convide sócios ou operadores quando escalar" },
-      { icon: Palette, title: "Aparência", desc: "Tema, densidade e idioma" },
-    ],
-  },
-  {
-    title: "Operação",
-    items: [
-      { icon: FileStack, title: "Templates", desc: "Estruturas automáticas por serviço vendido" },
-      { icon: Zap, title: "Automações", desc: "Motor de regras que roda em segundo plano" },
-    ],
-  },
-  {
-    title: "Sistema",
-    items: [
-      { icon: Bell, title: "Notificações", desc: "E-mail, push e WhatsApp" },
-      { icon: Plug, title: "Integrações", desc: "Meta Ads, Google Ads, Analytics, WhatsApp" },
-    ],
-  },
-];
+function TemplateEditor({ template }: { template: ServiceTemplate }) {
+  const { updateServiceTemplate } = useDataStore();
+  const [draft, setDraft] = useState<ServiceTemplate>(template);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => setDraft(template), [template]);
+
+  useEffect(() => {
+    if (!saved) return;
+    const t = setTimeout(() => setSaved(false), 1600);
+    return () => clearTimeout(t);
+  }, [saved]);
+
+  const set = <K extends keyof ServiceTemplate>(key: K, value: ServiceTemplate[K]) =>
+    setDraft((d) => ({ ...d, [key]: value }));
+
+  const save = () => {
+    updateServiceTemplate(template.id, {
+      name: draft.name.trim() || template.name,
+      defaultDeadlineDays: Math.max(1, draft.defaultDeadlineDays || 1),
+      stages: draft.stages.map((s) => s.trim()).filter(Boolean),
+      checklist: draft.checklist.map((s) => s.trim()).filter(Boolean),
+      tasks: draft.tasks
+        .filter((t) => t.title.trim())
+        .map((t) => ({ ...t, title: t.title.trim(), dueOffsetDays: Math.max(0, t.dueOffsetDays || 0) })),
+    });
+    setSaved(true);
+  };
+
+  return (
+    <details className="group">
+      <summary className="flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors hover:bg-surface/40">
+        <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/10 text-primary">
+          <FileStack className="h-3.5 w-3.5" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="text-[13px] font-medium">{template.name}</div>
+          <div className="mt-0.5 text-[11px] text-muted-foreground">
+            {template.stages.length} etapas · {template.checklist.length} itens de checklist ·{" "}
+            {template.tasks.length} tarefas iniciais
+          </div>
+        </div>
+        <span className="font-mono text-[10px] text-muted-foreground">Prazo: {template.defaultDeadlineDays}d</span>
+        <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-90" />
+      </summary>
+
+      <div className="border-t bg-surface/30 p-4">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+          <div className="md:col-span-2">
+            <div className="mb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+              Nome do template
+            </div>
+            <input className={inputCls} value={draft.name} onChange={(e) => set("name", e.target.value)} />
+          </div>
+          <div>
+            <div className="mb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+              Prazo padrão (dias)
+            </div>
+            <input
+              type="number"
+              min={1}
+              className={inputCls}
+              value={draft.defaultDeadlineDays}
+              onChange={(e) => set("defaultDeadlineDays", Number(e.target.value) || 0)}
+            />
+          </div>
+        </div>
+
+        <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
+          <ListEditor
+            label="Etapas"
+            items={draft.stages}
+            placeholder="Nome da etapa"
+            onChange={(v) => set("stages", v)}
+          />
+          <ListEditor
+            label="Checklist"
+            items={draft.checklist}
+            placeholder="Item do checklist"
+            onChange={(v) => set("checklist", v)}
+          />
+          <div>
+            <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+              Tarefas iniciais
+            </div>
+            <div className="space-y-2">
+              {draft.tasks.map((task, i) => (
+                <div key={i} className="rounded-md border bg-card p-2">
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      className={inputCls}
+                      value={task.title}
+                      placeholder="Título da tarefa"
+                      onChange={(e) =>
+                        set("tasks", draft.tasks.map((t, j) => (j === i ? { ...t, title: e.target.value } : t)))
+                      }
+                    />
+                    <button
+                      type="button"
+                      onClick={() => set("tasks", draft.tasks.filter((_, j) => j !== i))}
+                      className="shrink-0 rounded-md border bg-surface p-1.5 text-muted-foreground hover:text-destructive"
+                      aria-label="Remover tarefa"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                  </div>
+                  <div className="mt-1.5 grid grid-cols-2 gap-1.5">
+                    <input
+                      type="number"
+                      min={0}
+                      className={inputCls}
+                      value={task.dueOffsetDays}
+                      onChange={(e) =>
+                        set(
+                          "tasks",
+                          draft.tasks.map((t, j) =>
+                            j === i ? { ...t, dueOffsetDays: Number(e.target.value) || 0 } : t,
+                          ),
+                        )
+                      }
+                    />
+                    <select
+                      className={inputCls}
+                      value={task.priority}
+                      onChange={(e) =>
+                        set(
+                          "tasks",
+                          draft.tasks.map((t, j) =>
+                            j === i ? { ...t, priority: e.target.value as (typeof prioridades)[number] } : t,
+                          ),
+                        )
+                      }
+                    >
+                      {prioridades.map((p) => (
+                        <option key={p} value={p}>
+                          Prioridade {p}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() =>
+                  set("tasks", [...draft.tasks, { title: "", dueOffsetDays: 1, priority: "media" as const }])
+                }
+                className="inline-flex items-center gap-1 rounded-md border border-dashed px-2 py-1 text-[11px] text-muted-foreground hover:text-foreground"
+              >
+                <Plus className="h-3 w-3" /> Adicionar tarefa
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-4 flex items-center justify-end gap-2 border-t pt-3">
+          {saved && (
+            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-success">
+              <Check className="h-3 w-3" /> Template salvo
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={save}
+            className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+          >
+            Salvar template
+          </button>
+        </div>
+      </div>
+    </details>
+  );
+}
 
 function Config() {
   const { theme, setTheme } = useTheme();
+  const { serviceTemplates } = useDataStore();
   const [rules, setRules] = useState(automationRules);
 
   const toggleRule = (id: string) =>
@@ -71,41 +260,12 @@ function Config() {
   }, {});
 
   return (
-    <AppShell title="Configurações" subtitle="Ajustes gerais e templates operacionais">
+    <AppShell title="Configurações" subtitle="Aparência, templates operacionais e automações">
       <div className="px-4 py-6 md:px-6">
-        <PageHeader title="Configurações" subtitle="Ajustes gerais do sistema e templates da sua operação" />
+        <PageHeader title="Configurações" subtitle="Tema da interface, templates da sua operação e automações" />
 
-        <div className="space-y-8">
-          {groups.map((g) => (
-            <section key={g.title}>
-              <div className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-                {g.title}
-              </div>
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
-                {g.items.map((s) => {
-                  const Icon = s.icon;
-                  return (
-                    <div
-                      key={s.title}
-                      className="flex items-start gap-3 rounded-lg border bg-card p-4 text-left"
-                    >
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-                        <Icon className="h-4 w-4" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="text-[13px] font-medium">{s.title}</div>
-                        <div className="mt-0.5 text-[11px] text-muted-foreground">{s.desc}</div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
-          ))}
-        </div>
-
-        {/* Aparência — seletor funcional */}
-        <div className="mt-8 rounded-xl border bg-card p-4">
+        {/* Aparência */}
+        <div className="rounded-xl border bg-card p-4">
           <div className="flex items-center gap-2">
             <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/15">
               <Palette className="h-3.5 w-3.5 text-primary" />
@@ -149,7 +309,8 @@ function Config() {
               <div>
                 <h3 className="text-sm font-semibold tracking-tight">Templates Operacionais</h3>
                 <p className="text-[11px] text-muted-foreground">
-                  Quando uma venda é fechada, o sistema monta a operação automaticamente a partir dos serviços vendidos.
+                  Quando uma venda é fechada, o sistema monta a operação a partir destes templates — edite etapas,
+                  checklist e tarefas.
                 </p>
               </div>
             </div>
@@ -160,58 +321,7 @@ function Config() {
 
           <div className="divide-y">
             {serviceTemplates.map((t) => (
-              <details key={t.id} className="group">
-                <summary className="flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors hover:bg-surface/40">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/10 text-primary">
-                    <FileStack className="h-3.5 w-3.5" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="text-[13px] font-medium">{t.name}</div>
-                    <div className="mt-0.5 text-[11px] text-muted-foreground">
-                      {t.stages.length} etapas · {t.checklist.length} itens de checklist · {t.tasks.length} tarefas iniciais
-                    </div>
-                  </div>
-                  <span className="font-mono text-[10px] text-muted-foreground">Prazo: {t.defaultDeadlineDays}d</span>
-                  <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-90" />
-                </summary>
-
-                <div className="grid grid-cols-1 gap-4 border-t bg-surface/30 p-4 md:grid-cols-3">
-                  <div>
-                    <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Etapas</div>
-                    <ol className="space-y-1">
-                      {t.stages.map((s, i) => (
-                        <li key={s} className="flex items-center gap-2 text-[12px]">
-                          <span className="flex h-4 w-4 items-center justify-center rounded-full bg-primary/15 font-mono text-[9px] text-primary">{i + 1}</span>
-                          {s}
-                        </li>
-                      ))}
-                    </ol>
-                  </div>
-                  <div>
-                    <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Checklist</div>
-                    <ul className="space-y-1">
-                      {t.checklist.map((c) => (
-                        <li key={c} className="flex items-start gap-2 text-[12px]">
-                          <Check className="mt-0.5 h-3 w-3 shrink-0 text-primary" /><span>{c}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                  <div>
-                    <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Tarefas iniciais</div>
-                    <ul className="space-y-1.5">
-                      {t.tasks.map((task) => (
-                        <li key={task.title} className="rounded-md border bg-card p-2 text-[12px]">
-                          <div className="font-medium">{task.title}</div>
-                          <div className="mt-0.5 flex items-center gap-2 text-[10px] text-muted-foreground">
-                            <span>+{task.dueOffsetDays}d</span><span>·</span><span className="capitalize">Prioridade {task.priority}</span>
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-              </details>
+              <TemplateEditor key={t.id} template={t} />
             ))}
           </div>
         </div>
