@@ -1239,6 +1239,7 @@ function JornadaCliente({
   client: Client;
   clientProjects: import("@/lib/mock-data").Project[];
 }) {
+  const { serviceTemplates } = useDataStore();
   // Etapas do primeiro template de serviço do cliente
   const matchedTemplate = (client.services ?? [])
     .map((s) => serviceTemplates.find((t) => t.name === s || t.id === s))
