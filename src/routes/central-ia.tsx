@@ -14,6 +14,7 @@ import { useState, useRef, useEffect, useMemo } from "react";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { useDataStore } from "@/lib/data-store";
 import { gerarResumoCliente, classificarSentimento, exportarRelatorioPDF, linkWhatsApp, type RelatorioCliente } from "@/lib/client-report";
+import { playPop } from "@/lib/sound";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/central-ia")({
@@ -55,6 +56,7 @@ function CentralIA() {
   const [chatInput, setChatInput] = useState("");
   const [digitando, setDigitando] = useState(false);
   const [clienteSelecionado, setClienteSelecionado] = useState(clients[0]?.id ?? "");
+  const [mostrarSeletorRelatorio, setMostrarSeletorRelatorio] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -66,6 +68,7 @@ function CentralIA() {
     setTimeout(() => {
       setDigitando(false);
       setMessages((prev) => [...prev, msg]);
+      playPop();
     }, 550);
   };
 
@@ -166,46 +169,69 @@ function CentralIA() {
             )}
           </div>
 
-          {/* Gerador de relatório — real, sem duplicar a aba Performance do cliente */}
-          <div className="border-t bg-surface/50 px-5 py-3">
+          {/* Ações — organizadas em blocos com rótulo, em vez de tudo espremido numa linha só */}
+          <div className="border-t bg-surface/50 px-5 py-3.5">
+            <div className="mb-2 text-[10px] font-medium uppercase tracking-widest text-muted-foreground">Ações</div>
             <div className="flex flex-wrap items-center gap-2">
-              <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-              <span className="text-[11px] text-muted-foreground">Relatório mensal para</span>
-              <div className="relative">
-                <select
-                  value={clienteSelecionado}
-                  onChange={(e) => setClienteSelecionado(e.target.value)}
-                  className="h-8 appearance-none rounded-md border bg-card py-0 pl-2.5 pr-7 text-[12px] outline-none focus:ring-1 focus:ring-primary/50"
+              {!mostrarSeletorRelatorio ? (
+                <button
+                  onClick={() => setMostrarSeletorRelatorio(true)}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-primary/25 bg-primary/10 px-3 py-1.5 text-[12px] font-medium text-primary transition-colors hover:bg-primary/20"
                 >
-                  {clients.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.company}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
-              </div>
-              <button
-                onClick={gerarRelatorio}
-                disabled={!clienteAtivo}
-                className="ml-auto inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-[12px] font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
-              >
-                <Sparkles className="h-3 w-3" /> Gerar relatório
-              </button>
+                  <FileText className="h-3 w-3" /> Gerar relatório de cliente
+                </button>
+              ) : (
+                <div className="flex flex-wrap items-center gap-2 rounded-md border border-primary/25 bg-primary/5 px-2.5 py-1.5">
+                  <FileText className="h-3.5 w-3.5 shrink-0 text-primary" />
+                  <div className="relative">
+                    <select
+                      value={clienteSelecionado}
+                      onChange={(e) => setClienteSelecionado(e.target.value)}
+                      className="h-7 appearance-none rounded-md border bg-card py-0 pl-2.5 pr-7 text-[12px] outline-none focus:ring-1 focus:ring-primary/50"
+                    >
+                      {clients.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.company}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
+                  </div>
+                  <button
+                    onClick={() => {
+                      gerarRelatorio();
+                      setMostrarSeletorRelatorio(false);
+                    }}
+                    disabled={!clienteAtivo}
+                    className="inline-flex items-center gap-1 rounded-md bg-primary px-2.5 py-1 text-[11px] font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+                  >
+                    <Sparkles className="h-3 w-3" /> Gerar
+                  </button>
+                  <button
+                    onClick={() => setMostrarSeletorRelatorio(false)}
+                    className="text-[11px] text-muted-foreground hover:text-foreground"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Sugestões rápidas */}
-          <div className="flex flex-wrap gap-1.5 border-t bg-surface/40 px-5 pt-3">
-            {sugestoes.map((s) => (
-              <button
-                key={s}
-                onClick={() => enviarMensagem(s)}
-                className="inline-flex items-center gap-1 rounded-full border border-primary/25 bg-primary/5 px-2.5 py-1 text-[11px] text-primary transition-colors hover:bg-primary/15"
-              >
-                <Sparkles className="h-2.5 w-2.5" /> {s}
-              </button>
-            ))}
+          {/* Sugestões rápidas — bloco próprio, separado das ações */}
+          <div className="border-t bg-surface/40 px-5 py-3">
+            <div className="mb-2 text-[10px] font-medium uppercase tracking-widest text-muted-foreground">Perguntas sugeridas</div>
+            <div className="flex flex-wrap gap-1.5">
+              {sugestoes.map((s) => (
+                <button
+                  key={s}
+                  onClick={() => enviarMensagem(s)}
+                  className="inline-flex items-center gap-1 rounded-full border border-primary/25 bg-primary/5 px-2.5 py-1 text-[11px] text-primary transition-colors hover:bg-primary/15"
+                >
+                  <Sparkles className="h-2.5 w-2.5" /> {s}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Campo de digitação */}

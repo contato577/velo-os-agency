@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { ArrowRight, Sparkles } from "lucide-react";
 import { getSession, signIn } from "@/lib/auth-mock";
+import { playLogin } from "@/lib/sound";
 import veloceLogo from "@/assets/veloce-logo.jpg.asset.json";
 
 export const Route = createFileRoute("/auth")({
@@ -32,6 +33,7 @@ function Auth() {
     setLoading(true);
     setTimeout(() => {
       signIn(email, mode === "signup" ? name : undefined);
+      playLogin();
       navigate({ to: "/" });
     }, 400);
   };

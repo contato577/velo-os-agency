@@ -34,6 +34,7 @@ import {
 import { AppShell } from "@/components/app-shell";
 import { stageOrder, stageLabels, formatBRL, type Lead, type LeadStage, type LeadPotential, type Client } from "@/lib/mock-data";
 import { useDataStore } from "@/lib/data-store";
+import { playSuccess } from "@/lib/sound";
 import { useQuickActions, NewTaskButton } from "@/components/quick-actions";
 import { cn } from "@/lib/utils";
 
@@ -484,6 +485,7 @@ function Comercial() {
 
     // 1. Criar o cliente com prazo, datas, etapa, projetos, checklist, cobrança, timeline e plano
     const client = criarClienteDeVenda(updatedLead, servicos, plano);
+    playSuccess();
 
     // 2. Atualizar estágio do lead para fechado
     updateLeadStage(pendingWin.id, "fechado");
