@@ -24,6 +24,8 @@ import {
   LayoutGrid,
   Pencil,
   User,
+  CornerUpLeft,
+  Trash2,
 } from "lucide-react";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { projects, agendaEvents } from "@/lib/mock-data";
@@ -315,38 +317,38 @@ function TaskCard({
         setEditOpen(true);
       }}
       className={cn(
-        "group card-trello relative cursor-pointer select-none p-3.5",
+        "group card-trello relative cursor-pointer select-none p-2.5",
         done && "opacity-50",
         overdue && !done && "border-l-4 border-l-destructive bg-destructive/5",
       )}
     >
-      <div className="pointer-events-none absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-md bg-surface/90 text-muted-foreground opacity-0 shadow-sm transition-opacity group-hover:opacity-100">
-        <Pencil className="h-3 w-3" />
+      <div className="pointer-events-none absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-md bg-surface/90 text-muted-foreground opacity-0 shadow-sm transition-opacity group-hover:opacity-100">
+        <Pencil className="h-2.5 w-2.5" />
       </div>
       {!done && (
-        <span className={cn("pill-label mb-2", priorityClass)}>
+        <span className={cn("pill-label mb-1.5", priorityClass)}>
           {priorityLabel}
         </span>
       )}
-      <div className="flex items-start gap-2.5">
+      <div className="flex items-start gap-2">
         <button
           onClick={(e) => {
             e.stopPropagation();
             onToggle();
           }}
           className={cn(
-            "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-2 transition-colors",
+            "mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border-2 transition-colors",
             done ? "border-success bg-success text-success-foreground" : "border-muted-foreground/40 hover:border-primary",
           )}
         >
-          {done && <Check className="h-3.5 w-3.5" />}
+          {done && <Check className="h-3 w-3" />}
         </button>
         <div className="min-w-0 flex-1">
-          <div className={cn("line-clamp-2 break-all text-[14px] font-semibold leading-snug", done && "line-through")}>{task.title}</div>
+          <div className={cn("line-clamp-1 break-all text-[13px] font-semibold leading-snug", done && "line-through")}>{task.title}</div>
           {task.description && (
-            <p className="mt-1 line-clamp-3 break-all text-[12px] leading-snug text-muted-foreground">{task.description}</p>
+            <p className="mt-0.5 line-clamp-1 break-all text-[11px] leading-snug text-muted-foreground">{task.description}</p>
           )}
-          <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+          <div className="mt-1 flex flex-wrap items-center gap-1">
             {overdue && !done && (
               <span className="inline-flex items-center gap-1 rounded bg-destructive/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-destructive">
                 <AlertTriangle className="h-2.5 w-2.5" />
@@ -407,7 +409,7 @@ function OverdueMiniList({ tasks, onToggle }: { tasks: Task[]; onToggle: (id: st
 }
 
 function SemanaPanel() {
-  const { tasks, clients, leads, toggleTaskDone, updateTask } = useDataStore();
+  const { tasks, clients, leads, toggleTaskDone, updateTask, deleteTask } = useDataStore();
   const [view, setView] = useState<"dia" | "cliente">("dia");
   const weekDays = getWeekDays(HOJE);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
@@ -479,14 +481,56 @@ function SemanaPanel() {
               Semanas seguintes ({futuras.length})
             </div>
             <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
-              {futuras.map((t) => (
-                <div key={t.id} className="flex items-center gap-2 rounded-md border bg-card px-2.5 py-1.5 text-[12px]">
-                  <span className="font-mono text-[10px] text-muted-foreground">
-                    {new Date(t.dueDate + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}
-                  </span>
-                  <span className="min-w-0 flex-1 truncate font-medium">{t.title}</span>
-                </div>
-              ))}
+              {futuras.map((t) => {
+                const link = taskLink(t, clients, leads);
+                const priorityClass = {
+                  urgente: "bg-destructive text-destructive-foreground",
+                  alta: "bg-warning text-warning-foreground",
+                  media: "bg-info text-info-foreground",
+                  baixa: "bg-surface-3 text-muted-foreground",
+                }[t.priority];
+                return (
+                  <div key={t.id} className="group relative rounded-md border bg-card px-2.5 py-2 text-[12px]">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-mono text-[10px] text-muted-foreground">
+                        {new Date(t.dueDate + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}
+                      </span>
+                      <span className={cn("rounded px-1 py-0.5 text-[9px] font-semibold uppercase", priorityClass)}>
+                        {t.priority}
+                      </span>
+                    </div>
+                    <div className="mt-1 truncate font-medium">{t.title}</div>
+                    <span
+                      className={cn(
+                        "mt-1 inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold",
+                        link.kind === "cliente" && "bg-primary/10 text-primary",
+                        link.kind === "lead" && "bg-info/10 text-info",
+                        link.kind === "geral" && "bg-muted text-muted-foreground",
+                      )}
+                    >
+                      {link.label}
+                    </span>
+
+                    {/* Ações visíveis só no hover — mover pra semana atual, ou excluir */}
+                    <div className="absolute right-1.5 top-1.5 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                      <button
+                        title="Mover para a semana atual"
+                        onClick={() => updateTask(t.id, { dueDate: HOJE })}
+                        className="flex h-5 w-5 items-center justify-center rounded bg-surface/95 text-muted-foreground shadow-sm hover:bg-primary/15 hover:text-primary"
+                      >
+                        <CornerUpLeft className="h-3 w-3" />
+                      </button>
+                      <button
+                        title="Excluir tarefa"
+                        onClick={() => deleteTask(t.id)}
+                        className="flex h-5 w-5 items-center justify-center rounded bg-surface/95 text-muted-foreground shadow-sm hover:bg-destructive/15 hover:text-destructive"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}

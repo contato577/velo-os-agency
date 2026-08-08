@@ -53,33 +53,33 @@ function tocarNotas(notas: { freq: number; inicio: number; duracao: number; volu
     }
 }
 
-/** Entrada no sistema — acorde ascendente curto, dá boas-vindas sem ser chamativo */
+/** Entrada no sistema — acorde ascendente curto e grave, dá boas-vindas sem ser estridente */
 export function playLogin() {
     tocarNotas([
-        { freq: 523.25, inicio: 0, duracao: 0.12 }, // Dó
-        { freq: 659.25, inicio: 0.09, duracao: 0.12 }, // Mi
-        { freq: 783.99, inicio: 0.18, duracao: 0.22 }, // Sol
+        { freq: 261.63, inicio: 0, duracao: 0.14 }, // Dó3
+        { freq: 329.63, inicio: 0.1, duracao: 0.14 }, // Mi3
+        { freq: 392.0, inicio: 0.2, duracao: 0.26, volume: 0.11 }, // Sol3
     ]);
 }
 
-/** Venda fechada / conquista — soa como "sucesso", mais festivo */
+/** Venda fechada / conquista — soa como "sucesso", mais quente que agudo */
 export function playSuccess() {
     tocarNotas([
-        { freq: 659.25, inicio: 0, duracao: 0.1 },
-        { freq: 783.99, inicio: 0.08, duracao: 0.1 },
-        { freq: 1046.5, inicio: 0.16, duracao: 0.28, volume: 0.14 },
+        { freq: 329.63, inicio: 0, duracao: 0.12 },
+        { freq: 392.0, inicio: 0.09, duracao: 0.12 },
+        { freq: 523.25, inicio: 0.18, duracao: 0.3, volume: 0.12 },
     ]);
 }
 
 /** Ação pontual concluída (ex: item de checklist marcado) — som curto e discreto */
 export function playPop() {
-    tocarNotas([{ freq: 880, inicio: 0, duracao: 0.06, volume: 0.08 }]);
+    tocarNotas([{ freq: 493.88, inicio: 0, duracao: 0.07, volume: 0.07 }]);
 }
 
 /** Alerta/atenção — usar com moderação, para coisas que precisam de atenção do usuário */
 export function playAlert() {
     tocarNotas([
-        { freq: 440, inicio: 0, duracao: 0.09, volume: 0.1 },
-        { freq: 349.23, inicio: 0.11, duracao: 0.14, volume: 0.1 },
+        { freq: 293.66, inicio: 0, duracao: 0.1, volume: 0.09 },
+        { freq: 233.08, inicio: 0.12, duracao: 0.16, volume: 0.09 },
     ]);
 }

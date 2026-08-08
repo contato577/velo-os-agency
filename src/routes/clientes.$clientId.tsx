@@ -36,6 +36,7 @@ import {
   BarChart2,
   Lightbulb,
   MoreVertical,
+  Archive,
 } from "lucide-react";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { NewTaskButton } from "@/components/quick-actions";
@@ -43,7 +44,7 @@ import { formatBRL, type Client } from "@/lib/mock-data";
 import { useDataStore } from "@/lib/data-store";
 import { gerarResumoCliente, exportarRelatorioPDF, linkWhatsApp } from "@/lib/client-report";
 import { cn } from "@/lib/utils";
-
+import { serviceTemplates } from "@/lib/service-templates";
 
 export const Route = createFileRoute("/clientes/$clientId")({
   head: () => ({
@@ -67,10 +68,18 @@ const tabsList: { key: Tab; label: string; icon: typeof User }[] = [
 ];
 
 function ClienteDetalhe() {
-  const { clients } = useDataStore();
+  const { clients, updateClientStatus } = useDataStore();
   const { clientId } = useParams({ from: "/clientes/$clientId" });
   const client = clients.find((c) => c.id === clientId) ?? clients[0];
   const [tab, setTab] = useState<Tab>("geral");
+  const [confirmArquivar, setConfirmArquivar] = useState(false);
+
+  const statusOptions: { value: Client["status"]; label: string }[] = [
+    { value: "onboarding", label: "Onboarding" },
+    { value: "ativo", label: "Ativo" },
+    { value: "pausado", label: "Pausado" },
+    { value: "cancelado", label: "Cancelado / Arquivado" },
+  ];
 
   return (
     <AppShell title={client.company} subtitle={`${client.plan} · ${formatBRL(client.monthlyValue)}/mês`}>
@@ -82,17 +91,56 @@ function ClienteDetalhe() {
         </div>
 
         <PageHeader title={client.company} subtitle={`${client.name} · Responsável ${client.owner}`}>
-          <span
-            className={cn(
-              "rounded px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider",
-              client.status === "ativo" && "bg-success/15 text-success",
-              client.status === "onboarding" && "bg-info/15 text-info",
-              client.status === "pausado" && "bg-warning/15 text-warning",
-              client.status === "cancelado" && "bg-destructive/15 text-destructive",
-            )}
-          >
-            {client.status}
-          </span>
+          {/* Status agora é editável — antes era só um texto fixo, e o sistema não tinha como
+              contabilizar o status real do cliente sem alguém poder atualizá-lo manualmente. */}
+          <div className="relative">
+            <select
+              value={client.status}
+              onChange={(e) => updateClientStatus(client.id, e.target.value as Client["status"])}
+              className={cn(
+                "cursor-pointer appearance-none rounded px-2 py-1 pr-6 text-[10px] font-medium uppercase tracking-wider outline-none",
+                client.status === "ativo" && "bg-success/15 text-success",
+                client.status === "onboarding" && "bg-info/15 text-info",
+                client.status === "pausado" && "bg-warning/15 text-warning",
+                client.status === "cancelado" && "bg-destructive/15 text-destructive",
+              )}
+            >
+              {statusOptions.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-1 top-1/2 h-3 w-3 -translate-y-1/2 opacity-60" />
+          </div>
+
+          {/* Arquivar cliente — some da carteira ativa, mas o histórico continua salvo
+              (dados de projeto, financeiro, timeline) pra remarketing/follow-up futuro. */}
+          {client.status !== "cancelado" &&
+            (confirmArquivar ? (
+              <div className="flex items-center gap-1.5 rounded-md border border-destructive/30 bg-destructive/5 px-2 py-1">
+                <span className="text-[11px] text-destructive">Arquivar cliente?</span>
+                <button
+                  onClick={() => {
+                    updateClientStatus(client.id, "cancelado");
+                    setConfirmArquivar(false);
+                  }}
+                  className="rounded bg-destructive px-2 py-0.5 text-[11px] font-medium text-destructive-foreground hover:bg-destructive/90"
+                >
+                  Confirmar
+                </button>
+                <button onClick={() => setConfirmArquivar(false)} className="text-[11px] text-muted-foreground hover:text-foreground">
+                  Cancelar
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setConfirmArquivar(true)}
+                className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:border-destructive/40 hover:text-destructive"
+              >
+                <Archive className="h-3 w-3" /> Arquivar
+              </button>
+            ))}
         </PageHeader>
 
         {/* Tabs */}
@@ -256,16 +304,8 @@ function TabGeral({ client }: { client: Client }) {
         <div className="space-y-3">
           <div>
             <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Plano contratado</div>
-            <div className="mt-1 flex flex-wrap items-center gap-2">
-              <span className="text-[15px] font-semibold">{client.plano || client.plan}</span>
-              {client.plano && (
-                <span className="rounded bg-surface px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-                  Faixa {client.plan}
-                </span>
-              )}
-            </div>
+            <div className="mt-1 text-[15px] font-semibold">{client.plan}</div>
           </div>
-
           <div>
             <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Mensalidade</div>
             <div className="mt-1 font-mono text-[20px] font-semibold text-primary">{formatBRL(client.monthlyValue)}</div>
@@ -1239,7 +1279,8 @@ function JornadaCliente({
   client: Client;
   clientProjects: import("@/lib/mock-data").Project[];
 }) {
-  const { serviceTemplates } = useDataStore();
+  const { toggleChecklistItem } = useDataStore();
+
   // Etapas do primeiro template de serviço do cliente
   const matchedTemplate = (client.services ?? [])
     .map((s) => serviceTemplates.find((t) => t.name === s || t.id === s))
@@ -1347,24 +1388,53 @@ function JornadaCliente({
         </div>
       )}
 
-      {/* Resumo de progresso — detalhamento fica em Operação › Projetos Ativos */}
+      {/* Checklist real dos projetos */}
       {allItems.length > 0 && (
         <>
           <div className="mb-2 flex items-center justify-between">
-            <span className="text-[11px] text-muted-foreground">Progresso das entregas</span>
-            <span className="font-mono text-[10px] text-muted-foreground">
-              {doneCount}/{totalCount} itens concluídos
-            </span>
+            <span className="text-[11px] text-muted-foreground">Checklist de entregas</span>
+            <span className="font-mono text-[10px] text-muted-foreground">{doneCount}/{totalCount}</span>
           </div>
-          <div className="h-1 overflow-hidden rounded-full bg-border">
+          {/* Progress bar */}
+          <div className="mb-3 h-1 overflow-hidden rounded-full bg-border">
             <div
               className="h-full rounded-full bg-primary transition-all"
               style={{ width: totalCount > 0 ? `${(doneCount / totalCount) * 100}%` : "0%" }}
             />
           </div>
+          <ul className="space-y-1">
+            {allItems.map((item) => (
+              <li
+                key={`${item.projectId}-${item.id}`}
+                className="flex cursor-pointer items-center gap-2.5 rounded-md p-1.5 hover:bg-accent"
+                onClick={() => toggleChecklistItem(item.projectId, item.id)}
+              >
+                <span
+                  className={cn(
+                    "flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors",
+                    item.done
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border",
+                  )}
+                >
+                  {item.done && <span className="text-[9px] font-bold">✓</span>}
+                </span>
+                <span
+                  className={cn(
+                    "min-w-0 flex-1 truncate text-[12px]",
+                    item.done && "text-muted-foreground line-through",
+                  )}
+                >
+                  {item.text}
+                </span>
+                <span className="shrink-0 rounded bg-surface px-1.5 py-0.5 text-[9px] text-muted-foreground">
+                  {item.projectName.replace(/ — .*/, "")}
+                </span>
+              </li>
+            ))}
+          </ul>
         </>
       )}
-
 
       {allItems.length === 0 && stages.length > 0 && (
         <p className="text-center text-[11px] text-muted-foreground">
@@ -1376,50 +1446,55 @@ function JornadaCliente({
 }
 
 // ─── FINANCEIRO ──────────────────────────────────────────────────────────────
-function TabFinanceiro({ client }: { client: Client }) {
-  const { expenses } = useDataStore();
+// Calcula a próxima data de vencimento de verdade (não só "dia X"), pra dar pro
+// sistema uma data concreta com a qual montar alertas de cobrança.
+function proximoVencimento(paymentDay: number): Date {
+  const hoje = new Date();
+  const candidato = new Date(hoje.getFullYear(), hoje.getMonth(), paymentDay);
+  if (candidato < hoje) candidato.setMonth(candidato.getMonth() + 1);
+  return candidato;
+}
 
-  const lancamentos = expenses
-    .filter((e) => e.client && (e.client === client.company || e.client === client.name))
-    .slice()
-    .sort((a, b) => (a.date < b.date ? 1 : -1));
+function TabFinanceiro({ client }: { client: Client }) {
+  const hoje = new Date();
+  // Antes gerava o histórico com o mês travado em "2026, 6" (julho/2026) sempre —
+  // agora parte do mês atual de verdade.
+  const pagamentos = Array.from({ length: 6 }, (_, i) => ({
+    id: `pg-${i}`,
+    date: new Date(hoje.getFullYear(), hoje.getMonth() - i, client.paymentDay).toLocaleDateString("pt-BR"),
+    value: client.monthlyValue,
+    status: i === 0 ? "pendente" : "pago",
+  }));
+  const vencimento = proximoVencimento(client.paymentDay);
 
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
       <div className="rounded-xl border bg-card p-5">
         <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Mensalidade</div>
         <div className="mt-2 font-mono text-3xl font-semibold text-primary">{formatBRL(client.monthlyValue)}</div>
-        <div className="mt-1 text-[12px] text-muted-foreground">Vence dia {client.paymentDay} de cada mês</div>
+        <div className="mt-1 text-[12px] text-muted-foreground">
+          Próximo vencimento: {vencimento.toLocaleDateString("pt-BR", { day: "2-digit", month: "long" })}
+        </div>
       </div>
       <div className="rounded-xl border bg-card p-4 lg:col-span-2">
-        <h3 className="mb-3 text-sm font-semibold tracking-tight">Lançamentos do cliente</h3>
-        {lancamentos.length === 0 ? (
-          <p className="rounded-md border border-dashed bg-surface/40 px-3 py-6 text-center text-[12px] text-muted-foreground">
-            Nenhum lançamento registrado ainda
-          </p>
-        ) : (
-          <ul className="space-y-1">
-            {lancamentos.map((l) => (
-              <li key={l.id} className="flex items-center gap-3 rounded-md border bg-surface/50 px-3 py-2 text-[13px]">
-                <Calendar className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                <span className="font-mono">{new Date(l.date).toLocaleDateString("pt-BR")}</span>
-                <span className="min-w-0 flex-1 truncate text-muted-foreground">{l.description}</span>
-                <span className={cn("font-mono", l.type === "entrada" ? "text-success" : "text-destructive")}>
-                  {l.type === "entrada" ? "+" : "−"}
-                  {formatBRL(l.amount)}
-                </span>
-                <span
-                  className={cn(
-                    "rounded px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider",
-                    l.type === "entrada" ? "bg-success/15 text-success" : "bg-destructive/15 text-destructive",
-                  )}
-                >
-                  {l.type}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
+        <h3 className="mb-3 text-sm font-semibold tracking-tight">Últimos pagamentos</h3>
+        <ul className="space-y-1">
+          {pagamentos.map((p) => (
+            <li key={p.id} className="flex items-center gap-3 rounded-md border bg-surface/50 px-3 py-2 text-[13px]">
+              <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="font-mono">{p.date}</span>
+              <span className="ml-auto font-mono text-primary">{formatBRL(p.value)}</span>
+              <span
+                className={cn(
+                  "rounded px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider",
+                  p.status === "pago" ? "bg-success/15 text-success" : "bg-warning/15 text-warning",
+                )}
+              >
+                {p.status}
+              </span>
+            </li>
+          ))}
+        </ul>
       </div>
     </div>
   );

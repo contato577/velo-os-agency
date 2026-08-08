@@ -18,7 +18,7 @@ import {
 
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { notifications } from "@/lib/mock-data";
+import { useDataStore } from "@/lib/data-store";
 import { getSession, signOut, type Session } from "@/lib/auth-mock";
 import { QuickActionsButton } from "@/components/quick-actions";
 import veloceLogo from "@/assets/veloce-logo.jpg.asset.json";
@@ -51,6 +51,16 @@ export function AppShell({
   const [userOpen, setUserOpen] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
   const [ready, setReady] = useState(false);
+  const { insights } = useDataStore();
+  // Notificações agora vêm dos diagnósticos reais do sistema (mesma fonte da
+  // Central de IA) — antes era uma lista fixa, sempre igual, sem relação com o
+  // que estava acontecendo de verdade na operação.
+  const notifications = insights.slice(0, 8).map((i) => ({
+    id: i.id,
+    title: i.titulo,
+    description: i.descricao,
+    type: i.prioridade === "critica" || i.prioridade === "alta" ? ("warning" as const) : i.prioridade === "media" ? ("info" as const) : ("success" as const),
+  }));
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
 
@@ -216,9 +226,12 @@ export function AppShell({
                   <div className="absolute right-0 top-10 z-40 w-80 rounded-lg border bg-popover p-2 shadow-elegant">
                     <div className="mb-1 flex items-center justify-between px-2 py-1">
                       <span className="text-xs font-semibold">Notificações</span>
-                      <span className="text-[10px] text-muted-foreground">{notifications.length} novas</span>
+                      <span className="text-[10px] text-muted-foreground">{notifications.length} {notifications.length === 1 ? "ativa" : "ativas"}</span>
                     </div>
-                    <div className="flex flex-col gap-0.5">
+                    <div className="flex max-h-80 flex-col gap-0.5 overflow-y-auto">
+                      {notifications.length === 0 && (
+                        <div className="px-2 py-4 text-center text-[12px] text-muted-foreground">Tudo tranquilo por aqui.</div>
+                      )}
                       {notifications.map((n) => (
                         <div key={n.id} className="flex items-start gap-2 rounded-md p-2 hover:bg-accent">
                           <span
@@ -233,7 +246,6 @@ export function AppShell({
                             <div className="truncate text-[12px] font-medium">{n.title}</div>
                             <div className="truncate text-[11px] text-muted-foreground">{n.description}</div>
                           </div>
-                          <span className="text-[10px] text-muted-foreground">{n.time}</span>
                         </div>
                       ))}
                     </div>
