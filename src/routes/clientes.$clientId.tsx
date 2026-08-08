@@ -45,7 +45,6 @@ import { formatBRL, type Client } from "@/lib/mock-data";
 import { useDataStore } from "@/lib/data-store";
 import { gerarResumoCliente, exportarRelatorioPDF, linkWhatsApp } from "@/lib/client-report";
 import { cn } from "@/lib/utils";
-import { serviceTemplates } from "@/lib/service-templates";
 
 export const Route = createFileRoute("/clientes/$clientId")({
   head: () => ({
@@ -953,7 +952,17 @@ function ProjectCard({ project }: { project: import("@/lib/mock-data").Project }
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="truncate text-[13px] font-semibold">{project.name}</div>
-          <div className="mt-0.5 text-[11px] text-muted-foreground">{project.type} · Resp. {project.owner.split(" ")[0]}</div>
+          <div className="mt-0.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+            {project.type} · Resp. {project.owner.split(" ")[0]}
+            <span
+              className={cn(
+                "rounded px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wide",
+                project.fase === "operacao_continua" ? "bg-info/15 text-info" : "bg-primary/10 text-primary",
+              )}
+            >
+              {project.fase === "operacao_continua" ? "Operação contínua" : "Implementação"}
+            </span>
+          </div>
         </div>
         <span className={cn("shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider", statusMeta.className)}>
           {statusMeta.label}
@@ -977,9 +986,10 @@ function ProjectCard({ project }: { project: import("@/lib/mock-data").Project }
         </div>
       )}
 
-      {/* Prazo */}
+      {/* Prazo — Implementação tem data de entrega; Operação Contínua não tem fim,
+          então mostra a data de renovação como próximo marco em vez de "prazo". */}
       <div className="mt-2 text-[11px] text-muted-foreground">
-        Prazo: {new Date(project.deadline).toLocaleDateString("pt-BR")}
+        {project.fase === "operacao_continua" ? "Próxima renovação" : "Prazo"}: {new Date(project.deadline).toLocaleDateString("pt-BR")}
       </div>
 
       {/* Checklist */}
@@ -1291,15 +1301,14 @@ function JornadaCliente({
   client: Client;
   clientProjects: import("@/lib/mock-data").Project[];
 }) {
+  // ── Jornada = visão computada em cima dos Projetos reais do cliente. ──────────
+  // Antes existia um "etapaJornada" (texto solto) e uma lista de "stages" separada
+  // do template de serviço, desconectada dos Projetos de verdade — por isso travava
+  // e podia mostrar números impossíveis. Agora não existe mais nenhum dado paralelo:
+  // cada Projeto de implementação do cliente É uma etapa da jornada.
+  const implementacoes = clientProjects.filter((p) => p.fase === "implementacao");
+  const operacaoContinua = clientProjects.filter((p) => p.fase === "operacao_continua");
 
-  // Etapas do primeiro template de serviço do cliente
-  const matchedTemplate = (client.services ?? [])
-    .map((s) => serviceTemplates.find((t) => t.name === s || t.id === s))
-    .find(Boolean);
-  const stages: string[] = matchedTemplate?.stages ?? [];
-  const currentIdx = stages.indexOf(client.etapaJornada ?? "");
-
-  // Indicador de prazo
   const hoje = new Date();
   hoje.setHours(0, 0, 0, 0);
   const prazoStatus = (() => {
@@ -1307,50 +1316,46 @@ function JornadaCliente({
     const fim = new Date(client.dataPrevistaFimOnboarding);
     fim.setHours(0, 0, 0, 0);
     const diffDias = Math.round((fim.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
-    if (diffDias > 3) return { label: "No prazo", variant: "success" as const, diff: diffDias };
-    if (diffDias >= 0) return { label: `Atenção — faltam ${diffDias}d`, variant: "warning" as const, diff: diffDias };
-    return { label: `Atrasado ${Math.abs(diffDias)} dias`, variant: "destructive" as const, diff: diffDias };
+    if (diffDias > 3) return { label: "No prazo", variant: "success" as const };
+    if (diffDias >= 0) return { label: `Atenção — faltam ${diffDias}d`, variant: "warning" as const };
+    return { label: `Atrasado ${Math.abs(diffDias)} dias`, variant: "destructive" as const };
   })();
 
-  // Checklist flat de todos os projetos do cliente
-  const allItems = clientProjects.flatMap((p) =>
-    (p.checklist ?? []).map((item) => ({ ...item, projectId: p.id, projectName: p.name }))
-  );
-  const doneCount = allItems.filter((i) => i.done).length;
-  const totalCount = allItems.length;
+  if (clientProjects.length === 0) return null;
 
-  if (stages.length === 0 && allItems.length === 0) return null;
-
-  // Onboarding já concluído (cliente não está mais em "onboarding") — a barra de etapas
-  // não faz mais sentido aqui (ela é só pro período de entrada). Troca por um resumo
-  // útil pra fase operacional, que é o que realmente importa depois que o cliente já
-  // está rodando com a gente.
+  // Onboarding (= Implementação) já concluído — a jornada de entrada não faz mais
+  // sentido mostrada aqui. Troca por um resumo da fase operacional, que é o que
+  // importa a partir daqui.
   const onboardingConcluido = client.status !== "onboarding";
   if (onboardingConcluido) {
-    const entregues = clientProjects.filter((p) => p.status === "entregue").length;
-    const emAndamento = clientProjects.length - entregues;
     return (
       <div className="rounded-xl border bg-card p-4">
         <div className="mb-3 flex items-center gap-2">
           <CheckCircle2 className="h-3.5 w-3.5 text-success" />
-          <h3 className="text-sm font-semibold tracking-tight">Onboarding concluído</h3>
+          <h3 className="text-sm font-semibold tracking-tight">Em Operação Contínua</h3>
         </div>
         <p className="text-[12px] text-muted-foreground">
           Cliente ativo desde {new Date(client.since).toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })}.
         </p>
-        <div className="mt-3 grid grid-cols-2 gap-2">
-          <div className="rounded-lg border bg-surface/40 p-2.5 text-center">
-            <div className="font-mono text-lg font-semibold text-primary">{emAndamento}</div>
-            <div className="text-[10px] text-muted-foreground">Projeto{emAndamento === 1 ? "" : "s"} em andamento</div>
+
+        {operacaoContinua.length > 0 && (
+          <div className="mt-3 space-y-1.5">
+            {operacaoContinua.map((p) => {
+              const done = (p.checklist ?? []).filter((i) => i.done).length;
+              const total = (p.checklist ?? []).length;
+              return (
+                <div key={p.id} className="flex items-center justify-between rounded-lg border bg-surface/40 px-2.5 py-2">
+                  <span className="text-[12px] font-medium">{p.type}</span>
+                  <span className="font-mono text-[10px] text-muted-foreground">{done}/{total} configurado</span>
+                </div>
+              );
+            })}
           </div>
-          <div className="rounded-lg border bg-surface/40 p-2.5 text-center">
-            <div className="font-mono text-lg font-semibold text-success">{entregues}</div>
-            <div className="text-[10px] text-muted-foreground">Entregue{entregues === 1 ? "" : "s"}</div>
-          </div>
-        </div>
+        )}
+
         <p className="mt-3 text-[11px] text-muted-foreground">
           Próximo vencimento: {proximoVencimento(client.paymentDay).toLocaleDateString("pt-BR", { day: "2-digit", month: "long" })} ·
-          checklist detalhado em Operação → Projetos ativos.
+          renovação em {new Date(client.renewalDate).toLocaleDateString("pt-BR")}.
         </p>
       </div>
     );
@@ -1361,7 +1366,7 @@ function JornadaCliente({
       <div className="mb-3 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <CheckSquare className="h-3.5 w-3.5 text-muted-foreground" />
-          <h3 className="text-sm font-semibold tracking-tight">Jornada do cliente</h3>
+          <h3 className="text-sm font-semibold tracking-tight">Jornada do cliente (implementação)</h3>
         </div>
         {prazoStatus && (
           <span
@@ -1377,91 +1382,43 @@ function JornadaCliente({
         )}
       </div>
 
-      {/* Barra de etapas */}
-      {stages.length > 0 && (
-        <div className="mb-4">
-          <div className="flex items-center gap-0">
-            {stages.map((stage, idx) => {
-              const isPast = idx < currentIdx;
-              const isCurrent = idx === currentIdx;
-              const isFirst = idx === 0;
-              const isLast = idx === stages.length - 1;
-              return (
-                <div key={stage} className="flex flex-1 flex-col items-center">
-                  <div className="relative flex w-full items-center">
-                    {/* Linha esquerda */}
-                    {!isFirst && (
-                      <div
-                        className={cn(
-                          "h-0.5 flex-1 transition-colors",
-                          isPast || isCurrent ? "bg-primary" : "bg-border",
-                        )}
-                      />
-                    )}
-                    {/* Bolinha */}
-                    <div
-                      className={cn(
-                        "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 text-[9px] font-bold transition-all",
-                        isPast && "border-primary bg-primary text-primary-foreground",
-                        isCurrent && "border-primary bg-background text-primary shadow-[0_0_0_3px] shadow-primary/20",
-                        !isPast && !isCurrent && "border-border bg-background text-muted-foreground",
-                      )}
-                    >
-                      {isPast ? "✓" : idx + 1}
-                    </div>
-                    {/* Linha direita */}
-                    {!isLast && (
-                      <div
-                        className={cn(
-                          "h-0.5 flex-1 transition-colors",
-                          isPast ? "bg-primary" : "bg-border",
-                        )}
-                      />
-                    )}
-                  </div>
-                  <span
-                    className={cn(
-                      "mt-1.5 text-center text-[9px] leading-tight",
-                      isCurrent ? "font-semibold text-primary" : isPast ? "text-muted-foreground" : "text-muted-foreground/60",
-                    )}
-                  >
-                    {stage}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
+      {/* Cada Projeto de implementação é uma etapa — não existe mais uma lista de
+          "stages" separada do que está realmente sendo executado. */}
+      <div className="space-y-1.5">
+        {implementacoes.map((p) => {
+          const done = (p.checklist ?? []).filter((i) => i.done).length;
+          const total = (p.checklist ?? []).length;
+          const pct = total > 0 ? (done / total) * 100 : 0;
+          const entregue = p.status === "entregue";
+          return (
+            <div key={p.id} className="rounded-lg border bg-surface/40 px-3 py-2">
+              <div className="flex items-center justify-between gap-2">
+                <span className="flex items-center gap-1.5 text-[12px] font-medium">
+                  {entregue ? (
+                    <CheckCircle2 className="h-3.5 w-3.5 text-success" />
+                  ) : (
+                    <span className="h-3.5 w-3.5 rounded-full border-2 border-primary/50" />
+                  )}
+                  {p.type}
+                </span>
+                <span className="font-mono text-[10px] text-muted-foreground">{done}/{total}</span>
+              </div>
+              <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-border">
+                <div className={cn("h-full rounded-full transition-all", entregue ? "bg-success" : "bg-primary")} style={{ width: `${pct}%` }} />
+              </div>
+            </div>
+          );
+        })}
+      </div>
 
-      {/* Resumo do checklist — item-a-item fica só em Operação › Projetos Ativos,
-          que é onde a equipe realmente executa. Aqui é só o indicador de progresso. */}
-      {allItems.length > 0 && (
-        <>
-          <div className="mb-2 flex items-center justify-between">
-            <span className="text-[11px] text-muted-foreground">Checklist de entregas</span>
-            <span className="font-mono text-[10px] text-muted-foreground">{doneCount}/{totalCount} itens concluídos</span>
-          </div>
-          <div className="h-1.5 overflow-hidden rounded-full bg-border">
-            <div
-              className="h-full rounded-full bg-primary transition-all"
-              style={{ width: totalCount > 0 ? `${(doneCount / totalCount) * 100}%` : "0%" }}
-            />
-          </div>
-          <p className="mt-2 text-[11px] text-muted-foreground">
-            Checklist detalhado disponível em Operação → Projetos ativos.
-          </p>
-        </>
-      )}
-
-      {allItems.length === 0 && stages.length > 0 && (
-        <p className="text-center text-[11px] text-muted-foreground">
-          Nenhum item de checklist ainda. Crie um projeto para este cliente.
-        </p>
-      )}
+      <p className="mt-3 text-[11px] text-muted-foreground">
+        Checklist detalhado, item a item, disponível em Operação → Projetos ativos. Quando todos os projetos de
+        implementação chegarem a 100%, o cliente entra em Operação Contínua automaticamente.
+      </p>
     </div>
   );
 }
+
 
 // ─── FINANCEIRO ──────────────────────────────────────────────────────────────
 // Calcula a próxima data de vencimento de verdade (não só "dia X"), pra dar pro

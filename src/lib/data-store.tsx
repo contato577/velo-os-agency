@@ -415,6 +415,7 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
         name: `${s} — ${newClient.company}`,
         type,
         status: "briefing",
+        fase: "implementacao",
         progress: 0,
         deadline: projDeadline,
         owner: lead.owner,
@@ -466,9 +467,10 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
   const toggleChecklistItem = (projectId: string, itemId: string) => {
     // 1. Inverte o done do item e captura o clientId do projeto
     let affectedClientId: string | null = null;
+    let novosProjetosOperacao: Project[] = [];
 
     setProjects((prevProjects) => {
-      const updated = prevProjects.map((p) => {
+      let updated = prevProjects.map((p) => {
         if (p.id !== projectId) return p;
         affectedClientId = p.clientId;
         return {
@@ -479,36 +481,60 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
         };
       });
 
-      // 2. Verifica se todos os itens de TODOS os projetos do cliente estão done
+      // 2. Verifica se todos os projetos de IMPLEMENTAÇÃO do cliente estão com checklist 100%.
+      // Projetos de Operação Contínua não entram nessa conta — eles não têm "fim".
       if (!affectedClientId) return updated;
-      const clientProjects = updated.filter((p) => p.clientId === affectedClientId);
+      const implementacoes = updated.filter((p) => p.clientId === affectedClientId && p.fase === "implementacao");
+      const aindaNaoEntregues = implementacoes.filter((p) => p.status !== "entregue");
       const allDone =
-        clientProjects.length > 0 &&
-        clientProjects.every((p) => (p.checklist ?? []).every((item) => item.done));
+        aindaNaoEntregues.length > 0 &&
+        aindaNaoEntregues.every((p) => (p.checklist ?? []).every((item) => item.done));
 
       if (allDone) {
-        // 3. Conclui a jornada de onboarding.
-        // Antes isso avançava UMA etapa por vez toda vez que o checklist fechava —
-        // mas como só existe um checklist por projeto (não um por etapa), isso deixava
-        // a jornada travada nas últimas etapas pra sempre, sem nada que a fizesse avançar de novo.
-        // Agora, ao fechar o checklist inteiro, a jornada é considerada concluída de uma vez.
-        setClients((prevClients) =>
-          prevClients.map((c) => {
-            if (c.id !== affectedClientId) return c;
-            const timelineId = `tl-${Date.now()}`;
-            return {
-              ...c,
-              status: "ativo" as const,
-              timeline: [
-                { id: timelineId, time: "Agora", user: "Sistema", text: "Jornada de onboarding concluída — cliente ativo" },
-                ...(c.timeline ?? []),
-              ],
-            };
-          }),
+        // 3. Fecha a implementação (Onboarding = Implementação, um conceito só) e cria,
+        // automaticamente, um Projeto de Operação Contínua para cada serviço entregue —
+        // sem prazo fixo, é o que existe enquanto o cliente estiver ativo.
+        const hoje = new Date().toISOString().slice(0, 10);
+        const renewal = clients.find((c) => c.id === affectedClientId)?.renewalDate ?? hoje;
+        novosProjetosOperacao = aindaNaoEntregues.map((p, i) => ({
+          id: `p-op-${Date.now()}-${i}`,
+          clientId: p.clientId,
+          clientName: p.clientName,
+          name: `Operação Contínua — ${p.type} — ${p.clientName}`,
+          type: p.type,
+          status: "producao" as const,
+          fase: "operacao_continua" as const,
+          progress: 0,
+          deadline: renewal,
+          owner: p.owner,
+          checklist: [
+            { id: `oc-${Date.now()}-${i}-1`, text: "Definir calendário de relatórios mensais", done: false },
+            { id: `oc-${Date.now()}-${i}-2`, text: "Agendar reunião de kickoff da operação contínua", done: false },
+          ],
+        }));
+
+        updated = updated.map((p) =>
+          aindaNaoEntregues.some((ie) => ie.id === p.id) ? { ...p, status: "entregue" as const } : p,
         );
+
+        setClients((prevClients) => {
+          const timelineId = `tl-${Date.now()}`;
+          return prevClients.map((c) =>
+            c.id === affectedClientId
+              ? {
+                ...c,
+                status: "ativo" as const,
+                timeline: [
+                  { id: timelineId, time: "Agora", user: "Sistema", text: "Implementação concluída — cliente entrou em Operação Contínua" },
+                  ...(c.timeline ?? []),
+                ],
+              }
+              : c,
+          );
+        });
       }
 
-      return updated;
+      return allDone ? [...updated, ...novosProjetosOperacao] : updated;
     });
   };
 

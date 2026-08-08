@@ -28,7 +28,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { AppShell, PageHeader } from "@/components/app-shell";
-import { projects, agendaEvents } from "@/lib/mock-data";
+import { agendaEvents } from "@/lib/mock-data";
 import type { Task, Client, Lead } from "@/lib/mock-data";
 import { useDataStore } from "@/lib/data-store";
 import { NewTaskButton, EditTaskDialog } from "@/components/quick-actions";
@@ -65,20 +65,22 @@ const projStatus = {
 function Operacao() {
   const search = Route.useSearch();
   const [tab, setTab] = useState<Tab>(search.tab ?? "tarefas");
-  const { tasks } = useDataStore();
+  const { tasks, projects: projetosReais } = useDataStore();
 
   const tarefasAtrasadas = tasks.filter(
     (t) => t.status !== "concluida" && new Date(t.dueDate) < new Date(HOJE),
   );
   const tarefasHoje = tasks.filter((t) => t.status === "hoje" || t.dueDate === HOJE);
-  const projetosAtrasados = projects.filter(
-    (p) => p.status !== "entregue" && new Date(p.deadline) < new Date(HOJE),
+  // Só projetos de Implementação entram na conta de "atrasado" — Operação Contínua
+  // usa a data de renovação como "prazo", e isso não é a mesma coisa que um projeto atrasado.
+  const projetosAtrasados = projetosReais.filter(
+    (p) => p.fase === "implementacao" && p.status !== "entregue" && new Date(p.deadline) < new Date(HOJE),
   );
   const reunioesHoje = agendaEvents.filter((e) => e.date === HOJE && e.type === "reuniao");
 
   const tabsList: { key: Tab; label: string; icon: typeof FolderKanban; count: number }[] = [
     { key: "tarefas", label: "Minha Semana", icon: CheckSquare, count: tasks.filter((t) => t.status !== "concluida").length },
-    { key: "projetos", label: "Projetos", icon: FolderKanban, count: projects.length },
+    { key: "projetos", label: "Projetos", icon: FolderKanban, count: projetosReais.filter((p) => p.fase === "implementacao").length },
     { key: "agenda", label: "Agenda", icon: CalendarIcon, count: agendaEvents.length },
   ];
 
@@ -109,7 +111,7 @@ function Operacao() {
           />
           <PulseTile
             label="Projetos em produção"
-            value={projects.filter((p) => p.status === "producao").length}
+            value={projetosReais.filter((p) => p.fase === "implementacao" && p.status === "producao").length}
             tone="primary"
             icon={Flame}
             hint={`${projetosAtrasados.length} com risco de atraso`}
@@ -201,15 +203,19 @@ function PulseTile({
 void Link;
 
 function ProjetosPanel() {
+  const { projects: projetosReais } = useDataStore();
   const groups = ["briefing", "producao", "revisao", "entregue"] as const;
+  // Só projetos de Implementação entram nesse quadro — eles são os que realmente
+  // "andam" por essas 4 colunas. Operação Contínua não tem esse ciclo (não tem fim),
+  // por isso fica de fora daqui e é mostrada como um resumo à parte, mais abaixo.
+  const implementacoes = projetosReais.filter((p) => p.fase === "implementacao");
+  const emOperacaoContinua = projetosReais.filter((p) => p.fase === "operacao_continua");
+
   return (
     <div className="space-y-3">
-      <div className="flex items-center gap-2 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-[12px] text-warning">
-        Essa aba ainda mostra dados de exemplo — os projetos criados de verdade (ao fechar venda no CRM) ainda não aparecem aqui. Em construção.
-      </div>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         {groups.map((g) => {
-          const list = projects.filter((p) => p.status === g);
+          const list = implementacoes.filter((p) => p.status === g);
           return (
             <div key={g} className="rounded-xl border bg-surface/40 p-3">
               <div className="mb-3 flex items-center justify-between">
@@ -222,26 +228,39 @@ function ProjetosPanel() {
                 <MoreHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
               </div>
               <div className="space-y-2">
-                {list.map((p) => (
-                  <div key={p.id} className="rounded-md border bg-card p-3">
-                    <div className="text-[13px] font-medium">{p.name}</div>
-                    <div className="mt-0.5 text-[11px] text-muted-foreground">{p.clientName}</div>
-                    <div className="mt-2 flex items-center justify-between text-[10px] text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <Users className="h-2.5 w-2.5" /> {p.owner.split(" ")[0]}
-                      </span>
-                      <span className="font-mono text-primary">{p.progress}%</span>
+                {list.map((p) => {
+                  const checklist = p.checklist ?? [];
+                  const pct = checklist.length > 0 ? Math.round((checklist.filter((i) => i.done).length / checklist.length) * 100) : p.progress;
+                  return (
+                    <div key={p.id} className="rounded-md border bg-card p-3">
+                      <div className="text-[13px] font-medium">{p.name}</div>
+                      <div className="mt-0.5 text-[11px] text-muted-foreground">{p.clientName}</div>
+                      <div className="mt-2 flex items-center justify-between text-[10px] text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <Users className="h-2.5 w-2.5" /> {p.owner.split(" ")[0]}
+                        </span>
+                        <span className="font-mono text-primary">{pct}%</span>
+                      </div>
+                      <div className="mt-1 h-1 overflow-hidden rounded bg-surface">
+                        <div className="h-full rounded bg-primary" style={{ width: `${pct}%` }} />
+                      </div>
                     </div>
-                    <div className="mt-1 h-1 overflow-hidden rounded bg-surface">
-                      <div className="h-full rounded bg-primary" style={{ width: `${p.progress}%` }} />
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
+                {list.length === 0 && <p className="text-center text-[11px] text-muted-foreground">Nada aqui.</p>}
               </div>
             </div>
           );
         })}
       </div>
+
+      {emOperacaoContinua.length > 0 && (
+        <div className="rounded-xl border bg-surface/30 p-3 text-[12px] text-muted-foreground">
+          <b className="text-foreground">{emOperacaoContinua.length}</b> cliente
+          {emOperacaoContinua.length === 1 ? "" : "s"} em Operação Contínua — veja o detalhe na ficha de cada cliente, aba
+          Operação.
+        </div>
+      )}
     </div>
   );
 }

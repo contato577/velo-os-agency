@@ -155,6 +155,11 @@ export interface Project {
   name: string;
   type: "Tráfego" | "Landing Page" | "Site" | "Consultoria" | "Criativos" | "Automação";
   status: "briefing" | "producao" | "revisao" | "entregue";
+  // Fase do ciclo de vida — fonte única de verdade sobre onde o cliente está.
+  // "implementacao": entrega inicial, com prazo e checklist de onboarding.
+  // "operacao_continua": criado automaticamente quando a implementação termina —
+  // sem prazo fixo, representa o trabalho recorrente enquanto o cliente estiver ativo.
+  fase: "implementacao" | "operacao_continua";
   progress: number;
   deadline: string;
   owner: string;
@@ -162,13 +167,13 @@ export interface Project {
 }
 
 export const projects: Project[] = [
-  { id: "p-1", clientId: "c-1", clientName: "Pereira Ortopedia", name: "Campanha Meta Q3", type: "Tráfego", status: "producao", progress: 65, deadline: "2026-07-20", owner: "Rafael Souza" },
-  { id: "p-2", clientId: "c-1", clientName: "Pereira Ortopedia", name: "LP Consulta Online", type: "Landing Page", status: "revisao", progress: 85, deadline: "2026-07-10", owner: "Camila Torres" },
-  { id: "p-3", clientId: "c-3", clientName: "Barros Seguros", name: "Automação WhatsApp", type: "Automação", status: "producao", progress: 40, deadline: "2026-07-30", owner: "Bruno Lima" },
-  { id: "p-4", clientId: "c-5", clientName: "Freitas Advocacia", name: "Consultoria Estratégica", type: "Consultoria", status: "producao", progress: 55, deadline: "2026-08-15", owner: "Ana Prado" },
-  { id: "p-5", clientId: "c-5", clientName: "Freitas Advocacia", name: "Site Institucional", type: "Site", status: "briefing", progress: 15, deadline: "2026-09-01", owner: "Rafael Souza" },
-  { id: "p-6", clientId: "c-4", clientName: "Martins Odontologia", name: "Criativos Julho", type: "Criativos", status: "entregue", progress: 100, deadline: "2026-07-01", owner: "Camila Torres" },
-  { id: "p-7", clientId: "c-7", clientName: "Andrade Fitness", name: "Campanha Verão", type: "Tráfego", status: "producao", progress: 70, deadline: "2026-07-25", owner: "Bruno Lima" },
+  { id: "p-1", clientId: "c-1", clientName: "Pereira Ortopedia", name: "Campanha Meta Q3", type: "Tráfego", status: "producao", fase: "implementacao", progress: 65, deadline: "2026-07-20", owner: "Rafael Souza" },
+  { id: "p-2", clientId: "c-1", clientName: "Pereira Ortopedia", name: "LP Consulta Online", type: "Landing Page", status: "revisao", fase: "implementacao", progress: 85, deadline: "2026-07-10", owner: "Camila Torres" },
+  { id: "p-3", clientId: "c-3", clientName: "Barros Seguros", name: "Automação WhatsApp", type: "Automação", status: "producao", fase: "implementacao", progress: 40, deadline: "2026-07-30", owner: "Bruno Lima" },
+  { id: "p-4", clientId: "c-5", clientName: "Freitas Advocacia", name: "Consultoria Estratégica", type: "Consultoria", status: "producao", fase: "implementacao", progress: 55, deadline: "2026-08-15", owner: "Ana Prado" },
+  { id: "p-5", clientId: "c-5", clientName: "Freitas Advocacia", name: "Site Institucional", type: "Site", status: "briefing", fase: "implementacao", progress: 15, deadline: "2026-09-01", owner: "Rafael Souza" },
+  { id: "p-6", clientId: "c-4", clientName: "Martins Odontologia", name: "Criativos Julho", type: "Criativos", status: "entregue", fase: "implementacao", progress: 100, deadline: "2026-07-01", owner: "Camila Torres" },
+  { id: "p-7", clientId: "c-7", clientName: "Andrade Fitness", name: "Campanha Verão", type: "Tráfego", status: "producao", fase: "implementacao", progress: 70, deadline: "2026-07-25", owner: "Bruno Lima" },
 ];
 
 export interface Task {
