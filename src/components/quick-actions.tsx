@@ -177,7 +177,7 @@ export function QuickActionsButton() {
       {/* Command Palette — portal to body */}
       {openCmd &&
         createPortal(
-          <CommandPalette onClose={() => setOpenCmd(false)} onCreate={open} />,
+          <CommandPalette onClose={() => setOpenCmd(false)} />,
           document.body,
         )}
     </>
@@ -186,9 +186,9 @@ export function QuickActionsButton() {
 
 // ─── Command Palette (⌘K) ───────────────────────────────────────────────
 
-function CommandPalette({ onClose, onCreate }: { onClose: () => void; onCreate: (k: QuickKind) => void }) {
+function CommandPalette({ onClose }: { onClose: () => void }) {
   const navigate = useNavigate();
-  const { leads, clients } = useDataStore();
+  const { leads, clients, projects } = useDataStore();
   const [query, setQuery] = useState("");
 
   const nav = [
@@ -203,13 +203,21 @@ function CommandPalette({ onClose, onCreate }: { onClose: () => void; onCreate: 
 
   const results = useMemo(() => {
     const q = query.toLowerCase().trim();
-    if (!q) return { nav, leads: leads.slice(0, 4), clients: clients.slice(0, 4) };
+    if (!q) return { nav: [], leads: [], clients: [], projects: [] };
     return {
       nav: nav.filter((n) => n.label.toLowerCase().includes(q)),
       leads: leads.filter((l) => l.name.toLowerCase().includes(q) || l.company.toLowerCase().includes(q)).slice(0, 5),
       clients: clients.filter((c) => c.company.toLowerCase().includes(q) || c.name.toLowerCase().includes(q)).slice(0, 5),
+      projects: projects.filter((p) => p.name.toLowerCase().includes(q) || p.clientName.toLowerCase().includes(q)).slice(0, 5),
     };
-  }, [query, leads, clients]);
+  }, [query, leads, clients, projects]);
+
+  const semResultado =
+    query.trim().length > 0 &&
+    results.nav.length === 0 &&
+    results.leads.length === 0 &&
+    results.clients.length === 0 &&
+    results.projects.length === 0;
 
   return (
     <>
@@ -221,7 +229,7 @@ function CommandPalette({ onClose, onCreate }: { onClose: () => void; onCreate: 
             autoFocus
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Buscar clientes, leads ou digite um comando…"
+            placeholder="Buscar cliente, lead, projeto…"
             className="flex-1 bg-transparent text-[13px] placeholder:text-muted-foreground focus:outline-none"
           />
           <kbd className="rounded border bg-surface px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
@@ -230,14 +238,17 @@ function CommandPalette({ onClose, onCreate }: { onClose: () => void; onCreate: 
         </div>
 
         <div className="max-h-[420px] overflow-y-auto p-1">
-          <Group title="Criar rapidamente">
-            {items.map((it) => {
-              const Icon = it.icon;
-              return (
-                <Row key={it.key} onClick={() => onCreate(it.key)} icon={<Icon className="h-3.5 w-3.5 text-primary" />} label={it.label} shortcut={it.shortcut} />
-              );
-            })}
-          </Group>
+          {!query.trim() && (
+            <p className="px-3 py-6 text-center text-[12px] text-muted-foreground">
+              Digite pra buscar clientes, leads, projetos ou páginas do sistema.
+            </p>
+          )}
+
+          {semResultado && (
+            <p className="px-3 py-6 text-center text-[12px] text-muted-foreground">
+              Nada encontrado pra "{query}".
+            </p>
+          )}
 
           {results.nav.length > 0 && (
             <Group title="Ir para">
@@ -284,6 +295,23 @@ function CommandPalette({ onClose, onCreate }: { onClose: () => void; onCreate: 
                   icon={<Building2 className="h-3.5 w-3.5 text-primary" />}
                   label={c.company}
                   hint={c.plan}
+                />
+              ))}
+            </Group>
+          )}
+
+          {results.projects.length > 0 && (
+            <Group title="Projetos">
+              {results.projects.map((p) => (
+                <Row
+                  key={p.id}
+                  onClick={() => {
+                    navigate({ to: "/clientes/$clientId", params: { clientId: p.clientId } });
+                    onClose();
+                  }}
+                  icon={<ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />}
+                  label={p.name}
+                  hint={p.clientName}
                 />
               ))}
             </Group>
