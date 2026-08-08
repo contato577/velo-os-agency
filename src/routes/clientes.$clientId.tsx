@@ -304,18 +304,26 @@ function TabGeral({ client }: { client: Client }) {
         <div className="space-y-3">
           <div>
             <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Plano contratado</div>
-            <div className="mt-1 text-[15px] font-semibold">{client.plan}</div>
+            <div className="mt-1 text-[15px] font-semibold">{client.plano || client.plan}</div>
+            {client.plano && (
+              <span className="mt-1 inline-block rounded bg-muted px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wider text-muted-foreground">
+                Faixa {client.plan}
+              </span>
+            )}
           </div>
           <div>
             <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Mensalidade</div>
             <div className="mt-1 font-mono text-[20px] font-semibold text-primary">{formatBRL(client.monthlyValue)}</div>
           </div>
           <div>
-            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Vencimento</div>
-            <div className="mt-1 text-[13px]">Dia {client.paymentDay} de cada mês</div>
+            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Vencimento (mensalidade)</div>
+            <div className="mt-1 text-[13px]">
+              {proximoVencimento(client.paymentDay).toLocaleDateString("pt-BR", { day: "2-digit", month: "long" })}
+            </div>
+            <div className="text-[10px] text-muted-foreground">Cobra todo dia {client.paymentDay}</div>
           </div>
           <div>
-            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Renovação</div>
+            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Renovação (fim de contrato)</div>
             <div className="mt-1 text-[13px]">{new Date(client.renewalDate).toLocaleDateString("pt-BR")}</div>
           </div>
           <div>
@@ -1279,7 +1287,6 @@ function JornadaCliente({
   client: Client;
   clientProjects: import("@/lib/mock-data").Project[];
 }) {
-  const { toggleChecklistItem } = useDataStore();
 
   // Etapas do primeiro template de serviço do cliente
   const matchedTemplate = (client.services ?? [])
@@ -1388,51 +1395,23 @@ function JornadaCliente({
         </div>
       )}
 
-      {/* Checklist real dos projetos */}
+      {/* Resumo do checklist — item-a-item fica só em Operação › Projetos Ativos,
+          que é onde a equipe realmente executa. Aqui é só o indicador de progresso. */}
       {allItems.length > 0 && (
         <>
           <div className="mb-2 flex items-center justify-between">
             <span className="text-[11px] text-muted-foreground">Checklist de entregas</span>
-            <span className="font-mono text-[10px] text-muted-foreground">{doneCount}/{totalCount}</span>
+            <span className="font-mono text-[10px] text-muted-foreground">{doneCount}/{totalCount} itens concluídos</span>
           </div>
-          {/* Progress bar */}
-          <div className="mb-3 h-1 overflow-hidden rounded-full bg-border">
+          <div className="h-1.5 overflow-hidden rounded-full bg-border">
             <div
               className="h-full rounded-full bg-primary transition-all"
               style={{ width: totalCount > 0 ? `${(doneCount / totalCount) * 100}%` : "0%" }}
             />
           </div>
-          <ul className="space-y-1">
-            {allItems.map((item) => (
-              <li
-                key={`${item.projectId}-${item.id}`}
-                className="flex cursor-pointer items-center gap-2.5 rounded-md p-1.5 hover:bg-accent"
-                onClick={() => toggleChecklistItem(item.projectId, item.id)}
-              >
-                <span
-                  className={cn(
-                    "flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors",
-                    item.done
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "border-border",
-                  )}
-                >
-                  {item.done && <span className="text-[9px] font-bold">✓</span>}
-                </span>
-                <span
-                  className={cn(
-                    "min-w-0 flex-1 truncate text-[12px]",
-                    item.done && "text-muted-foreground line-through",
-                  )}
-                >
-                  {item.text}
-                </span>
-                <span className="shrink-0 rounded bg-surface px-1.5 py-0.5 text-[9px] text-muted-foreground">
-                  {item.projectName.replace(/ — .*/, "")}
-                </span>
-              </li>
-            ))}
-          </ul>
+          <p className="mt-2 text-[11px] text-muted-foreground">
+            Checklist detalhado disponível em Operação → Projetos ativos.
+          </p>
         </>
       )}
 
@@ -1456,15 +1435,14 @@ function proximoVencimento(paymentDay: number): Date {
 }
 
 function TabFinanceiro({ client }: { client: Client }) {
-  const hoje = new Date();
-  // Antes gerava o histórico com o mês travado em "2026, 6" (julho/2026) sempre —
-  // agora parte do mês atual de verdade.
-  const pagamentos = Array.from({ length: 6 }, (_, i) => ({
-    id: `pg-${i}`,
-    date: new Date(hoje.getFullYear(), hoje.getMonth() - i, client.paymentDay).toLocaleDateString("pt-BR"),
-    value: client.monthlyValue,
-    status: i === 0 ? "pendente" : "pago",
-  }));
+  const { expenses } = useDataStore();
+  // Pagamentos reais: lançamentos do financeiro vinculados a este cliente.
+  // Antes era uma lista de 6 meses inventada, com status "pago/pendente" sorteado
+  // arbitrariamente (o mais recente sempre marcado "pendente", sem checar nada real).
+  const pagamentosReais = expenses
+    .filter((e) => e.type === "entrada" && e.client === client.company)
+    .sort((a, b) => b.date.localeCompare(a.date))
+    .slice(0, 6);
   const vencimento = proximoVencimento(client.paymentDay);
 
   return (
@@ -1478,23 +1456,24 @@ function TabFinanceiro({ client }: { client: Client }) {
       </div>
       <div className="rounded-xl border bg-card p-4 lg:col-span-2">
         <h3 className="mb-3 text-sm font-semibold tracking-tight">Últimos pagamentos</h3>
-        <ul className="space-y-1">
-          {pagamentos.map((p) => (
-            <li key={p.id} className="flex items-center gap-3 rounded-md border bg-surface/50 px-3 py-2 text-[13px]">
-              <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-              <span className="font-mono">{p.date}</span>
-              <span className="ml-auto font-mono text-primary">{formatBRL(p.value)}</span>
-              <span
-                className={cn(
-                  "rounded px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider",
-                  p.status === "pago" ? "bg-success/15 text-success" : "bg-warning/15 text-warning",
-                )}
-              >
-                {p.status}
-              </span>
-            </li>
-          ))}
-        </ul>
+        {pagamentosReais.length === 0 ? (
+          <p className="rounded-md border border-dashed bg-surface/40 px-3 py-4 text-center text-[12px] text-muted-foreground">
+            Nenhum lançamento financeiro registrado ainda pra este cliente. Lance uma mensalidade no DRE pra ela aparecer aqui.
+          </p>
+        ) : (
+          <ul className="space-y-1">
+            {pagamentosReais.map((p) => (
+              <li key={p.id} className="flex items-center gap-3 rounded-md border bg-surface/50 px-3 py-2 text-[13px]">
+                <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="font-mono">{new Date(p.date + "T00:00:00").toLocaleDateString("pt-BR")}</span>
+                <span className="ml-auto font-mono text-primary">{formatBRL(p.amount)}</span>
+                <span className="rounded bg-success/15 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-success">
+                  recebido
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </div>
   );
@@ -1502,35 +1481,38 @@ function TabFinanceiro({ client }: { client: Client }) {
 
 // ─── HISTÓRICO ───────────────────────────────────────────────────────────────
 function TabHistorico({ client }: { client: Client }) {
-  const customEntries = (client.timeline ?? []).map((t) => ({
+  // Antes tinha 3 eventos fixos aqui sempre ("há 2h", "há 3d"...), incluindo uma
+  // "fatura de julho" que nem existia de verdade — texto de exemplo esquecido.
+  // Agora mostra só o histórico real do cliente.
+  const timeline = (client.timeline ?? []).map((t) => ({
     time: t.time,
     user: t.user,
     text: t.text,
   }));
-  const defaultEntries = [
-    { time: "há 2h", user: client.owner, text: `Reunião de resultados realizada com ${client.name}` },
-    { time: "há 3d", user: "Sistema", text: "Fatura de julho gerada automaticamente" },
-    { time: "há 2s", user: "Sistema", text: `Contrato renovado até ${new Date(client.renewalDate).toLocaleDateString("pt-BR")}` },
-  ];
-  const timeline = [...customEntries, ...defaultEntries];
 
   return (
     <div className="rounded-xl border bg-card p-5">
       <h3 className="mb-4 text-sm font-semibold tracking-tight">Timeline completa</h3>
-      <div className="space-y-3">
-        {timeline.map((e, i) => (
-          <div key={i} className="flex gap-3">
-            <div className="relative flex flex-col items-center">
-              <div className="mt-1.5 h-2 w-2 rounded-full bg-primary" />
-              {i < timeline.length - 1 && <div className="w-px flex-1 bg-border" />}
+      {timeline.length === 0 ? (
+        <p className="rounded-md border border-dashed bg-surface/40 px-3 py-4 text-center text-[12px] text-muted-foreground">
+          Nenhum evento registrado ainda no histórico deste cliente.
+        </p>
+      ) : (
+        <div className="space-y-3">
+          {timeline.map((e, i) => (
+            <div key={i} className="flex gap-3">
+              <div className="relative flex flex-col items-center">
+                <div className="mt-1.5 h-2 w-2 rounded-full bg-primary" />
+                {i < timeline.length - 1 && <div className="w-px flex-1 bg-border" />}
+              </div>
+              <div className="flex-1 pb-3">
+                <div className="text-[13px]">{e.text}</div>
+                <div className="mt-0.5 text-[10px] text-muted-foreground">{e.user} · {e.time}</div>
+              </div>
             </div>
-            <div className="flex-1 pb-3">
-              <div className="text-[13px]">{e.text}</div>
-              <div className="mt-0.5 text-[10px] text-muted-foreground">{e.user} · {e.time}</div>
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
