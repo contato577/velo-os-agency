@@ -37,6 +37,7 @@ import {
   Lightbulb,
   MoreVertical,
   Archive,
+  CheckCircle2,
 } from "lucide-react";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { NewTaskButton } from "@/components/quick-actions";
@@ -959,19 +960,22 @@ function ProjectCard({ project }: { project: import("@/lib/mock-data").Project }
         </span>
       </div>
 
-      {/* Barra de progresso */}
-      <div className="mt-3">
-        <div className="mb-1 flex items-center justify-between">
-          <span className="text-[10px] text-muted-foreground">Progresso</span>
-          <span className="font-mono text-[10px] text-primary">{project.progress}%</span>
+      {/* Barra de progresso — calculada de verdade a partir do checklist (antes era um
+          número solto no cadastro, sempre 0% em projetos novos, nunca mudava sozinho) */}
+      {checklist.length > 0 && (
+        <div className="mt-3">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="text-[10px] text-muted-foreground">Progresso do checklist</span>
+            <span className="font-mono text-[10px] text-primary">{Math.round((doneCount / checklist.length) * 100)}%</span>
+          </div>
+          <div className="h-1.5 overflow-hidden rounded-full bg-border">
+            <div
+              className="h-full rounded-full bg-primary transition-all"
+              style={{ width: `${(doneCount / checklist.length) * 100}%` }}
+            />
+          </div>
         </div>
-        <div className="h-1.5 overflow-hidden rounded-full bg-border">
-          <div
-            className="h-full rounded-full bg-primary transition-all"
-            style={{ width: `${project.progress}%` }}
-          />
-        </div>
-      </div>
+      )}
 
       {/* Prazo */}
       <div className="mt-2 text-[11px] text-muted-foreground">
@@ -1316,6 +1320,41 @@ function JornadaCliente({
   const totalCount = allItems.length;
 
   if (stages.length === 0 && allItems.length === 0) return null;
+
+  // Onboarding já concluído (cliente não está mais em "onboarding") — a barra de etapas
+  // não faz mais sentido aqui (ela é só pro período de entrada). Troca por um resumo
+  // útil pra fase operacional, que é o que realmente importa depois que o cliente já
+  // está rodando com a gente.
+  const onboardingConcluido = client.status !== "onboarding";
+  if (onboardingConcluido) {
+    const entregues = clientProjects.filter((p) => p.status === "entregue").length;
+    const emAndamento = clientProjects.length - entregues;
+    return (
+      <div className="rounded-xl border bg-card p-4">
+        <div className="mb-3 flex items-center gap-2">
+          <CheckCircle2 className="h-3.5 w-3.5 text-success" />
+          <h3 className="text-sm font-semibold tracking-tight">Onboarding concluído</h3>
+        </div>
+        <p className="text-[12px] text-muted-foreground">
+          Cliente ativo desde {new Date(client.since).toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })}.
+        </p>
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <div className="rounded-lg border bg-surface/40 p-2.5 text-center">
+            <div className="font-mono text-lg font-semibold text-primary">{emAndamento}</div>
+            <div className="text-[10px] text-muted-foreground">Projeto{emAndamento === 1 ? "" : "s"} em andamento</div>
+          </div>
+          <div className="rounded-lg border bg-surface/40 p-2.5 text-center">
+            <div className="font-mono text-lg font-semibold text-success">{entregues}</div>
+            <div className="text-[10px] text-muted-foreground">Entregue{entregues === 1 ? "" : "s"}</div>
+          </div>
+        </div>
+        <p className="mt-3 text-[11px] text-muted-foreground">
+          Próximo vencimento: {proximoVencimento(client.paymentDay).toLocaleDateString("pt-BR", { day: "2-digit", month: "long" })} ·
+          checklist detalhado em Operação → Projetos ativos.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="rounded-xl border bg-card p-4">

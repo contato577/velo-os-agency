@@ -13,6 +13,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Check,
+  FileDown,
 } from "lucide-react";
 
 import { AppShell, PageHeader } from "@/components/app-shell";
@@ -95,9 +96,11 @@ const inputCls =
 const STEPS = [
   { title: "Mês anterior", desc: "O que aconteceu de verdade" },
   { title: "Metas do mês", desc: "Números que vocês querem bater" },
-  { title: "Qualidade", desc: "Padrão de entrega da operação" },
   { title: "Prioridades", desc: "O que fazer primeiro" },
 ] as const;
+// Etapa "Qualidade" tirada da tela por enquanto — ainda vaga demais, sem critério
+// claro pra operação. Os dados (qualidadePadrao/updateQualidade) continuam existindo
+// por baixo, só não aparecem aqui até definirmos algo que faça sentido de verdade.
 
 function PontoControlePage() {
   const { pontosControle, pontoControleAtual, salvarPontoControle, clients, expenses, tasks } = useDataStore();
@@ -171,6 +174,45 @@ function PontoControlePage() {
     setSaved(true);
   };
 
+  // Exporta o planejamento como um documento Word (.doc) — mesmo truque leve que já
+  // usamos pro PDF do relatório de cliente, sem precisar instalar biblioteca nova.
+  // Título do arquivo já sai com o mês por extenso, fácil de achar depois.
+  const exportarWord = (dados: FormState, mesRef: string) => {
+    const titulo = `Ponto de Controle — ${formatMesLabel(mesRef)}`;
+    const html = `
+      <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+      <head><meta charset="utf-8"><title>${titulo}</title></head>
+      <body style="font-family: Calibri, Arial, sans-serif; font-size: 12pt; color: #1a1a1a;">
+        <h1 style="font-size: 20pt; margin-bottom: 4px;">${titulo}</h1>
+        <p style="color:#666; margin-top:0;">Reunião estratégica mensal · Veloce</p>
+        <hr/>
+        <h2>Análise do mês anterior</h2>
+        <p><b>O que funcionou:</b><br/>${(dados.funcionou || "—").replace(/\n/g, "<br/>")}</p>
+        <p><b>O que não funcionou:</b><br/>${(dados.naoFuncionou || "—").replace(/\n/g, "<br/>")}</p>
+        <h2>Metas do mês</h2>
+        <ul>
+          <li>Meta comercial: ${formatBRL(dados.metaComercial)}</li>
+          <li>Novos clientes desejados: ${dados.novosClientesDesejados}</li>
+          <li>Serviços a entregar: ${dados.servicosEntregar}</li>
+          <li>Taxa prospecção → reunião: ${dados.taxaProspeccaoReuniao}%</li>
+          <li>Taxa reunião → fechamento: ${dados.taxaReuniaoFechamento}%</li>
+        </ul>
+        <h2>Objetivos, prioridades e próximos passos</h2>
+        <p><b>Objetivos:</b><br/>${(dados.objetivos || "—").replace(/\n/g, "<br/>")}</p>
+        <p><b>Prioridades:</b><br/>${(dados.prioridades || "—").replace(/\n/g, "<br/>")}</p>
+        <p><b>Próximos passos:</b><br/>${(dados.proximosPassos || "—").replace(/\n/g, "<br/>")}</p>
+      </body>
+      </html>
+    `;
+    const blob = new Blob(["\ufeff", html], { type: "application/msword" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${titulo}.doc`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   // Projeções derivadas do planejamento
   const ticketAlvo = form.novosClientesDesejados > 0 ? form.metaComercial / form.novosClientesDesejados : 0;
   const reunioesNecessarias =
@@ -191,9 +233,17 @@ function PontoControlePage() {
         </PageHeader>
 
         {saved && (
-          <div className="flex items-center gap-2 rounded-lg border border-success/30 bg-success/10 px-3 py-2 text-xs text-success">
-            <CheckCircle2 className="h-4 w-4" />
-            Planejamento de {formatMesLabel(mes)} salvo. O CRM e o Dashboard já usam esta meta.
+          <div className="flex items-center justify-between gap-2 rounded-lg border border-success/30 bg-success/10 px-3 py-2 text-xs text-success">
+            <span className="flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4" />
+              Planejamento de {formatMesLabel(mes)} salvo. O CRM e o Dashboard já usam esta meta.
+            </span>
+            <button
+              onClick={() => exportarWord(form, mes)}
+              className="inline-flex items-center gap-1 rounded-md border border-success/40 bg-success/10 px-2 py-1 text-[11px] font-medium hover:bg-success/20"
+            >
+              <FileDown className="h-3 w-3" /> Baixar em Word
+            </button>
           </div>
         )}
 
@@ -363,48 +413,8 @@ function PontoControlePage() {
               </section>
             )}
 
-            {/* ── Passo 3: Qualidade operacional ───────────────────────────────── */}
+            {/* ── Passo 3: Prioridades ──────────────────────────────────────────── */}
             {step === 2 && (
-              <section className="card-trello space-y-4 p-4">
-                <div>
-                  <h2 className="text-sm font-semibold">Qualidade operacional</h2>
-                  <p className="text-[11px] text-muted-foreground">
-                    3 indicadores fixos — defina a meta de cada um, e o sistema mostra onde vocês estão agora
-                    (calculado sozinho a partir dos dados reais, exceto "Relatórios semanais", que ainda não tem como
-                    ser medido automaticamente).
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <IndicadorQualidade
-                    titulo="Clientes ativos"
-                    hint="% da base de clientes que segue ativa (não cancelou)."
-                    meta={form.qualidade.find((q) => q.id === "q-clientes-ativos")?.descricao ?? "Manter 100% clientes na base"}
-                    onMetaChange={(v) => updateQualidade("q-clientes-ativos", { descricao: v })}
-                    valorReal={kpis.retencaoAtual !== null ? `${kpis.retencaoAtual.toFixed(0)}%` : "Sem dados"}
-                    alerta={kpis.retencaoAtual !== null && kpis.retencaoAtual < 90}
-                  />
-                  <IndicadorQualidade
-                    titulo="Relatórios semanais"
-                    hint="Ainda não é medido automaticamente — acompanhe manualmente por enquanto."
-                    meta={form.qualidade.find((q) => q.id === "q-relatorios")?.descricao ?? "Entregar 100% relatórios semanais"}
-                    onMetaChange={(v) => updateQualidade("q-relatorios", { descricao: v })}
-                    valorReal="Acompanhamento manual"
-                    neutro
-                  />
-                  <IndicadorQualidade
-                    titulo="Entregas de serviços"
-                    hint="% das tarefas com prazo no mês que foram concluídas dentro do prazo."
-                    meta={form.qualidade.find((q) => q.id === "q-entregas")?.descricao ?? "Entregar 100% serviços no prazo"}
-                    onMetaChange={(v) => updateQualidade("q-entregas", { descricao: v })}
-                    valorReal={kpis.entregasNoPrazo !== null ? `${kpis.entregasNoPrazo.toFixed(0)}%` : "Sem dados"}
-                    alerta={kpis.entregasNoPrazo !== null && kpis.entregasNoPrazo < 80}
-                  />
-                </div>
-              </section>
-            )}
-
-            {/* ── Passo 4: Prioridades ──────────────────────────────────────────── */}
-            {step === 3 && (
               <section className="card-trello space-y-4 p-4">
                 <h2 className="text-sm font-semibold">Objetivos, prioridades e próximos passos</h2>
                 <Field label="Objetivos do mês" hint="O resultado principal que vocês querem alcançar — em 1 ou 2 frases.">
@@ -475,15 +485,23 @@ function PontoControlePage() {
               {pontosControle.length === 0 && <p className="text-xs text-muted-foreground">Nenhuma reunião registrada ainda.</p>}
               <div className="space-y-1.5">
                 {pontosControle.map((p) => (
-                  <button
+                  <div
                     key={p.id}
-                    onClick={() => trocarMes(p.mes)}
-                    className={`flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-xs transition hover:bg-accent ${p.mes === mes ? "border-primary/40 bg-primary/5" : "bg-surface/40"
+                    className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-2 text-xs transition ${p.mes === mes ? "border-primary/40 bg-primary/5" : "bg-surface/40"
                       }`}
                   >
-                    <span className="font-medium">{formatMesLabel(p.mes)}</span>
-                    <span className="font-mono text-[11px] text-muted-foreground">{formatBRL(p.metaComercial)}</span>
-                  </button>
+                    <button onClick={() => trocarMes(p.mes)} className="flex flex-1 items-center justify-between text-left hover:opacity-80">
+                      <span className="font-medium">{formatMesLabel(p.mes)}</span>
+                      <span className="font-mono text-[11px] text-muted-foreground">{formatBRL(p.metaComercial)}</span>
+                    </button>
+                    <button
+                      onClick={() => exportarWord(p, p.mes)}
+                      title="Baixar em Word"
+                      className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
+                    >
+                      <FileDown className="h-3 w-3" />
+                    </button>
+                  </div>
                 ))}
               </div>
               {pontoControleAtual && <p className="text-[10px] text-muted-foreground">Mês corrente planejado — metas ativas no sistema.</p>}

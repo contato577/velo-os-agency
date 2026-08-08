@@ -487,42 +487,20 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
         clientProjects.every((p) => (p.checklist ?? []).every((item) => item.done));
 
       if (allDone) {
-        // 3. Avança a etapa da jornada do cliente
+        // 3. Conclui a jornada de onboarding.
+        // Antes isso avançava UMA etapa por vez toda vez que o checklist fechava —
+        // mas como só existe um checklist por projeto (não um por etapa), isso deixava
+        // a jornada travada nas últimas etapas pra sempre, sem nada que a fizesse avançar de novo.
+        // Agora, ao fechar o checklist inteiro, a jornada é considerada concluída de uma vez.
         setClients((prevClients) =>
           prevClients.map((c) => {
             if (c.id !== affectedClientId) return c;
-
-            const matchedTemplate = (c.services ?? [])
-              .map((s) => serviceTemplates.find((t) => t.name === s || t.id === s))
-              .find(Boolean);
-            const stages: string[] = matchedTemplate?.stages ?? [];
-            const currentIdx = stages.indexOf(c.etapaJornada ?? "");
-            const isLast = currentIdx >= stages.length - 1 || currentIdx === -1;
-
             const timelineId = `tl-${Date.now()}`;
-
-            if (isLast) {
-              return {
-                ...c,
-                status: "ativo" as const,
-                timeline: [
-                  { id: timelineId, time: "Agora", user: "Sistema", text: "Jornada de onboarding concluída — cliente ativo" },
-                  ...(c.timeline ?? []),
-                ],
-              };
-            }
-
-            const nextStage = stages[currentIdx + 1];
             return {
               ...c,
-              etapaJornada: nextStage,
+              status: "ativo" as const,
               timeline: [
-                {
-                  id: timelineId,
-                  time: "Agora",
-                  user: "Sistema",
-                  text: `Etapa concluída: ${c.etapaJornada} → ${nextStage}`,
-                },
+                { id: timelineId, time: "Agora", user: "Sistema", text: "Jornada de onboarding concluída — cliente ativo" },
                 ...(c.timeline ?? []),
               ],
             };
