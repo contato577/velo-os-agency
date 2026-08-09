@@ -188,7 +188,7 @@ export function QuickActionsButton() {
 
 function CommandPalette({ onClose }: { onClose: () => void }) {
   const navigate = useNavigate();
-  const { leads, clients, projects } = useDataStore();
+  const { leads, clients } = useDataStore();
   const [query, setQuery] = useState("");
 
   const nav = [
@@ -203,21 +203,13 @@ function CommandPalette({ onClose }: { onClose: () => void }) {
 
   const results = useMemo(() => {
     const q = query.toLowerCase().trim();
-    if (!q) return { nav: [], leads: [], clients: [], projects: [] };
+    if (!q) return { nav, leads: leads.slice(0, 4), clients: clients.slice(0, 4) };
     return {
       nav: nav.filter((n) => n.label.toLowerCase().includes(q)),
       leads: leads.filter((l) => l.name.toLowerCase().includes(q) || l.company.toLowerCase().includes(q)).slice(0, 5),
       clients: clients.filter((c) => c.company.toLowerCase().includes(q) || c.name.toLowerCase().includes(q)).slice(0, 5),
-      projects: projects.filter((p) => p.name.toLowerCase().includes(q) || p.clientName.toLowerCase().includes(q)).slice(0, 5),
     };
-  }, [query, leads, clients, projects]);
-
-  const semResultado =
-    query.trim().length > 0 &&
-    results.nav.length === 0 &&
-    results.leads.length === 0 &&
-    results.clients.length === 0 &&
-    results.projects.length === 0;
+  }, [query, leads, clients]);
 
   return (
     <>
@@ -229,7 +221,7 @@ function CommandPalette({ onClose }: { onClose: () => void }) {
             autoFocus
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Buscar cliente, lead, projeto…"
+            placeholder="Buscar clientes, leads ou digite um comando…"
             className="flex-1 bg-transparent text-[13px] placeholder:text-muted-foreground focus:outline-none"
           />
           <kbd className="rounded border bg-surface px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
@@ -238,16 +230,8 @@ function CommandPalette({ onClose }: { onClose: () => void }) {
         </div>
 
         <div className="max-h-[420px] overflow-y-auto p-1">
-          {!query.trim() && (
-            <p className="px-3 py-6 text-center text-[12px] text-muted-foreground">
-              Digite pra buscar clientes, leads, projetos ou páginas do sistema.
-            </p>
-          )}
-
-          {semResultado && (
-            <p className="px-3 py-6 text-center text-[12px] text-muted-foreground">
-              Nada encontrado pra "{query}".
-            </p>
+          {results.nav.length === 0 && results.leads.length === 0 && results.clients.length === 0 && (
+            <p className="px-3 py-6 text-center text-[12px] text-muted-foreground">Nada encontrado para "{query}".</p>
           )}
 
           {results.nav.length > 0 && (
@@ -295,23 +279,6 @@ function CommandPalette({ onClose }: { onClose: () => void }) {
                   icon={<Building2 className="h-3.5 w-3.5 text-primary" />}
                   label={c.company}
                   hint={c.plan}
-                />
-              ))}
-            </Group>
-          )}
-
-          {results.projects.length > 0 && (
-            <Group title="Projetos">
-              {results.projects.map((p) => (
-                <Row
-                  key={p.id}
-                  onClick={() => {
-                    navigate({ to: "/clientes/$clientId", params: { clientId: p.clientId } });
-                    onClose();
-                  }}
-                  icon={<ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />}
-                  label={p.name}
-                  hint={p.clientName}
                 />
               ))}
             </Group>

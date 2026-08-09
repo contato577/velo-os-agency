@@ -980,7 +980,12 @@ function OperacaoContinuaCenter({
   const { toggleTaskDone, addTask, updateTask } = useDataStore();
   const opProjects = clientProjects.filter((p) => p.fase === "operacao_continua");
   const opProjectIds = new Set(opProjects.map((p) => p.id));
-  const rotinas = clientTasks.filter((t) => t.projectId && opProjectIds.has(t.projectId));
+  // Antes só entravam aqui tarefas com projectId apontando pro projeto de Gestão do
+  // Cliente — então uma tarefa criada em Minha Semana ou no ⌘K (só com clientId,
+  // sem esse projectId específico) nunca aparecia. Agora: qualquer tarefa deste
+  // cliente entra, desde que não pertença a um projeto de implementação antigo
+  // (esses já foram concluídos e não fazem mais parte do dia a dia aqui).
+  const rotinas = clientTasks.filter((t) => !t.projectId || opProjectIds.has(t.projectId));
 
   const hoje = new Date();
   const { inicio: inicioSemana, fim: fimSemana } = inicioFimSemana(hoje);

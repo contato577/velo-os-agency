@@ -663,6 +663,14 @@ function ClienteView({
           {contas.map((g) => {
             const client = g.kind === "cliente" ? clients.find((c) => c.id === g.clientId) : undefined;
             const overdueCount = g.tasks.filter((t) => t.dueDate < hoje && t.status !== "concluida").length;
+            const concluidasCount = g.tasks.filter((t) => t.status === "concluida").length;
+            const pct = g.tasks.length > 0 ? Math.round((concluidasCount / g.tasks.length) * 100) : 0;
+            const iniciais = g.label
+              .split(" ")
+              .slice(0, 2)
+              .map((w) => w[0])
+              .join("")
+              .toUpperCase();
 
             const statusInfo =
               client?.status === "pausado"
@@ -670,36 +678,61 @@ function ClienteView({
                 : overdueCount > 0
                   ? { label: "Atrasado", cls: "bg-destructive/15 text-destructive" }
                   : { label: "Em dia", cls: "bg-success/15 text-success" };
+            const faseInfo =
+              client?.status === "onboarding"
+                ? { label: "Onboarding", cls: "bg-info/10 text-info" }
+                : client?.status === "ativo"
+                  ? { label: "Gestão do Cliente", cls: "bg-primary/10 text-primary" }
+                  : null;
 
             return (
-              <div key={g.label} className="rounded-xl border bg-surface/40 p-3.5">
-                <div className="mb-2 flex items-center justify-between border-b pb-2.5">
-                  <span className="flex items-center gap-1.5 text-[13px] font-bold">
-                    <span
-                      className={cn(
-                        "h-2 w-2 shrink-0 rounded-full",
-                        g.kind === "cliente" ? "bg-primary" : "bg-info",
+              <div
+                key={g.label}
+                className={cn(
+                  "overflow-hidden rounded-xl border bg-card transition-shadow hover:shadow-elegant",
+                  overdueCount > 0 && "border-l-4 border-l-destructive",
+                )}
+              >
+                {/* Cabeçalho com avatar, nome e fase real do cliente (não mais o etapaJornada travado) */}
+                <div className="flex items-center gap-2.5 border-b bg-gradient-to-r from-primary/5 via-transparent to-transparent px-3.5 py-3">
+                  <div
+                    className={cn(
+                      "flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[12px] font-bold",
+                      g.kind === "cliente" ? "bg-primary/15 text-primary" : "bg-info/15 text-info",
+                    )}
+                  >
+                    {iniciais}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-[13px] font-bold">{g.label}</div>
+                    <div className="flex flex-wrap items-center gap-1 pt-0.5">
+                      <span className={cn("rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide", statusInfo.cls)}>
+                        {statusInfo.label}
+                      </span>
+                      {faseInfo && (
+                        <span className={cn("rounded px-1.5 py-0.5 text-[9px] font-medium", faseInfo.cls)}>{faseInfo.label}</span>
                       )}
-                    />
-                    {g.label}
-                  </span>
-                  <span className="rounded-full bg-muted px-2 py-0.5 font-mono text-[10px] font-semibold text-muted-foreground">
+                    </div>
+                  </div>
+                  <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 font-mono text-[10px] font-semibold text-muted-foreground">
                     {g.tasks.length}
                   </span>
                 </div>
-                {client && (
-                  <div className="mb-2.5 flex flex-wrap items-center gap-1.5">
-                    <span className={cn("rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide", statusInfo.cls)}>
-                      {statusInfo.label}
-                    </span>
-                    {client.etapaJornada && (
-                      <span className="rounded bg-info/10 px-1.5 py-0.5 text-[10px] font-medium text-info">
-                        {client.etapaJornada}
-                      </span>
-                    )}
+
+                {/* Barra de progresso da semana desse cliente */}
+                {g.tasks.length > 0 && (
+                  <div className="px-3.5 pt-2.5">
+                    <div className="mb-1 flex items-center justify-between text-[10px] text-muted-foreground">
+                      <span>{concluidasCount}/{g.tasks.length} concluídas</span>
+                      <span className="font-mono text-primary">{pct}%</span>
+                    </div>
+                    <div className="h-1 overflow-hidden rounded-full bg-border">
+                      <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${pct}%` }} />
+                    </div>
                   </div>
                 )}
-                <div className="space-y-2">
+
+                <div className="space-y-2 p-3.5">
                   {g.tasks.map((t) => (
                     <TaskCard
                       key={t.id}
