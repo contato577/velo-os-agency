@@ -51,10 +51,12 @@ export interface AIInputs {
 }
 
 export function gerarInsights(input: AIInputs): Insight[] {
-  const { leads, tasks, clients, agenda, kpis } = input;
+  const { leads, tasks, clients, kpis } = input;
   const insights: Insight[] = [];
 
-  const leadsSemFollowup = leads.filter((l) => ["novo", "contato"].includes(l.stage)).length;
+  const leadsSemFollowup = leads.filter(
+    (l) => ["novo", "contato"].includes(l.stage) && HOJE.getTime() - new Date(l.lastActivity).getTime() > 48 * 3600000,
+  ).length;
   if (leadsSemFollowup > 0) {
     insights.push({
       id: "d-leads-followup",
@@ -68,7 +70,9 @@ export function gerarInsights(input: AIInputs): Insight[] {
     });
   }
 
-  const propostasAbertas = leads.filter((l) => l.stage === "proposta").length;
+  const propostasAbertas = leads.filter(
+    (l) => l.stage === "proposta" && HOJE.getTime() - new Date(l.lastActivity).getTime() > 5 * 86400000,
+  ).length;
   if (propostasAbertas > 0) {
     insights.push({
       id: "d-propostas",
@@ -98,19 +102,19 @@ export function gerarInsights(input: AIInputs): Insight[] {
     });
   }
 
-  const clientesVencendo = clients.filter((c) => {
+  const clientesVencendoLista = clients.filter((c) => {
     const d = new Date(c.renewalDate);
     const diff = (d.getTime() - HOJE.getTime()) / 86400000;
     return diff >= 0 && diff <= 30;
-  }).length;
-  if (clientesVencendo > 0) {
+  });
+  if (clientesVencendoLista.length > 0) {
     insights.push({
       id: "d-renovacoes",
       area: "Clientes",
-      titulo: `${clientesVencendo} contratos vencendo em 30 dias`,
+      titulo: `${clientesVencendoLista.length} contratos vencendo em 30 dias`,
       descricao: "Prepare pauta de renovação, resultados alcançados e proposta de upsell.",
       prioridade: "media",
-      impacto: `MRR em jogo: ${BRL(clientesVencendo * 6500)}`,
+      impacto: `MRR em jogo: ${BRL(clientesVencendoLista.reduce((s, c) => s + c.monthlyValue, 0))}`,
       acaoLabel: "Abrir Clientes",
       to: "/clientes",
     });
@@ -247,27 +251,11 @@ export function gerarInsights(input: AIInputs): Insight[] {
       id: "d-churn",
       area: "Clientes",
       titulo: "1 cliente com risco de churn",
-      descricao: `${clientePausado.company} está pausado há 12 dias. Recomendo reunião de saúde da conta.`,
+      descricao: `${clientePausado.company} está com status pausado. Recomendo reunião de saúde da conta.`,
       prioridade: "alta",
       impacto: `MRR: ${BRL(clientePausado.monthlyValue)}`,
       acaoLabel: "Ver cliente",
       to: "/clientes",
-    });
-  }
-
-  const hojeISO = HOJE.toISOString().slice(0, 10);
-  const compHoje = agenda.filter((e) => e.date === hojeISO).length;
-  if (compHoje > 0) {
-    insights.push({
-      id: "d-agenda",
-      area: "Agenda",
-      titulo: `${compHoje} compromissos hoje`,
-      descricao: "Reuniões e follow-ups agendados. Verifique preparação e materiais.",
-      prioridade: "baixa",
-      impacto: "Rotina do dia",
-      acaoLabel: "Abrir Agenda",
-      to: "/operacao",
-      search: { tab: "agenda" },
     });
   }
 

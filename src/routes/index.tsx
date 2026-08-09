@@ -390,13 +390,13 @@ function IAExecutivaCard({
             to="/comercial"
             className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
           >
-            Abrir CRM <ArrowRight className="h-3 w-3" />
+            Registrar prospecção/reunião <ArrowRight className="h-3 w-3" />
           </Link>
           <Link
-            to="/central-ia"
+            to="/ponto-controle"
             className="inline-flex items-center gap-1.5 rounded-md border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/20"
           >
-            <Brain className="h-3 w-3" /> Ver plano completo
+            <Target className="h-3 w-3" /> Ajustar Ponto de Controle
           </Link>
         </div>
       </div>
