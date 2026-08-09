@@ -939,6 +939,149 @@ const statusProjectMeta: Record<string, { label: string; className: string }> = 
   entregue: { label: "Entregue", className: "bg-success/10 text-success" },
 };
 
+// ─── Centro visual da Operação Contínua ──────────────────────────────────────
+// Sem checklist genérico e permanente: as rotinas são as próprias tarefas do
+// projeto de Operação Contínua — a mesma tarefa que aparece em Minha Semana.
+// Marcar como feita aqui ou lá é a mesma ação, no mesmo dado (toggleTaskDone).
+function OperacaoContinuaCenter({
+  client,
+  clientProjects,
+  clientTasks,
+}: {
+  client: Client;
+  clientProjects: import("@/lib/mock-data").Project[];
+  clientTasks: import("@/lib/mock-data").Task[];
+}) {
+  const { toggleTaskDone } = useDataStore();
+  const opProjects = clientProjects.filter((p) => p.fase === "operacao_continua");
+  const opProjectIds = new Set(opProjects.map((p) => p.id));
+  const rotinas = clientTasks.filter((t) => t.projectId && opProjectIds.has(t.projectId));
+
+  const categorias = ["Otimização", "Criativos", "Performance", "Relatório", "Reunião"] as const;
+  const porCategoria = categorias.map((cat) => {
+    const doCategoria = rotinas.filter((t) => t.labels?.includes(cat));
+    return { cat, total: doCategoria.length, pendentes: doCategoria.filter((t) => t.status !== "concluida").length };
+  }).filter((c) => c.total > 0);
+
+  const pendentes = rotinas.filter((t) => t.status !== "concluida").sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+  const relatorios = rotinas.filter((t) => t.labels?.includes("Relatório"));
+  const reunioes = rotinas.filter((t) => t.labels?.includes("Reunião"));
+
+  if (opProjects.length === 0) {
+    return (
+      <div className="rounded-xl border border-dashed bg-card p-6 text-center text-[12px] text-muted-foreground">
+        Nenhum projeto de Operação Contínua ainda para este cliente.
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Cliente e serviço ativo */}
+      <div className="rounded-xl border bg-card p-4">
+        <div className="mb-1 flex items-center gap-2">
+          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-success/15">
+            <CheckCircle2 className="h-3.5 w-3.5 text-success" />
+          </div>
+          <h3 className="text-sm font-semibold tracking-tight">{client.company} · em Operação Contínua</h3>
+        </div>
+        <p className="text-[11px] text-muted-foreground">
+          Serviço{opProjects.length > 1 ? "s" : ""} ativo{opProjects.length > 1 ? "s" : ""}: {opProjects.map((p) => p.type).join(", ")}
+        </p>
+
+        {/* Rotinas recorrentes, por categoria */}
+        {porCategoria.length > 0 && (
+          <div className="mt-3 grid grid-cols-2 gap-1.5 sm:grid-cols-3 md:grid-cols-5">
+            {porCategoria.map((c) => (
+              <div key={c.cat} className="rounded-lg border bg-surface/40 p-2 text-center">
+                <div className="font-mono text-[15px] font-semibold text-primary">{c.pendentes}</div>
+                <div className="text-[10px] text-muted-foreground">{c.cat}</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Próximas tarefas e pendências — a lista principal, acionável direto aqui */}
+      <div className="rounded-xl border bg-card p-4">
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="text-sm font-semibold tracking-tight">Próximas tarefas e pendências</h3>
+          <NewTaskButton defaultContext={{ type: "cliente", id: client.id, label: client.company }} />
+        </div>
+        {pendentes.length === 0 ? (
+          <p className="rounded-md border border-dashed py-6 text-center text-[12px] text-muted-foreground">
+            Tudo em dia por aqui.
+          </p>
+        ) : (
+          <ul className="space-y-1">
+            {pendentes.map((t) => {
+              const atrasada = new Date(t.dueDate) < new Date(new Date().toISOString().slice(0, 10));
+              return (
+                <li key={t.id} className={cn("flex items-center gap-2.5 rounded-md border bg-surface/50 px-2.5 py-2", t.status === "concluida" && "opacity-50")}>
+                  <button
+                    onClick={() => toggleTaskDone(t.id)}
+                    className={cn(
+                      "flex h-4 w-4 shrink-0 items-center justify-center rounded border-2 transition-colors",
+                      t.status === "concluida" ? "border-success bg-success text-success-foreground" : "border-muted-foreground/40 hover:border-primary",
+                    )}
+                  >
+                    {t.status === "concluida" && <Check className="h-2.5 w-2.5" />}
+                  </button>
+                  <span className={cn("min-w-0 flex-1 truncate text-[13px]", t.status === "concluida" && "line-through")}>{t.title}</span>
+                  {t.labels?.[0] && (
+                    <span className="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 text-[9px] font-medium text-primary">{t.labels[0]}</span>
+                  )}
+                  <span className={cn("shrink-0 font-mono text-[10px]", atrasada ? "text-destructive" : "text-muted-foreground")}>
+                    {new Date(t.dueDate + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+
+      {/* Relatórios semanais e Reuniões recorrentes — recortes da mesma lista, sem duplicar dado */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div className="rounded-xl border bg-card p-4">
+          <h3 className="mb-2 text-sm font-semibold tracking-tight">Relatórios</h3>
+          {relatorios.length === 0 ? (
+            <p className="text-[11px] text-muted-foreground">Nenhum relatório agendado.</p>
+          ) : (
+            <ul className="space-y-1">
+              {relatorios.map((t) => (
+                <li key={t.id} className="flex items-center justify-between text-[12px]">
+                  <span className={cn("truncate", t.status === "concluida" && "text-muted-foreground line-through")}>{t.title}</span>
+                  <span className="shrink-0 font-mono text-[10px] text-muted-foreground">
+                    {new Date(t.dueDate + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+        <div className="rounded-xl border bg-card p-4">
+          <h3 className="mb-2 text-sm font-semibold tracking-tight">Reuniões recorrentes</h3>
+          {reunioes.length === 0 ? (
+            <p className="text-[11px] text-muted-foreground">Nenhuma reunião agendada.</p>
+          ) : (
+            <ul className="space-y-1">
+              {reunioes.map((t) => (
+                <li key={t.id} className="flex items-center justify-between text-[12px]">
+                  <span className={cn("truncate", t.status === "concluida" && "text-muted-foreground line-through")}>{t.title}</span>
+                  <span className="shrink-0 font-mono text-[10px] text-muted-foreground">
+                    {new Date(t.dueDate + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ProjectCard({ project }: { project: import("@/lib/mock-data").Project }) {
   const { toggleChecklistItem } = useDataStore();
   const [expanded, setExpanded] = useState(false);
@@ -1077,66 +1220,74 @@ function TabOperacao({ clientId }: { clientId: string }) {
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
       <div className="space-y-4 lg:col-span-2">
-        {/* Projetos */}
-        <div className="rounded-xl border bg-card p-4">
-          <div className="mb-3 flex items-center justify-between">
-            <h3 className="text-sm font-semibold tracking-tight">Projetos ativos</h3>
-            <span className="text-[11px] text-muted-foreground">{clientProjects.length} projeto{clientProjects.length !== 1 ? "s" : ""}</span>
-          </div>
-          {clientProjects.length === 0 ? (
-            <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed py-10 text-center">
-              <Folder className="h-8 w-8 text-muted-foreground/40" />
-              <div className="text-[13px] font-medium text-muted-foreground">Nenhum projeto ativo</div>
-              <p className="text-[11px] text-muted-foreground/70">Crie um projeto para este cliente no módulo Operação.</p>
+        {client.status === "onboarding" ? (
+          <>
+            {/* Fase de implementação — projetos com prazo e checklist, como já funcionava */}
+            <div className="rounded-xl border bg-card p-4">
+              <div className="mb-3 flex items-center justify-between">
+                <h3 className="text-sm font-semibold tracking-tight">Projetos ativos</h3>
+                <span className="text-[11px] text-muted-foreground">{clientProjects.length} projeto{clientProjects.length !== 1 ? "s" : ""}</span>
+              </div>
+              {clientProjects.length === 0 ? (
+                <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed py-10 text-center">
+                  <Folder className="h-8 w-8 text-muted-foreground/40" />
+                  <div className="text-[13px] font-medium text-muted-foreground">Nenhum projeto ativo</div>
+                  <p className="text-[11px] text-muted-foreground/70">Crie um projeto para este cliente no módulo Operação.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {clientProjects.map((p) => (
+                    <ProjectCard key={p.id} project={p} />
+                  ))}
+                </div>
+              )}
             </div>
-          ) : (
-            <div className="space-y-3">
-              {clientProjects.map((p) => (
-                <ProjectCard key={p.id} project={p} />
-              ))}
-            </div>
-          )}
-        </div>
 
-        {/* Tarefas */}
-        <div className="rounded-xl border bg-card p-4">
-          <div className="mb-3 flex items-center justify-between">
-            <h3 className="text-sm font-semibold tracking-tight">Tarefas</h3>
-            <div className="flex items-center gap-2">
-              <span className="text-[11px] text-muted-foreground">{clientTasks.length} tarefas</span>
-              <NewTaskButton
-                defaultContext={{ type: "cliente", id: client.id, label: client.company }}
-              />
+            {/* Tarefas */}
+            <div className="rounded-xl border bg-card p-4">
+              <div className="mb-3 flex items-center justify-between">
+                <h3 className="text-sm font-semibold tracking-tight">Tarefas</h3>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] text-muted-foreground">{clientTasks.length} tarefas</span>
+                  <NewTaskButton
+                    defaultContext={{ type: "cliente", id: client.id, label: client.company }}
+                  />
+                </div>
+              </div>
+              <ul className="space-y-1">
+                {clientTasks.length === 0 && (
+                  <li className="flex flex-col items-center gap-2 rounded-md border border-dashed py-6 text-center text-[12px] text-muted-foreground">
+                    <span>Nenhuma tarefa vinculada a este cliente.</span>
+                    <NewTaskButton
+                      defaultContext={{ type: "cliente", id: client.id, label: client.company }}
+                      label="+ Nova tarefa"
+                    />
+                  </li>
+                )}
+                {clientTasks.map((t) => (
+                  <li key={t.id} className="flex items-center gap-2.5 rounded-md border bg-surface/50 px-2.5 py-2">
+                    <span
+                      className={cn(
+                        "h-1.5 w-1.5 rounded-full",
+                        t.priority === "urgente" && "bg-destructive",
+                        t.priority === "alta" && "bg-warning",
+                        t.priority === "media" && "bg-info",
+                        t.priority === "baixa" && "bg-muted-foreground",
+                      )}
+                    />
+                    <span className="min-w-0 flex-1 truncate text-[13px]">{t.title}</span>
+                    <span className="text-[10px] text-muted-foreground">{t.owner.split(" ")[0]}</span>
+                  </li>
+                ))}
+              </ul>
             </div>
-          </div>
-          <ul className="space-y-1">
-            {clientTasks.length === 0 && (
-              <li className="flex flex-col items-center gap-2 rounded-md border border-dashed py-6 text-center text-[12px] text-muted-foreground">
-                <span>Nenhuma tarefa vinculada a este cliente.</span>
-                <NewTaskButton
-                  defaultContext={{ type: "cliente", id: client.id, label: client.company }}
-                  label="+ Nova tarefa"
-                />
-              </li>
-            )}
-            {clientTasks.map((t) => (
-              <li key={t.id} className="flex items-center gap-2.5 rounded-md border bg-surface/50 px-2.5 py-2">
-                <span
-                  className={cn(
-                    "h-1.5 w-1.5 rounded-full",
-                    t.priority === "urgente" && "bg-destructive",
-                    t.priority === "alta" && "bg-warning",
-                    t.priority === "media" && "bg-info",
-                    t.priority === "baixa" && "bg-muted-foreground",
-                  )}
-                />
-                <span className="min-w-0 flex-1 truncate text-[13px]">{t.title}</span>
-                <span className="text-[10px] text-muted-foreground">{t.owner.split(" ")[0]}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-
+          </>
+        ) : (
+          // Fase de Operação Contínua — centro visual de acompanhamento, sem checklist
+          // permanente. As "rotinas" são as próprias tarefas vinculadas ao projeto de
+          // Operação Contínua — a mesma tarefa que aparece em Minha Semana, não uma cópia.
+          <OperacaoContinuaCenter client={client} clientProjects={clientProjects} clientTasks={clientTasks} />
+        )}
 
         {/* Comentários */}
         <div className="rounded-xl border bg-card p-4">

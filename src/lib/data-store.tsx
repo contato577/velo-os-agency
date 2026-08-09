@@ -66,6 +66,10 @@ function addMonths(base: Date, months: number) {
   return d;
 }
 
+function addDays(base: Date, days: number) {
+  return new Date(base.getTime() + days * 24 * 60 * 60 * 1000);
+}
+
 export function mesAtualISO(d = new Date()) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
@@ -468,6 +472,7 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
     // 1. Inverte o done do item e captura o clientId do projeto
     let affectedClientId: string | null = null;
     let novosProjetosOperacao: Project[] = [];
+    let novasTarefasOperacao: Task[] = [];
 
     setProjects((prevProjects) => {
       let updated = prevProjects.map((p) => {
@@ -494,8 +499,13 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
         // 3. Fecha a implementação (Onboarding = Implementação, um conceito só) e cria,
         // automaticamente, um Projeto de Operação Contínua para cada serviço entregue —
         // sem prazo fixo, é o que existe enquanto o cliente estiver ativo.
-        const hoje = new Date().toISOString().slice(0, 10);
-        const renewal = clients.find((c) => c.id === affectedClientId)?.renewalDate ?? hoje;
+        // Sem checklist genérico e permanente: as rotinas viram TAREFAS de verdade,
+        // vinculadas ao cliente e ao projeto, que aparecem direto em Minha Semana —
+        // é a mesma tarefa nos dois lugares, não uma cópia. Marcar como feita ali
+        // já reflete aqui, e vice-versa, porque é o mesmo dado.
+        const hoje = new Date();
+        const hojeISO = hoje.toISOString().slice(0, 10);
+        const renewal = clients.find((c) => c.id === affectedClientId)?.renewalDate ?? hojeISO;
         novosProjetosOperacao = aindaNaoEntregues.map((p, i) => ({
           id: `p-op-${Date.now()}-${i}`,
           clientId: p.clientId,
@@ -507,11 +517,29 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
           progress: 0,
           deadline: renewal,
           owner: p.owner,
-          checklist: [
-            { id: `oc-${Date.now()}-${i}-1`, text: "Definir calendário de relatórios mensais", done: false },
-            { id: `oc-${Date.now()}-${i}-2`, text: "Agendar reunião de kickoff da operação contínua", done: false },
-          ],
         }));
+
+        novasTarefasOperacao = aindaNaoEntregues.flatMap((p, i) => {
+          const opProjId = novosProjetosOperacao[i].id;
+          const rotinas: { title: string; dias: number; labels: string[] }[] = [
+            { title: `Reunião de kickoff — Operação Contínua (${p.type})`, dias: 3, labels: ["Reunião"] },
+            { title: `Definir calendário de relatórios — ${p.type}`, dias: 3, labels: ["Relatório"] },
+            { title: `Otimização de campanhas — ${p.type}`, dias: 7, labels: ["Otimização"] },
+            { title: `Relatório semanal de performance — ${p.type}`, dias: 7, labels: ["Relatório", "Performance"] },
+            { title: `Revisão de criativos — ${p.type}`, dias: 14, labels: ["Criativos"] },
+          ];
+          return rotinas.map((r, j) => ({
+            id: `t-op-${Date.now()}-${i}-${j}`,
+            title: r.title,
+            owner: p.owner,
+            priority: "media" as const,
+            status: "backlog" as const,
+            dueDate: addDays(hoje, r.dias).toISOString().slice(0, 10),
+            clientId: p.clientId,
+            projectId: opProjId,
+            labels: r.labels,
+          }));
+        });
 
         updated = updated.map((p) =>
           aindaNaoEntregues.some((ie) => ie.id === p.id) ? { ...p, status: "entregue" as const } : p,
@@ -532,6 +560,10 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
               : c,
           );
         });
+
+        // As rotinas geradas acima entram direto no mesmo estado de tarefas que
+        // alimenta Operação → Minha Semana — sem tabela/estado paralelo.
+        setTasks((prevTasks) => [...novasTarefasOperacao, ...prevTasks]);
       }
 
       return allDone ? [...updated, ...novosProjetosOperacao] : updated;
