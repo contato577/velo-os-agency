@@ -943,6 +943,21 @@ const statusProjectMeta: Record<string, { label: string; className: string }> = 
 // Sem checklist genérico e permanente: as rotinas são as próprias tarefas do
 // projeto de Operação Contínua — a mesma tarefa que aparece em Minha Semana.
 // Marcar como feita aqui ou lá é a mesma ação, no mesmo dado (toggleTaskDone).
+// ─── Centro visual da Operação Contínua ──────────────────────────────────────
+// Planejamento manual, sem geração automática de tarefas. O operador entra aqui
+// e adiciona só o que vai executar naquela semana — a tarefa criada é a mesma
+// que aparece em Minha Semana (mesmo registro, addTask/toggleTaskDone), nunca
+// uma cópia. Concluir em um lugar reflete automaticamente no outro.
+const CATEGORIAS_OPERACAO = ["Otimização", "Performance", "Criativos", "Relatório", "Reunião", "Outras"] as const;
+
+function inicioFimSemana(base: Date) {
+  const inicio = new Date(base);
+  inicio.setHours(0, 0, 0, 0);
+  const fim = new Date(inicio);
+  fim.setDate(fim.getDate() + 6);
+  return { inicio, fim };
+}
+
 function OperacaoContinuaCenter({
   client,
   clientProjects,
@@ -952,20 +967,45 @@ function OperacaoContinuaCenter({
   clientProjects: import("@/lib/mock-data").Project[];
   clientTasks: import("@/lib/mock-data").Task[];
 }) {
-  const { toggleTaskDone } = useDataStore();
+  const { toggleTaskDone, addTask } = useDataStore();
   const opProjects = clientProjects.filter((p) => p.fase === "operacao_continua");
   const opProjectIds = new Set(opProjects.map((p) => p.id));
   const rotinas = clientTasks.filter((t) => t.projectId && opProjectIds.has(t.projectId));
 
-  const categorias = ["Otimização", "Criativos", "Performance", "Relatório", "Reunião"] as const;
-  const porCategoria = categorias.map((cat) => {
-    const doCategoria = rotinas.filter((t) => t.labels?.includes(cat));
-    return { cat, total: doCategoria.length, pendentes: doCategoria.filter((t) => t.status !== "concluida").length };
-  }).filter((c) => c.total > 0);
+  const hoje = new Date();
+  const { inicio: inicioSemana, fim: fimSemana } = inicioFimSemana(hoje);
+  const dataNaSemana = (dueDate: string) => {
+    const d = new Date(dueDate + "T00:00:00");
+    return d >= inicioSemana && d <= fimSemana;
+  };
 
-  const pendentes = rotinas.filter((t) => t.status !== "concluida").sort((a, b) => a.dueDate.localeCompare(b.dueDate));
-  const relatorios = rotinas.filter((t) => t.labels?.includes("Relatório"));
-  const reunioes = rotinas.filter((t) => t.labels?.includes("Reunião"));
+  const planejamentoSemana = rotinas.filter((t) => t.status !== "concluida" && dataNaSemana(t.dueDate));
+  const concluidas = rotinas.filter((t) => t.status === "concluida").sort((a, b) => b.dueDate.localeCompare(a.dueDate)).slice(0, 8);
+  const proximasEntregas = rotinas
+    .filter((t) => t.status !== "concluida" && !dataNaSemana(t.dueDate) && new Date(t.dueDate + "T00:00:00") > fimSemana)
+    .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+
+  // ── Formulário rápido de planejamento ──
+  const [novoTitulo, setNovoTitulo] = useState("");
+  const [novaCategoria, setNovaCategoria] = useState<(typeof CATEGORIAS_OPERACAO)[number]>("Otimização");
+  const [novaData, setNovaData] = useState(hoje.toISOString().slice(0, 10));
+  const [novoProjetoId, setNovoProjetoId] = useState(opProjects[0]?.id ?? "");
+
+  const adicionarTarefa = () => {
+    const titulo = novoTitulo.trim() || novaCategoria;
+    if (!novoProjetoId) return;
+    addTask({
+      title: titulo,
+      owner: client.owner,
+      priority: "media",
+      status: "backlog",
+      dueDate: novaData,
+      clientId: client.id,
+      projectId: novoProjetoId,
+      labels: [novaCategoria],
+    });
+    setNovoTitulo("");
+  };
 
   if (opProjects.length === 0) {
     return (
@@ -977,7 +1017,7 @@ function OperacaoContinuaCenter({
 
   return (
     <div className="space-y-4">
-      {/* Cliente e serviço ativo */}
+      {/* Serviços ativos */}
       <div className="rounded-xl border bg-card p-4">
         <div className="mb-1 flex items-center gap-2">
           <div className="flex h-7 w-7 items-center justify-center rounded-md bg-success/15">
@@ -988,71 +1028,106 @@ function OperacaoContinuaCenter({
         <p className="text-[11px] text-muted-foreground">
           Serviço{opProjects.length > 1 ? "s" : ""} ativo{opProjects.length > 1 ? "s" : ""}: {opProjects.map((p) => p.type).join(", ")}
         </p>
-
-        {/* Rotinas recorrentes, por categoria */}
-        {porCategoria.length > 0 && (
-          <div className="mt-3 grid grid-cols-2 gap-1.5 sm:grid-cols-3 md:grid-cols-5">
-            {porCategoria.map((c) => (
-              <div key={c.cat} className="rounded-lg border bg-surface/40 p-2 text-center">
-                <div className="font-mono text-[15px] font-semibold text-primary">{c.pendentes}</div>
-                <div className="text-[10px] text-muted-foreground">{c.cat}</div>
-              </div>
-            ))}
+        <div className="mt-3 grid grid-cols-3 gap-1.5">
+          <div className="rounded-lg border bg-surface/40 p-2 text-center">
+            <div className="font-mono text-[15px] font-semibold text-primary">{planejamentoSemana.length}</div>
+            <div className="text-[10px] text-muted-foreground">Planejadas p/ semana</div>
           </div>
-        )}
+          <div className="rounded-lg border bg-surface/40 p-2 text-center">
+            <div className="font-mono text-[15px] font-semibold text-success">{concluidas.length}</div>
+            <div className="text-[10px] text-muted-foreground">Concluídas</div>
+          </div>
+          <div className="rounded-lg border bg-surface/40 p-2 text-center">
+            <div className="font-mono text-[15px] font-semibold text-muted-foreground">{proximasEntregas.length}</div>
+            <div className="text-[10px] text-muted-foreground">Próximas entregas</div>
+          </div>
+        </div>
       </div>
 
-      {/* Próximas tarefas e pendências — a lista principal, acionável direto aqui */}
+      {/* Planejamento da semana — manual, adicionar só o que vai acontecer de verdade */}
       <div className="rounded-xl border bg-card p-4">
-        <div className="mb-3 flex items-center justify-between">
-          <h3 className="text-sm font-semibold tracking-tight">Próximas tarefas e pendências</h3>
-          <NewTaskButton defaultContext={{ type: "cliente", id: client.id, label: client.company }} />
+        <h3 className="mb-1 text-sm font-semibold tracking-tight">Planejamento da semana</h3>
+        <p className="mb-3 text-[11px] text-muted-foreground">
+          {inicioSemana.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })} a{" "}
+          {fimSemana.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })} — adicione só o que será executado nesse período.
+        </p>
+
+        {/* Adicionar rápido */}
+        <div className="mb-3 flex flex-wrap items-center gap-1.5 rounded-lg border bg-surface/40 p-2">
+          {opProjects.length > 1 && (
+            <select value={novoProjetoId} onChange={(e) => setNovoProjetoId(e.target.value)} className="h-8 rounded-md border bg-card px-2 text-[11px]">
+              {opProjects.map((p) => (
+                <option key={p.id} value={p.id}>{p.type}</option>
+              ))}
+            </select>
+          )}
+          <select
+            value={novaCategoria}
+            onChange={(e) => setNovaCategoria(e.target.value as typeof novaCategoria)}
+            className="h-8 rounded-md border bg-card px-2 text-[11px]"
+          >
+            {CATEGORIAS_OPERACAO.map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+          <input
+            value={novoTitulo}
+            onChange={(e) => setNovoTitulo(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && adicionarTarefa()}
+            placeholder={`Descrição (opcional — padrão: "${novaCategoria}")`}
+            className="h-8 min-w-[160px] flex-1 rounded-md border bg-card px-2 text-[12px]"
+          />
+          <input
+            type="date"
+            value={novaData}
+            onChange={(e) => setNovaData(e.target.value)}
+            className="h-8 rounded-md border bg-card px-2 text-[11px]"
+          />
+          <button
+            onClick={adicionarTarefa}
+            className="inline-flex h-8 items-center gap-1 rounded-md bg-primary px-2.5 text-[11px] font-medium text-primary-foreground hover:bg-primary/90"
+          >
+            <Plus className="h-3 w-3" /> Adicionar
+          </button>
         </div>
-        {pendentes.length === 0 ? (
+
+        {planejamentoSemana.length === 0 ? (
           <p className="rounded-md border border-dashed py-6 text-center text-[12px] text-muted-foreground">
-            Tudo em dia por aqui.
+            Nada planejado pra essa semana ainda. Adicione acima.
           </p>
         ) : (
           <ul className="space-y-1">
-            {pendentes.map((t) => {
-              const atrasada = new Date(t.dueDate) < new Date(new Date().toISOString().slice(0, 10));
-              return (
-                <li key={t.id} className={cn("flex items-center gap-2.5 rounded-md border bg-surface/50 px-2.5 py-2", t.status === "concluida" && "opacity-50")}>
-                  <button
-                    onClick={() => toggleTaskDone(t.id)}
-                    className={cn(
-                      "flex h-4 w-4 shrink-0 items-center justify-center rounded border-2 transition-colors",
-                      t.status === "concluida" ? "border-success bg-success text-success-foreground" : "border-muted-foreground/40 hover:border-primary",
-                    )}
-                  >
-                    {t.status === "concluida" && <Check className="h-2.5 w-2.5" />}
-                  </button>
-                  <span className={cn("min-w-0 flex-1 truncate text-[13px]", t.status === "concluida" && "line-through")}>{t.title}</span>
-                  {t.labels?.[0] && (
-                    <span className="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 text-[9px] font-medium text-primary">{t.labels[0]}</span>
-                  )}
-                  <span className={cn("shrink-0 font-mono text-[10px]", atrasada ? "text-destructive" : "text-muted-foreground")}>
-                    {new Date(t.dueDate + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}
-                  </span>
-                </li>
-              );
-            })}
+            {planejamentoSemana.map((t) => (
+              <li key={t.id} className="flex items-center gap-2.5 rounded-md border bg-surface/50 px-2.5 py-2">
+                <button
+                  onClick={() => toggleTaskDone(t.id)}
+                  className="flex h-4 w-4 shrink-0 items-center justify-center rounded border-2 border-muted-foreground/40 hover:border-primary"
+                />
+                <span className="min-w-0 flex-1 truncate text-[13px]">{t.title}</span>
+                {t.labels?.[0] && (
+                  <span className="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 text-[9px] font-medium text-primary">{t.labels[0]}</span>
+                )}
+                <span className="shrink-0 font-mono text-[10px] text-muted-foreground">
+                  {new Date(t.dueDate + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}
+                </span>
+              </li>
+            ))}
           </ul>
         )}
       </div>
 
-      {/* Relatórios semanais e Reuniões recorrentes — recortes da mesma lista, sem duplicar dado */}
+      {/* Concluídas e Próximas entregas */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div className="rounded-xl border bg-card p-4">
-          <h3 className="mb-2 text-sm font-semibold tracking-tight">Relatórios</h3>
-          {relatorios.length === 0 ? (
-            <p className="text-[11px] text-muted-foreground">Nenhum relatório agendado.</p>
+          <h3 className="mb-2 text-sm font-semibold tracking-tight">Tarefas concluídas</h3>
+          {concluidas.length === 0 ? (
+            <p className="text-[11px] text-muted-foreground">Nenhuma ainda.</p>
           ) : (
             <ul className="space-y-1">
-              {relatorios.map((t) => (
-                <li key={t.id} className="flex items-center justify-between text-[12px]">
-                  <span className={cn("truncate", t.status === "concluida" && "text-muted-foreground line-through")}>{t.title}</span>
-                  <span className="shrink-0 font-mono text-[10px] text-muted-foreground">
+              {concluidas.map((t) => (
+                <li key={t.id} className="flex items-center justify-between text-[12px] text-muted-foreground">
+                  <span className="truncate line-through">{t.title}</span>
+                  <span className="shrink-0 font-mono text-[10px]">
                     {new Date(t.dueDate + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}
                   </span>
                 </li>
@@ -1061,14 +1136,14 @@ function OperacaoContinuaCenter({
           )}
         </div>
         <div className="rounded-xl border bg-card p-4">
-          <h3 className="mb-2 text-sm font-semibold tracking-tight">Reuniões recorrentes</h3>
-          {reunioes.length === 0 ? (
-            <p className="text-[11px] text-muted-foreground">Nenhuma reunião agendada.</p>
+          <h3 className="mb-2 text-sm font-semibold tracking-tight">Próximas entregas</h3>
+          {proximasEntregas.length === 0 ? (
+            <p className="text-[11px] text-muted-foreground">Nada planejado além dessa semana ainda.</p>
           ) : (
             <ul className="space-y-1">
-              {reunioes.map((t) => (
+              {proximasEntregas.map((t) => (
                 <li key={t.id} className="flex items-center justify-between text-[12px]">
-                  <span className={cn("truncate", t.status === "concluida" && "text-muted-foreground line-through")}>{t.title}</span>
+                  <span className="truncate">{t.title}</span>
                   <span className="shrink-0 font-mono text-[10px] text-muted-foreground">
                     {new Date(t.dueDate + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}
                   </span>

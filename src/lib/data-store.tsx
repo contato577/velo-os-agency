@@ -472,7 +472,6 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
     // 1. Inverte o done do item e captura o clientId do projeto
     let affectedClientId: string | null = null;
     let novosProjetosOperacao: Project[] = [];
-    let novasTarefasOperacao: Task[] = [];
 
     setProjects((prevProjects) => {
       let updated = prevProjects.map((p) => {
@@ -499,10 +498,9 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
         // 3. Fecha a implementação (Onboarding = Implementação, um conceito só) e cria,
         // automaticamente, um Projeto de Operação Contínua para cada serviço entregue —
         // sem prazo fixo, é o que existe enquanto o cliente estiver ativo.
-        // Sem checklist genérico e permanente: as rotinas viram TAREFAS de verdade,
-        // vinculadas ao cliente e ao projeto, que aparecem direto em Minha Semana —
-        // é a mesma tarefa nos dois lugares, não uma cópia. Marcar como feita ali
-        // já reflete aqui, e vice-versa, porque é o mesmo dado.
+        // Sem geração automática de tarefas: o planejamento da semana é manual, feito
+        // pelo operador na própria tela do cliente — evita poluir Minha Semana com
+        // tarefas que nem sempre precisam acontecer naquela semana.
         const hoje = new Date();
         const hojeISO = hoje.toISOString().slice(0, 10);
         const renewal = clients.find((c) => c.id === affectedClientId)?.renewalDate ?? hojeISO;
@@ -518,28 +516,6 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
           deadline: renewal,
           owner: p.owner,
         }));
-
-        novasTarefasOperacao = aindaNaoEntregues.flatMap((p, i) => {
-          const opProjId = novosProjetosOperacao[i].id;
-          const rotinas: { title: string; dias: number; labels: string[] }[] = [
-            { title: `Reunião de kickoff — Operação Contínua (${p.type})`, dias: 3, labels: ["Reunião"] },
-            { title: `Definir calendário de relatórios — ${p.type}`, dias: 3, labels: ["Relatório"] },
-            { title: `Otimização de campanhas — ${p.type}`, dias: 7, labels: ["Otimização"] },
-            { title: `Relatório semanal de performance — ${p.type}`, dias: 7, labels: ["Relatório", "Performance"] },
-            { title: `Revisão de criativos — ${p.type}`, dias: 14, labels: ["Criativos"] },
-          ];
-          return rotinas.map((r, j) => ({
-            id: `t-op-${Date.now()}-${i}-${j}`,
-            title: r.title,
-            owner: p.owner,
-            priority: "media" as const,
-            status: "backlog" as const,
-            dueDate: addDays(hoje, r.dias).toISOString().slice(0, 10),
-            clientId: p.clientId,
-            projectId: opProjId,
-            labels: r.labels,
-          }));
-        });
 
         updated = updated.map((p) =>
           aindaNaoEntregues.some((ie) => ie.id === p.id) ? { ...p, status: "entregue" as const } : p,
@@ -560,10 +536,6 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
               : c,
           );
         });
-
-        // As rotinas geradas acima entram direto no mesmo estado de tarefas que
-        // alimenta Operação → Minha Semana — sem tabela/estado paralelo.
-        setTasks((prevTasks) => [...novasTarefasOperacao, ...prevTasks]);
       }
 
       return allDone ? [...updated, ...novosProjetosOperacao] : updated;
