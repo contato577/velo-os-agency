@@ -939,15 +939,18 @@ const statusProjectMeta: Record<string, { label: string; className: string }> = 
   entregue: { label: "Entregue", className: "bg-success/10 text-success" },
 };
 
-// ─── Centro visual da Operação Contínua ──────────────────────────────────────
-// Sem checklist genérico e permanente: as rotinas são as próprias tarefas do
-// projeto de Operação Contínua — a mesma tarefa que aparece em Minha Semana.
-// Marcar como feita aqui ou lá é a mesma ação, no mesmo dado (toggleTaskDone).
-// ─── Centro visual da Operação Contínua ──────────────────────────────────────
+// ─── Centro visual da Gestão do Cliente ──────────────────────────────────────
 // Planejamento manual, sem geração automática de tarefas. O operador entra aqui
 // e adiciona só o que vai executar naquela semana — a tarefa criada é a mesma
 // que aparece em Minha Semana (mesmo registro, addTask/toggleTaskDone), nunca
 // uma cópia. Concluir em um lugar reflete automaticamente no outro.
+//
+// Ciclo semanal: a cada semana nova, o planejamento anterior "vira a página"
+// sozinho (é só um cálculo de datas, não precisa de nenhum job/cron):
+//   concluídas  → saem do planejamento atual e entram no Histórico, agrupadas por semana
+//   pendentes   → NUNCA são apagadas; continuam aparecendo (com aviso "semana passada")
+//                 até serem concluídas ou reagendadas — não somem sozinhas
+//   futuras     → seguem em Próximas Entregas até a semana delas chegar
 const CATEGORIAS_OPERACAO = ["Otimização", "Performance", "Criativos", "Relatório", "Reunião", "Outras"] as const;
 
 function inicioFimSemana(base: Date) {
@@ -956,6 +959,13 @@ function inicioFimSemana(base: Date) {
   const fim = new Date(inicio);
   fim.setDate(fim.getDate() + 6);
   return { inicio, fim };
+}
+
+// Rótulo "04/08 – 10/08" pra agrupar o histórico por semana, a partir de uma data qualquer
+function rotuloSemana(data: Date) {
+  const { inicio, fim } = inicioFimSemana(data);
+  const fmt = (d: Date) => d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+  return `${fmt(inicio)} – ${fmt(fim)}`;
 }
 
 function OperacaoContinuaCenter({
@@ -967,23 +977,40 @@ function OperacaoContinuaCenter({
   clientProjects: import("@/lib/mock-data").Project[];
   clientTasks: import("@/lib/mock-data").Task[];
 }) {
-  const { toggleTaskDone, addTask } = useDataStore();
+  const { toggleTaskDone, addTask, updateTask } = useDataStore();
   const opProjects = clientProjects.filter((p) => p.fase === "operacao_continua");
   const opProjectIds = new Set(opProjects.map((p) => p.id));
   const rotinas = clientTasks.filter((t) => t.projectId && opProjectIds.has(t.projectId));
 
   const hoje = new Date();
   const { inicio: inicioSemana, fim: fimSemana } = inicioFimSemana(hoje);
-  const dataNaSemana = (dueDate: string) => {
+  const dataNaSemanaAtual = (dueDate: string) => {
     const d = new Date(dueDate + "T00:00:00");
     return d >= inicioSemana && d <= fimSemana;
   };
 
-  const planejamentoSemana = rotinas.filter((t) => t.status !== "concluida" && dataNaSemana(t.dueDate));
-  const concluidas = rotinas.filter((t) => t.status === "concluida").sort((a, b) => b.dueDate.localeCompare(a.dueDate)).slice(0, 8);
-  const proximasEntregas = rotinas
-    .filter((t) => t.status !== "concluida" && !dataNaSemana(t.dueDate) && new Date(t.dueDate + "T00:00:00") > fimSemana)
+  const planejamentoSemana = rotinas.filter((t) => t.status !== "concluida" && dataNaSemanaAtual(t.dueDate));
+  // Pendências de semanas anteriores — não são apagadas nem escondidas, só separadas
+  // do planejamento da semana atual pra ficar claro que já passaram do previsto.
+  const pendenciasAnteriores = rotinas
+    .filter((t) => t.status !== "concluida" && new Date(t.dueDate + "T00:00:00") < inicioSemana)
     .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+  const proximasEntregas = rotinas
+    .filter((t) => t.status !== "concluida" && new Date(t.dueDate + "T00:00:00") > fimSemana)
+    .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+
+  // Histórico — concluídas, agrupadas por semana (mais recente primeiro)
+  const historicoPorSemana = useMemo(() => {
+    const concluidas = rotinas.filter((t) => t.status === "concluida");
+    const grupos = new Map<string, { ordenacao: string; itens: typeof concluidas }>();
+    for (const t of concluidas) {
+      const label = rotuloSemana(new Date(t.dueDate + "T00:00:00"));
+      const existente = grupos.get(label);
+      if (existente) existente.itens.push(t);
+      else grupos.set(label, { ordenacao: t.dueDate, itens: [t] });
+    }
+    return [...grupos.entries()].sort((a, b) => b[1].ordenacao.localeCompare(a[1].ordenacao));
+  }, [rotinas]);
 
   // ── Formulário rápido de planejamento ──
   const [novoTitulo, setNovoTitulo] = useState("");
@@ -1010,7 +1037,7 @@ function OperacaoContinuaCenter({
   if (opProjects.length === 0) {
     return (
       <div className="rounded-xl border border-dashed bg-card p-6 text-center text-[12px] text-muted-foreground">
-        Nenhum projeto de Operação Contínua ainda para este cliente.
+        Nenhum projeto de Gestão do Cliente ainda para este cliente.
       </div>
     );
   }
@@ -1023,19 +1050,25 @@ function OperacaoContinuaCenter({
           <div className="flex h-7 w-7 items-center justify-center rounded-md bg-success/15">
             <CheckCircle2 className="h-3.5 w-3.5 text-success" />
           </div>
-          <h3 className="text-sm font-semibold tracking-tight">{client.company} · em Operação Contínua</h3>
+          <h3 className="text-sm font-semibold tracking-tight">{client.company} · Gestão do Cliente</h3>
         </div>
         <p className="text-[11px] text-muted-foreground">
           Serviço{opProjects.length > 1 ? "s" : ""} ativo{opProjects.length > 1 ? "s" : ""}: {opProjects.map((p) => p.type).join(", ")}
         </p>
-        <div className="mt-3 grid grid-cols-3 gap-1.5">
+        <div className="mt-3 grid grid-cols-2 gap-1.5 sm:grid-cols-4">
           <div className="rounded-lg border bg-surface/40 p-2 text-center">
             <div className="font-mono text-[15px] font-semibold text-primary">{planejamentoSemana.length}</div>
-            <div className="text-[10px] text-muted-foreground">Planejadas p/ semana</div>
+            <div className="text-[10px] text-muted-foreground">Nesta semana</div>
+          </div>
+          <div className={cn("rounded-lg border p-2 text-center", pendenciasAnteriores.length > 0 ? "border-warning/40 bg-warning/5" : "bg-surface/40")}>
+            <div className={cn("font-mono text-[15px] font-semibold", pendenciasAnteriores.length > 0 ? "text-warning" : "text-muted-foreground")}>
+              {pendenciasAnteriores.length}
+            </div>
+            <div className="text-[10px] text-muted-foreground">Pendente (atrasada)</div>
           </div>
           <div className="rounded-lg border bg-surface/40 p-2 text-center">
-            <div className="font-mono text-[15px] font-semibold text-success">{concluidas.length}</div>
-            <div className="text-[10px] text-muted-foreground">Concluídas</div>
+            <div className="font-mono text-[15px] font-semibold text-success">{historicoPorSemana.reduce((s, [, g]) => s + g.itens.length, 0)}</div>
+            <div className="text-[10px] text-muted-foreground">Concluídas (total)</div>
           </div>
           <div className="rounded-lg border bg-surface/40 p-2 text-center">
             <div className="font-mono text-[15px] font-semibold text-muted-foreground">{proximasEntregas.length}</div>
@@ -1043,6 +1076,40 @@ function OperacaoContinuaCenter({
           </div>
         </div>
       </div>
+
+      {/* Pendências de semanas anteriores — não somem sozinhas, ficam até reagendar ou concluir */}
+      {pendenciasAnteriores.length > 0 && (
+        <div className="rounded-xl border border-warning/30 bg-warning/5 p-4">
+          <h3 className="mb-1 text-sm font-semibold tracking-tight text-warning">Pendências de semanas anteriores</h3>
+          <p className="mb-3 text-[11px] text-muted-foreground">
+            Ficaram sem concluir na semana planejada. Continuam em Minha Semana — reagende pra essa semana ou conclua.
+          </p>
+          <ul className="space-y-1">
+            {pendenciasAnteriores.map((t) => (
+              <li key={t.id} className="flex items-center gap-2.5 rounded-md border bg-card px-2.5 py-2">
+                <button
+                  onClick={() => toggleTaskDone(t.id)}
+                  className="flex h-4 w-4 shrink-0 items-center justify-center rounded border-2 border-muted-foreground/40 hover:border-primary"
+                />
+                <span className="min-w-0 flex-1 truncate text-[13px]">{t.title}</span>
+                {t.labels?.[0] && (
+                  <span className="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 text-[9px] font-medium text-primary">{t.labels[0]}</span>
+                )}
+                <span className="shrink-0 font-mono text-[10px] text-destructive">
+                  {new Date(t.dueDate + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}
+                </span>
+                <button
+                  onClick={() => updateTask(t.id, { dueDate: hoje.toISOString().slice(0, 10) })}
+                  title="Mover para essa semana"
+                  className="shrink-0 rounded-md border px-1.5 py-1 text-[10px] font-medium text-muted-foreground hover:border-primary/40 hover:text-primary"
+                >
+                  Reagendar p/ hoje
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {/* Planejamento da semana — manual, adicionar só o que vai acontecer de verdade */}
       <div className="rounded-xl border bg-card p-4">
@@ -1080,6 +1147,8 @@ function OperacaoContinuaCenter({
           <input
             type="date"
             value={novaData}
+            min={inicioSemana.toISOString().slice(0, 10)}
+            max={fimSemana.toISOString().slice(0, 10)}
             onChange={(e) => setNovaData(e.target.value)}
             className="h-8 rounded-md border bg-card px-2 text-[11px]"
           />
@@ -1116,23 +1185,30 @@ function OperacaoContinuaCenter({
         )}
       </div>
 
-      {/* Concluídas e Próximas entregas */}
+      {/* Histórico (por semana) e Próximas entregas */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div className="rounded-xl border bg-card p-4">
-          <h3 className="mb-2 text-sm font-semibold tracking-tight">Tarefas concluídas</h3>
-          {concluidas.length === 0 ? (
-            <p className="text-[11px] text-muted-foreground">Nenhuma ainda.</p>
+          <h3 className="mb-2 text-sm font-semibold tracking-tight">Histórico</h3>
+          {historicoPorSemana.length === 0 ? (
+            <p className="text-[11px] text-muted-foreground">Nada concluído ainda.</p>
           ) : (
-            <ul className="space-y-1">
-              {concluidas.map((t) => (
-                <li key={t.id} className="flex items-center justify-between text-[12px] text-muted-foreground">
-                  <span className="truncate line-through">{t.title}</span>
-                  <span className="shrink-0 font-mono text-[10px]">
-                    {new Date(t.dueDate + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}
-                  </span>
-                </li>
+            <div className="max-h-64 space-y-3 overflow-y-auto pr-1">
+              {historicoPorSemana.map(([label, grupo]) => (
+                <div key={label}>
+                  <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Semana {label}</div>
+                  <ul className="space-y-1">
+                    {grupo.itens.map((t) => (
+                      <li key={t.id} className="flex items-center justify-between text-[12px] text-muted-foreground">
+                        <span className="truncate line-through">{t.title}</span>
+                        <span className="shrink-0 font-mono text-[10px]">
+                          {new Date(t.dueDate + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               ))}
-            </ul>
+            </div>
           )}
         </div>
         <div className="rounded-xl border bg-card p-4">
@@ -1178,7 +1254,7 @@ function ProjectCard({ project }: { project: import("@/lib/mock-data").Project }
                 project.fase === "operacao_continua" ? "bg-info/15 text-info" : "bg-primary/10 text-primary",
               )}
             >
-              {project.fase === "operacao_continua" ? "Operação contínua" : "Implementação"}
+              {project.fase === "operacao_continua" ? "Gestão do cliente" : "Implementação"}
             </span>
           </div>
         </div>
@@ -1204,7 +1280,7 @@ function ProjectCard({ project }: { project: import("@/lib/mock-data").Project }
         </div>
       )}
 
-      {/* Prazo — Implementação tem data de entrega; Operação Contínua não tem fim,
+      {/* Prazo — Implementação tem data de entrega; Gestão do Cliente não tem fim,
           então mostra a data de renovação como próximo marco em vez de "prazo". */}
       <div className="mt-2 text-[11px] text-muted-foreground">
         {project.fase === "operacao_continua" ? "Próxima renovação" : "Prazo"}: {new Date(project.deadline).toLocaleDateString("pt-BR")}
@@ -1358,9 +1434,9 @@ function TabOperacao({ clientId }: { clientId: string }) {
             </div>
           </>
         ) : (
-          // Fase de Operação Contínua — centro visual de acompanhamento, sem checklist
+          // Fase de Gestão do Cliente — centro visual de acompanhamento, sem checklist
           // permanente. As "rotinas" são as próprias tarefas vinculadas ao projeto de
-          // Operação Contínua — a mesma tarefa que aparece em Minha Semana, não uma cópia.
+          // Gestão do Cliente — a mesma tarefa que aparece em Minha Semana, não uma cópia.
           <OperacaoContinuaCenter client={client} clientProjects={clientProjects} clientTasks={clientTasks} />
         )}
 
@@ -1558,7 +1634,7 @@ function JornadaCliente({
       <div className="rounded-xl border bg-card p-4">
         <div className="mb-3 flex items-center gap-2">
           <CheckCircle2 className="h-3.5 w-3.5 text-success" />
-          <h3 className="text-sm font-semibold tracking-tight">Em Operação Contínua</h3>
+          <h3 className="text-sm font-semibold tracking-tight">Gestão do Cliente</h3>
         </div>
         <p className="text-[12px] text-muted-foreground">
           Cliente ativo desde {new Date(client.since).toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })}.
@@ -1639,7 +1715,7 @@ function JornadaCliente({
 
       <p className="mt-3 text-[11px] text-muted-foreground">
         Checklist detalhado, item a item, disponível em Operação → Projetos ativos. Quando todos os projetos de
-        implementação chegarem a 100%, o cliente entra em Operação Contínua automaticamente.
+        implementação chegarem a 100%, o cliente entra na Gestão do Cliente automaticamente.
       </p>
     </div>
   );

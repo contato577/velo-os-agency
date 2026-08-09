@@ -71,7 +71,7 @@ function Operacao() {
     (t) => t.status !== "concluida" && new Date(t.dueDate) < new Date(HOJE),
   );
   const tarefasHoje = tasks.filter((t) => t.status === "hoje" || t.dueDate === HOJE);
-  // Só projetos de Implementação entram na conta de "atrasado" — Operação Contínua
+  // Só projetos de Implementação entram na conta de "atrasado" — Gestão do Cliente
   // usa a data de renovação como "prazo", e isso não é a mesma coisa que um projeto atrasado.
   const projetosAtrasados = projetosReais.filter(
     (p) => p.fase === "implementacao" && p.status !== "entregue" && new Date(p.deadline) < new Date(HOJE),
@@ -206,7 +206,7 @@ function ProjetosPanel() {
   const { projects: projetosReais } = useDataStore();
   const groups = ["briefing", "producao", "revisao", "entregue"] as const;
   // Só projetos de Implementação entram nesse quadro — eles são os que realmente
-  // "andam" por essas 4 colunas. Operação Contínua não tem esse ciclo (não tem fim),
+  // "andam" por essas 4 colunas. Gestão do Cliente não tem esse ciclo (não tem fim),
   // por isso fica de fora daqui e é mostrada como um resumo à parte, mais abaixo.
   const implementacoes = projetosReais.filter((p) => p.fase === "implementacao");
   const emOperacaoContinua = projetosReais.filter((p) => p.fase === "operacao_continua");
@@ -257,7 +257,7 @@ function ProjetosPanel() {
       {emOperacaoContinua.length > 0 && (
         <div className="rounded-xl border bg-surface/30 p-3 text-[12px] text-muted-foreground">
           <b className="text-foreground">{emOperacaoContinua.length}</b> cliente
-          {emOperacaoContinua.length === 1 ? "" : "s"} em Operação Contínua — veja o detalhe na ficha de cada cliente, aba
+          {emOperacaoContinua.length === 1 ? "" : "s"} em Gestão do Cliente — veja o detalhe na ficha de cada cliente, aba
           Operação.
         </div>
       )}

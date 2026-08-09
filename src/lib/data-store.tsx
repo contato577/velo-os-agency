@@ -486,7 +486,7 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
       });
 
       // 2. Verifica se todos os projetos de IMPLEMENTAÇÃO do cliente estão com checklist 100%.
-      // Projetos de Operação Contínua não entram nessa conta — eles não têm "fim".
+      // Projetos de Gestão do Cliente não entram nessa conta — eles não têm "fim".
       if (!affectedClientId) return updated;
       const implementacoes = updated.filter((p) => p.clientId === affectedClientId && p.fase === "implementacao");
       const aindaNaoEntregues = implementacoes.filter((p) => p.status !== "entregue");
@@ -496,7 +496,7 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
 
       if (allDone) {
         // 3. Fecha a implementação (Onboarding = Implementação, um conceito só) e cria,
-        // automaticamente, um Projeto de Operação Contínua para cada serviço entregue —
+        // automaticamente, um Projeto de Gestão do Cliente para cada serviço entregue —
         // sem prazo fixo, é o que existe enquanto o cliente estiver ativo.
         // Sem geração automática de tarefas: o planejamento da semana é manual, feito
         // pelo operador na própria tela do cliente — evita poluir Minha Semana com
@@ -508,7 +508,7 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
           id: `p-op-${Date.now()}-${i}`,
           clientId: p.clientId,
           clientName: p.clientName,
-          name: `Operação Contínua — ${p.type} — ${p.clientName}`,
+          name: `Gestão do Cliente — ${p.type} — ${p.clientName}`,
           type: p.type,
           status: "producao" as const,
           fase: "operacao_continua" as const,
@@ -529,7 +529,7 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
                 ...c,
                 status: "ativo" as const,
                 timeline: [
-                  { id: timelineId, time: "Agora", user: "Sistema", text: "Implementação concluída — cliente entrou em Operação Contínua" },
+                  { id: timelineId, time: "Agora", user: "Sistema", text: "Implementação concluída — cliente entrou na Gestão do Cliente" },
                   ...(c.timeline ?? []),
                 ],
               }
