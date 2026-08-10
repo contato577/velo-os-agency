@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDataStore } from "@/lib/data-store";
-import { getSession, signOut, type Session } from "@/lib/auth-mock";
+import { getSessionAsync, signOutReal, type Session } from "@/lib/auth";
 import { QuickActionsButton } from "@/components/quick-actions";
 import veloceLogo from "@/assets/veloce-logo.jpg.asset.json";
 
@@ -64,20 +64,25 @@ export function AppShell({
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
 
-  // Auth gate (client-side)
+  // Auth gate (client-side) — agora busca a sessão real do Supabase, não do localStorage
   useEffect(() => {
-    const s = getSession();
-    if (!s) {
-      navigate({ to: "/auth" });
-      return;
-    }
-    setSession(s);
-    setReady(true);
+    let ativo = true;
+    getSessionAsync().then((s) => {
+      if (!ativo) return;
+      if (!s) {
+        navigate({ to: "/auth" });
+        return;
+      }
+      setSession(s);
+      setReady(true);
+    });
+    return () => {
+      ativo = false;
+    };
   }, [navigate]);
 
   const handleSignOut = () => {
-    signOut();
-    navigate({ to: "/auth" });
+    signOutReal().then(() => navigate({ to: "/auth" }));
   };
 
   if (!ready || !session) {
