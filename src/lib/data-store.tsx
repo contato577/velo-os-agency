@@ -123,6 +123,7 @@ interface DataStoreContextValue {
   addExpense: (partial: Omit<FinanceEntry, "id">) => FinanceEntry;
   toggleTaskDone: (taskId: string) => void;
   updateClientStatus: (clientId: string, status: Client["status"]) => void;
+  deleteClient: (clientId: string) => void;
   updateClientInfo: (clientId: string, partial: Partial<Pick<Client, "name" | "company" | "email" | "phone" | "contratoArquivo">>) => void;
   addComentario: (clientId: string, texto: string, autor: string) => void;
   removeComentario: (clientId: string, comentarioId: string) => void;
@@ -302,6 +303,10 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
           : c,
       ),
     );
+  };
+
+  const deleteClient: DataStoreContextValue["deleteClient"] = (clientId) => {
+    setClients((prev) => prev.filter((c) => c.id !== clientId));
   };
 
   const updateClientInfo: DataStoreContextValue["updateClientInfo"] = (clientId, partial) => {
@@ -565,6 +570,7 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
         addExpense,
         toggleTaskDone,
         updateClientStatus,
+        deleteClient,
         updateClientInfo,
         addComentario,
         removeComentario,

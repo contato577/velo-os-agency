@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useParams } from "@tanstack/react-router";
+import { createFileRoute, Link, useParams, useNavigate } from "@tanstack/react-router";
 import { useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
@@ -68,11 +68,14 @@ const tabsList: { key: Tab; label: string; icon: typeof User }[] = [
 ];
 
 function ClienteDetalhe() {
-  const { clients, updateClientStatus } = useDataStore();
+  const { clients, updateClientStatus, deleteClient } = useDataStore();
   const { clientId } = useParams({ from: "/clientes/$clientId" });
+  const navigate = useNavigate();
   const client = clients.find((c) => c.id === clientId) ?? clients[0];
   const [tab, setTab] = useState<Tab>("geral");
   const [confirmArquivar, setConfirmArquivar] = useState(false);
+  const [confirmExcluir, setConfirmExcluir] = useState(false);
+  const [excluirTexto, setExcluirTexto] = useState("");
 
   const statusOptions: { value: Client["status"]; label: string }[] = [
     { value: "onboarding", label: "Onboarding" },
@@ -141,6 +144,46 @@ function ClienteDetalhe() {
                 <Archive className="h-3 w-3" /> Arquivar
               </button>
             ))}
+
+          {/* Excluir cliente — diferente de arquivar: some de vez, sem manter histórico.
+              Pede confirmação escrevendo o nome da empresa, pra não apagar sem querer. */}
+          {confirmExcluir ? (
+            <div className="flex items-center gap-1.5 rounded-md border border-destructive/40 bg-destructive/5 px-2 py-1">
+              <input
+                autoFocus
+                value={excluirTexto}
+                onChange={(e) => setExcluirTexto(e.target.value)}
+                placeholder={`Digite "${client.company}"`}
+                className="w-40 rounded border bg-background px-1.5 py-0.5 text-[11px] outline-none"
+              />
+              <button
+                disabled={excluirTexto !== client.company}
+                onClick={() => {
+                  deleteClient(client.id);
+                  navigate({ to: "/clientes" });
+                }}
+                className="rounded bg-destructive px-2 py-0.5 text-[11px] font-medium text-destructive-foreground hover:bg-destructive/90 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Excluir de vez
+              </button>
+              <button
+                onClick={() => {
+                  setConfirmExcluir(false);
+                  setExcluirTexto("");
+                }}
+                className="text-[11px] text-muted-foreground hover:text-foreground"
+              >
+                Cancelar
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setConfirmExcluir(true)}
+              className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:border-destructive/40 hover:text-destructive"
+            >
+              <Trash2 className="h-3 w-3" /> Excluir
+            </button>
+          )}
         </PageHeader>
 
         {/* Tabs */}

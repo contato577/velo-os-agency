@@ -384,21 +384,6 @@ function IAExecutivaCard({
           <Recommendation label="Reuniões" value={reunioes} />
           <Recommendation label="Fechamentos" value={fechamentos} highlight />
         </div>
-
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-          <Link
-            to="/comercial"
-            className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
-          >
-            Registrar prospecção/reunião <ArrowRight className="h-3 w-3" />
-          </Link>
-          <Link
-            to="/ponto-controle"
-            className="inline-flex items-center gap-1.5 rounded-md border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/20"
-          >
-            <Target className="h-3 w-3" /> Ajustar Ponto de Controle
-          </Link>
-        </div>
       </div>
     </div>
   );

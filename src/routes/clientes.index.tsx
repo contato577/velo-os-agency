@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { Search, Calendar, ChevronRight } from "lucide-react";
 import { AppShell, PageHeader } from "@/components/app-shell";
-import { formatBRL } from "@/lib/mock-data";
+import { formatBRL, type Client } from "@/lib/mock-data";
 import { useDataStore } from "@/lib/data-store";
 import { cn } from "@/lib/utils";
 
@@ -24,7 +24,7 @@ const statusColor = {
 };
 
 function ClientesList() {
-  const { clients } = useDataStore();
+  const { clients, updateClientStatus } = useDataStore();
   const [query, setQuery] = useState("");
   const mrr = clients.filter((c) => c.status === "ativo").reduce((s, c) => s + c.monthlyValue, 0);
 
@@ -105,9 +105,19 @@ function ClientesList() {
                   </td>
                   <td className="px-4 py-3 text-[12px] text-muted-foreground">{c.owner}</td>
                   <td className="px-4 py-3">
-                    <span className={cn("rounded px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider", statusColor[c.status])}>
-                      {c.status}
-                    </span>
+                    <select
+                      value={c.status}
+                      onChange={(e) => updateClientStatus(c.id, e.target.value as Client["status"])}
+                      className={cn(
+                        "cursor-pointer appearance-none rounded px-2 py-0.5 pr-5 text-[10px] font-medium uppercase tracking-wider outline-none",
+                        statusColor[c.status],
+                      )}
+                    >
+                      <option value="onboarding">Onboarding</option>
+                      <option value="ativo">Ativo</option>
+                      <option value="pausado">Pausado</option>
+                      <option value="cancelado">Cancelado</option>
+                    </select>
                   </td>
                   <td className="px-4 py-3">
                     <Link
