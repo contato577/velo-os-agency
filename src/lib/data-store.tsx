@@ -1,4 +1,5 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { supabase } from "./supabase";
 import {
   leads as seedLeads,
   stageLabels,
@@ -102,6 +103,107 @@ function persistPontos(list: PontoControle[]) {
   }
 }
 
+// ─── Conversão banco (snake_case) ↔ sistema (camelCase) — Leads e Clientes ────
+// A partir daqui, Leads e Clientes são salvos de verdade no Supabase. Projetos,
+// Tarefas, Checklist e Financeiro ainda continuam locais por enquanto (próxima
+// etapa) — é assim de propósito, pra testarmos uma parte por vez.
+
+function leadFromDb(row: Record<string, unknown>): Lead {
+  return {
+    id: row.id as string,
+    name: row.name as string,
+    company: row.company as string,
+    phone: (row.phone as string) ?? "",
+    instagram: (row.instagram as string) ?? undefined,
+    site: (row.site as string) ?? undefined,
+    city: (row.city as string) ?? "",
+    origin: (row.origin as Lead["origin"]) ?? "Site",
+    owner: row.owner as string,
+    stage: row.stage as LeadStage,
+    potencial: (row.potencial as Lead["potencial"]) ?? "medio",
+    value: Number(row.value ?? 0),
+    createdAt: row.created_at as string,
+    lastActivity: row.last_activity as string,
+    tags: (row.tags as string[]) ?? [],
+  };
+}
+
+function leadToDb(lead: Lead) {
+  return {
+    id: lead.id,
+    name: lead.name,
+    company: lead.company,
+    phone: lead.phone,
+    instagram: lead.instagram,
+    site: lead.site,
+    city: lead.city,
+    origin: lead.origin,
+    owner: lead.owner,
+    stage: lead.stage,
+    potencial: lead.potencial,
+    value: lead.value,
+    tags: lead.tags ?? [],
+    created_at: lead.createdAt,
+    last_activity: lead.lastActivity,
+  };
+}
+
+function clientFromDb(row: Record<string, unknown>): Client {
+  return {
+    id: row.id as string,
+    name: row.name as string,
+    company: row.company as string,
+    email: (row.email as string) ?? undefined,
+    phone: (row.phone as string) ?? undefined,
+    plan: row.plan as Client["plan"],
+    plano: (row.plano as string) ?? undefined,
+    monthlyValue: Number(row.monthly_value ?? 0),
+    paymentDay: Number(row.payment_day ?? 5),
+    renewalDate: row.renewal_date as string,
+    contratoMeses: (row.contrato_meses as number) ?? undefined,
+    owner: row.owner as string,
+    status: row.status as Client["status"],
+    since: row.since as string,
+    canceledAt: (row.canceled_at as string) ?? undefined,
+    services: (row.services as string[]) ?? [],
+    prazoJornadaDias: (row.prazo_jornada_dias as number) ?? undefined,
+    dataInicioJornada: (row.data_inicio_jornada as string) ?? undefined,
+    dataPrevistaFimOnboarding: (row.data_prevista_fim_onboarding as string) ?? undefined,
+    etapaJornada: (row.etapa_jornada as string) ?? undefined,
+    contratoArquivo: (row.contrato_arquivo as Client["contratoArquivo"]) ?? undefined,
+    // timeline e comentários ainda são só locais nesta etapa — ficam sem persistir
+    // ao recarregar a página até migrarmos essas 2 tabelas (client_timeline, client_comments).
+    timeline: [],
+    comentarios: [],
+  };
+}
+
+function clientToDb(client: Client) {
+  return {
+    id: client.id,
+    name: client.name,
+    company: client.company,
+    email: client.email,
+    phone: client.phone,
+    plan: client.plan,
+    plano: client.plano,
+    monthly_value: client.monthlyValue,
+    payment_day: client.paymentDay,
+    renewal_date: client.renewalDate,
+    contrato_meses: client.contratoMeses ?? 12,
+    owner: client.owner,
+    status: client.status,
+    since: client.since,
+    canceled_at: client.canceledAt,
+    services: client.services,
+    prazo_jornada_dias: client.prazoJornadaDias,
+    data_inicio_jornada: client.dataInicioJornada,
+    data_prevista_fim_onboarding: client.dataPrevistaFimOnboarding,
+    etapa_jornada: client.etapaJornada,
+    contrato_arquivo: client.contratoArquivo,
+  };
+}
+
 interface DataStoreContextValue {
   leads: Lead[];
   tasks: Task[];
@@ -136,9 +238,9 @@ interface DataStoreContextValue {
 const DataStoreContext = createContext<DataStoreContextValue | null>(null);
 
 export function DataStoreProvider({ children }: { children: ReactNode }) {
-  const [leads, setLeads] = useState<Lead[]>(seedLeads);
+  const [leads, setLeads] = useState<Lead[]>([]);
   const [tasks, setTasks] = useState<Task[]>(seedTasks);
-  const [clients, setClients] = useState<Client[]>(seedClients);
+  const [clients, setClients] = useState<Client[]>([]);
   const [expenses, setExpenses] = useState<FinanceEntry[]>(seedExpenses);
   const [projects, setProjects] = useState<Project[]>(seedProjects);
   const [serviceTemplates, setServiceTemplates] = useState<ServiceTemplate[]>(seedTemplates);
@@ -146,6 +248,37 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
   const [metasFallback, setMetasFallback] = useState<MetasMensais>({
     metaComercial: 50000,
   });
+
+  // Busca leads e clientes reais do Supabase ao abrir o sistema.
+  // Se der erro (sem internet, chave errada etc.), cai pros dados de exemplo,
+  // pra tela nunca ficar em branco — e avisa no console pra facilitar o diagnóstico.
+  useEffect(() => {
+    supabase
+      .from("leads")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .then(({ data, error }) => {
+        if (error) {
+          console.error("Erro ao carregar leads do Supabase:", error.message);
+          setLeads(seedLeads);
+          return;
+        }
+        setLeads((data ?? []).map(leadFromDb));
+      });
+
+    supabase
+      .from("clients")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .then(({ data, error }) => {
+        if (error) {
+          console.error("Erro ao carregar clientes do Supabase:", error.message);
+          setClients(seedClients);
+          return;
+        }
+        setClients((data ?? []).map(clientFromDb));
+      });
+  }, []);
 
   const mesAtual = mesAtualISO();
   const pontoControleAtual = useMemo(
@@ -202,13 +335,22 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
     const now = new Date().toISOString();
     const { stage, ...rest } = partial;
     const lead: Lead = {
-      id: `lead-${Date.now()}`,
+      id: crypto.randomUUID(),
       createdAt: now,
       lastActivity: now,
       stage: stage ?? "novo",
       ...rest,
     } as Lead;
     setLeads((prev) => [lead, ...prev]);
+
+    // Salva no Supabase em segundo plano — a tela já mostra o lead na hora,
+    // sem esperar a resposta do banco (mais rápido pra quem está usando).
+    supabase
+      .from("leads")
+      .insert(leadToDb(lead))
+      .then(({ error }) => {
+        if (error) console.error("Erro ao salvar lead no Supabase:", error.message);
+      });
 
     // Auto: follow-up task in 24h
     const due = new Date(Date.now() + 24 * 3600 * 1000).toISOString().slice(0, 10);
@@ -229,10 +371,19 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
 
   const updateLeadStage: DataStoreContextValue["updateLeadStage"] = (id, stage) => {
     const targetLead = leads.find((l) => l.id === id);
+    const now = new Date().toISOString();
 
     setLeads((prev) =>
-      prev.map((l) => (l.id === id ? { ...l, stage, lastActivity: new Date().toISOString() } : l)),
+      prev.map((l) => (l.id === id ? { ...l, stage, lastActivity: now } : l)),
     );
+
+    supabase
+      .from("leads")
+      .update({ stage, last_activity: now })
+      .eq("id", id)
+      .then(({ error }) => {
+        if (error) console.error("Erro ao atualizar estágio do lead no Supabase:", error.message);
+      });
 
     if (targetLead && targetLead.stage !== stage) {
       const stageTaskTitles: Partial<Record<LeadStage, { title: string; priority: Task["priority"] }>> = {
@@ -296,23 +447,49 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
 
   const updateClientStatus: DataStoreContextValue["updateClientStatus"] = (clientId, status) => {
     const hoje = new Date().toISOString().slice(0, 10);
+    let canceledAtValue: string | undefined;
     setClients((prev) =>
-      prev.map((c) =>
-        c.id === clientId
-          ? { ...c, status, canceledAt: status === "cancelado" ? hoje : status === "ativo" ? undefined : c.canceledAt }
-          : c,
-      ),
+      prev.map((c) => {
+        if (c.id !== clientId) return c;
+        canceledAtValue = status === "cancelado" ? hoje : status === "ativo" ? undefined : c.canceledAt;
+        return { ...c, status, canceledAt: canceledAtValue };
+      }),
     );
+
+    supabase
+      .from("clients")
+      .update({ status, canceled_at: canceledAtValue ?? null })
+      .eq("id", clientId)
+      .then(({ error }) => {
+        if (error) console.error("Erro ao atualizar status do cliente no Supabase:", error.message);
+      });
   };
 
   const deleteClient: DataStoreContextValue["deleteClient"] = (clientId) => {
     setClients((prev) => prev.filter((c) => c.id !== clientId));
+    supabase
+      .from("clients")
+      .delete()
+      .eq("id", clientId)
+      .then(({ error }) => {
+        if (error) console.error("Erro ao remover cliente no Supabase:", error.message);
+      });
   };
 
   const updateClientInfo: DataStoreContextValue["updateClientInfo"] = (clientId, partial) => {
     setClients((prev) =>
       prev.map((c) => (c.id === clientId ? { ...c, ...partial } : c)),
     );
+    const { contratoArquivo, ...resto } = partial;
+    const dbPartial: Record<string, unknown> = { ...resto };
+    if ("contratoArquivo" in partial) dbPartial.contrato_arquivo = contratoArquivo;
+    supabase
+      .from("clients")
+      .update(dbPartial)
+      .eq("id", clientId)
+      .then(({ error }) => {
+        if (error) console.error("Erro ao atualizar dados do cliente no Supabase:", error.message);
+      });
   };
 
   const addComentario: DataStoreContextValue["addComentario"] = (clientId, texto, autor) => {
@@ -377,7 +554,7 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
     };
 
     // 1. Cria um novo Client a partir dos dados do lead, status "onboarding"
-    const clientId = `c-${Date.now()}`;
+    const clientId = crypto.randomUUID();
     const newClient: Client = {
       id: clientId,
       name: lead.name,
@@ -398,6 +575,16 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
       etapaJornada,
       timeline: [timelineEntry],
     };
+
+    // Salva o cliente no Supabase em segundo plano (a tela já reflete na hora).
+    // Projetos, checklist, tarefas e a cobrança inicial ainda são só locais por
+    // enquanto — entram no banco na próxima etapa.
+    supabase
+      .from("clients")
+      .insert(clientToDb(newClient))
+      .then(({ error }) => {
+        if (error) console.error("Erro ao salvar cliente no Supabase:", error.message);
+      });
 
     // 5. Para cada serviço, cria um Projeto vinculado ao cliente, aplicando checklist e tarefas
     const newProjects: Project[] = [];
