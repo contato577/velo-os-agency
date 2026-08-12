@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Search, Calendar, ChevronRight } from "lucide-react";
+import { Search, Calendar, ChevronRight, Filter, Plus, X } from "lucide-react";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { formatBRL, type Client } from "@/lib/mock-data";
 import { useDataStore } from "@/lib/data-store";
@@ -23,18 +23,26 @@ const statusColor = {
   cancelado: "bg-destructive/15 text-destructive",
 };
 
+const SERVICOS = ["Tráfego", "Landing Page", "Site", "Consultoria", "Criativos", "Automação"] as const;
+
 function ClientesList() {
-  const { clients, updateClientStatus } = useDataStore();
+  const { clients, updateClientStatus, addClientManual } = useDataStore();
   const [query, setQuery] = useState("");
+  // Por padrão esconde clientes arquivados (status "cancelado") do dia a dia,
+  // mas o histórico continua ali — dá pra ver via filtro, útil pra remarketing/follow-up.
+  const [statusFiltro, setStatusFiltro] = useState<"ativos" | "todos" | Client["status"]>("ativos");
+  const [novoAberto, setNovoAberto] = useState(false);
   const mrr = clients.filter((c) => c.status === "ativo").reduce((s, c) => s + c.monthlyValue, 0);
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return clients;
-    return clients.filter(
-      (c) => c.company.toLowerCase().includes(q) || c.name.toLowerCase().includes(q),
-    );
-  }, [clients, query]);
+    return clients.filter((c) => {
+      const bateBusca = !q || c.company.toLowerCase().includes(q) || c.name.toLowerCase().includes(q);
+      const bateStatus =
+        statusFiltro === "todos" ? true : statusFiltro === "ativos" ? c.status !== "cancelado" : c.status === statusFiltro;
+      return bateBusca && bateStatus;
+    });
+  }, [clients, query, statusFiltro]);
 
   return (
     <AppShell title="Clientes" subtitle="Carteira ativa">
@@ -49,6 +57,27 @@ function ClientesList() {
               className="h-8 w-52 rounded-md border bg-surface pl-7 pr-2 text-xs focus:border-primary/60 focus:outline-none"
             />
           </div>
+          <div className="relative">
+            <select
+              value={statusFiltro}
+              onChange={(e) => setStatusFiltro(e.target.value as typeof statusFiltro)}
+              className="h-8 appearance-none rounded-md border bg-surface pl-2.5 pr-7 text-xs font-medium focus:border-primary/60 focus:outline-none"
+            >
+              <option value="ativos">Ativos (padrão)</option>
+              <option value="todos">Todos, incl. arquivados</option>
+              <option value="onboarding">Onboarding</option>
+              <option value="ativo">Ativo</option>
+              <option value="pausado">Pausado</option>
+              <option value="cancelado">Arquivados / cancelados</option>
+            </select>
+            <Filter className="pointer-events-none absolute right-2 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
+          </div>
+          <button
+            onClick={() => setNovoAberto(true)}
+            className="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+          >
+            <Plus className="h-3.5 w-3.5" /> Novo Cliente
+          </button>
         </PageHeader>
 
         <div className="overflow-hidden rounded-lg border bg-card">
@@ -66,7 +95,7 @@ function ClientesList() {
               </tr>
             </thead>
             <tbody>
-              {clients.map((c) => (
+              {visible.map((c) => (
                 <tr key={c.id} className="group border-b transition-colors last:border-b-0 hover:bg-surface/40">
                   <td className="px-4 py-3">
                     <Link
@@ -116,7 +145,7 @@ function ClientesList() {
                       <option value="onboarding">Onboarding</option>
                       <option value="ativo">Ativo</option>
                       <option value="pausado">Pausado</option>
-                      <option value="cancelado">Cancelado</option>
+                      <option value="cancelado">Cancelado / Arquivado</option>
                     </select>
                   </td>
                   <td className="px-4 py-3">
@@ -130,10 +159,133 @@ function ClientesList() {
                   </td>
                 </tr>
               ))}
+              {visible.length === 0 && (
+                <tr>
+                  <td colSpan={8} className="px-4 py-8 text-center text-[12px] text-muted-foreground">
+                    Nenhum cliente encontrado com esse filtro.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
       </div>
+
+      {novoAberto && <NovoClienteModal onClose={() => setNovoAberto(false)} onSave={addClientManual} />}
     </AppShell>
+  );
+}
+
+function NovoClienteModal({
+  onClose,
+  onSave,
+}: {
+  onClose: () => void;
+  onSave: (partial: Pick<Client, "name" | "company" | "owner" | "plan" | "monthlyValue" | "services"> & Partial<Client>) => Client;
+}) {
+  const [name, setName] = useState("");
+  const [company, setCompany] = useState("");
+  const [owner, setOwner] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [monthlyValue, setMonthlyValue] = useState(500);
+  const [services, setServices] = useState<string[]>([]);
+
+  const toggleServico = (s: string) => {
+    setServices((prev) => (prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]));
+  };
+
+  const podeCadastrar = name.trim() && company.trim() && owner.trim() && services.length > 0;
+
+  const salvar = () => {
+    if (!podeCadastrar) return;
+    const plan: Client["plan"] = monthlyValue >= 3000 ? "Scale" : monthlyValue >= 1500 ? "Growth" : "Starter";
+    onSave({ name, company, owner, plan, monthlyValue, services, email: email || undefined, phone: phone || undefined });
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} className="w-full max-w-md rounded-xl border bg-card p-5 shadow-elegant">
+        <div className="mb-4 flex items-center justify-between">
+          <h3 className="text-sm font-semibold">Novo cliente</h3>
+          <button onClick={onClose} className="rounded p-1 text-muted-foreground hover:bg-accent">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <p className="mb-4 text-[11px] text-muted-foreground">
+          Pra cliente que veio de venda fechada no CRM, ele já entra sozinho — use isso só pra cadastro direto (indicação, migração de outra ferramenta, etc).
+        </p>
+
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-2">
+            <Field label="Empresa">
+              <input value={company} onChange={(e) => setCompany(e.target.value)} className={inputCls} placeholder="Empresa Ltda" />
+            </Field>
+            <Field label="Contato principal">
+              <input value={name} onChange={(e) => setName(e.target.value)} className={inputCls} placeholder="Nome do contato" />
+            </Field>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <Field label="E-mail">
+              <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" className={inputCls} placeholder="opcional" />
+            </Field>
+            <Field label="Telefone">
+              <input value={phone} onChange={(e) => setPhone(e.target.value)} className={inputCls} placeholder="opcional" />
+            </Field>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <Field label="Responsável interno">
+              <input value={owner} onChange={(e) => setOwner(e.target.value)} className={inputCls} placeholder="Quem toca a conta" />
+            </Field>
+            <Field label="Mensalidade (R$)">
+              <input
+                type="number"
+                min={0}
+                value={monthlyValue}
+                onChange={(e) => setMonthlyValue(Number(e.target.value))}
+                className={inputCls}
+              />
+            </Field>
+          </div>
+          <Field label="Serviços contratados">
+            <div className="flex flex-wrap gap-1.5">
+              {SERVICOS.map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => toggleServico(s)}
+                  className={cn(
+                    "rounded-md border px-2 py-1 text-[11px] font-medium transition-colors",
+                    services.includes(s) ? "border-primary/50 bg-primary/15 text-primary" : "bg-surface text-muted-foreground hover:bg-accent",
+                  )}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          </Field>
+        </div>
+
+        <button
+          onClick={salvar}
+          disabled={!podeCadastrar}
+          className="mt-5 w-full rounded-md bg-primary py-2 text-[13px] font-medium text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          Cadastrar cliente
+        </button>
+      </div>
+    </div>
+  );
+}
+
+const inputCls = "h-8 w-full rounded-md border bg-surface px-2 text-[12px] focus:border-primary/60 focus:outline-none";
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <label className="mb-1 block text-[10px] font-medium text-muted-foreground">{label}</label>
+      {children}
+    </div>
   );
 }

@@ -27,6 +27,7 @@ import {
   Building2,
   Flame,
   CheckCircle2,
+  Trash2,
 
 } from "lucide-react";
 
@@ -79,14 +80,17 @@ const potencialStyles: Record<LeadPotential, { label: string; chip: string; dot:
 function LeadCard({
   lead,
   onClick,
+  onDelete,
   justMoved,
   isOverlay = false,
 }: {
   lead: Lead;
   onClick: () => void;
+  onDelete: () => void;
   justMoved: boolean;
   isOverlay?: boolean;
 }) {
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: lead.id,
     disabled: isOverlay,
@@ -109,7 +113,7 @@ function LeadCard({
         onClick();
       }}
       className={cn(
-        "group card-trello w-full cursor-grab border-l-4 p-3 text-left transition-all duration-200 active:cursor-grabbing",
+        "group card-trello relative w-full cursor-grab border-l-4 p-3 text-left transition-all duration-200 active:cursor-grabbing",
         stageBorderColors[lead.stage],
         isDragging && !isOverlay && "opacity-30 border-dashed bg-accent/40 scale-[0.98]",
         isOverlay && "shadow-2xl ring-2 ring-primary/60 scale-[1.03] opacity-95 bg-card z-50 cursor-grabbing",
@@ -121,7 +125,42 @@ function LeadCard({
           <div className="truncate text-[13px] font-medium">{lead.name}</div>
           <div className="truncate text-[11px] text-muted-foreground">{lead.company}</div>
         </div>
-        <MoreHorizontal className="h-3.5 w-3.5 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+        {!isOverlay && (
+          <div data-no-drag className="relative shrink-0">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setConfirmDelete((v) => !v);
+              }}
+              className="rounded p-0.5 text-muted-foreground opacity-0 transition-opacity hover:bg-accent hover:text-foreground group-hover:opacity-100"
+            >
+              <MoreHorizontal className="h-3.5 w-3.5" />
+            </button>
+            {confirmDelete && (
+              <div
+                data-no-drag
+                onClick={(e) => e.stopPropagation()}
+                className="absolute right-0 top-6 z-10 w-40 rounded-md border bg-popover p-1 shadow-elegant"
+              >
+                <button
+                  onClick={() => {
+                    onDelete();
+                    setConfirmDelete(false);
+                  }}
+                  className="flex w-full items-center gap-1.5 rounded px-2 py-1.5 text-left text-[12px] text-destructive hover:bg-destructive/10"
+                >
+                  <Trash2 className="h-3 w-3" /> Excluir lead
+                </button>
+                <button
+                  onClick={() => setConfirmDelete(false)}
+                  className="flex w-full items-center rounded px-2 py-1.5 text-left text-[12px] text-muted-foreground hover:bg-accent"
+                >
+                  Cancelar
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
       <div className="mb-2 flex items-center gap-1 text-[10px] text-muted-foreground">
         <MapPin className="h-2.5 w-2.5" />
@@ -154,12 +193,14 @@ function StageColumn({
   stage,
   leads,
   onCardClick,
+  onDelete,
   justMovedId,
   onAdd,
 }: {
   stage: LeadStage;
   leads: Lead[];
   onCardClick: (lead: Lead) => void;
+  onDelete: (leadId: string) => void;
   justMovedId: string | null;
   onAdd: (stage: LeadStage) => void;
 }) {
@@ -191,6 +232,7 @@ function StageColumn({
             lead={lead}
             justMoved={justMovedId === lead.id}
             onClick={() => onCardClick(lead)}
+            onDelete={() => onDelete(lead.id)}
           />
         ))}
         <button
@@ -420,7 +462,7 @@ function VendaConfirmDialog({
 }
 
 function Comercial() {
-  const { leads, updateLeadStage, criarClienteDeVenda } = useDataStore();
+  const { leads, updateLeadStage, deleteLead, criarClienteDeVenda } = useDataStore();
   const { openDialog } = useQuickActions();
 
   const [selected, setSelected] = useState<Lead | null>(null);
@@ -428,6 +470,10 @@ function Comercial() {
   const [filterOpen, setFilterOpen] = useState(false);
   const [potFilter, setPotFilter] = useState<Set<LeadPotential>>(new Set());
   const [ownerFilter, setOwnerFilter] = useState<string>("");
+  // Fechado/Perdido acumulam pra sempre se não filtrar por período — sem isso,
+  // com a operação crescendo, essas 2 colunas ficariam enormes e difíceis de
+  // usar no dia a dia. Não apaga nada, só limita o que aparece por padrão.
+  const [periodoEncerrados, setPeriodoEncerrados] = useState<30 | 90 | "todos">(30);
   const [justMovedId, setJustMovedId] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [pendingWin, setPendingWin] = useState<Lead | null>(null);
@@ -598,6 +644,26 @@ function Comercial() {
         {/* Content View */}
 
 
+        <div className="flex items-center justify-between gap-2 border-t px-4 py-1.5 md:px-6">
+          <span className="text-[10px] text-muted-foreground">
+            Fechado/Perdido mostrando: <b className="text-foreground">{periodoEncerrados === "todos" ? "tudo" : `últimos ${periodoEncerrados} dias`}</b>
+          </span>
+          <div className="flex items-center gap-1">
+            {([30, 90, "todos"] as const).map((p) => (
+              <button
+                key={p}
+                onClick={() => setPeriodoEncerrados(p)}
+                className={cn(
+                  "rounded px-2 py-0.5 text-[10px] font-medium transition-colors",
+                  periodoEncerrados === p ? "bg-primary/15 text-primary" : "text-muted-foreground hover:bg-accent",
+                )}
+              >
+                {p === "todos" ? "Tudo" : `${p}d`}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <DndContext
           sensors={sensors}
           onDragStart={handleDragStart}
@@ -606,16 +672,24 @@ function Comercial() {
         >
           <div className="flex-1 overflow-x-auto overflow-y-hidden">
             <div className="flex h-full min-w-max gap-3 p-4 md:p-6">
-              {stageOrder.map((stage) => (
-                <StageColumn
-                  key={stage}
-                  stage={stage}
-                  leads={filteredLeads.filter((l) => l.stage === stage)}
-                  onCardClick={setSelected}
-                  justMovedId={justMovedId}
-                  onAdd={(s) => openDialog("lead", s)}
-                />
-              ))}
+              {stageOrder.map((stage) => {
+                let stageLeads = filteredLeads.filter((l) => l.stage === stage);
+                if ((stage === "fechado" || stage === "perdido") && periodoEncerrados !== "todos") {
+                  const limite = Date.now() - periodoEncerrados * 24 * 60 * 60 * 1000;
+                  stageLeads = stageLeads.filter((l) => new Date(l.lastActivity).getTime() >= limite);
+                }
+                return (
+                  <StageColumn
+                    key={stage}
+                    stage={stage}
+                    leads={stageLeads}
+                    onCardClick={setSelected}
+                    onDelete={deleteLead}
+                    justMovedId={justMovedId}
+                    onAdd={(s) => openDialog("lead", s)}
+                  />
+                );
+              })}
             </div>
           </div>
           <DragOverlay dropAnimation={{ duration: 200, easing: "cubic-bezier(0.18, 0.67, 0.6, 1.22)" }}>
@@ -623,6 +697,7 @@ function Comercial() {
               <LeadCard
                 lead={activeLead}
                 onClick={() => { }}
+                onDelete={() => { }}
                 justMoved={false}
                 isOverlay
               />
