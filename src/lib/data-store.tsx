@@ -125,6 +125,7 @@ function leadFromDb(row: Record<string, unknown>): Lead {
     createdAt: row.created_at as string,
     lastActivity: row.last_activity as string,
     tags: (row.tags as string[]) ?? [],
+    motivoPerda: (row.motivo_perda as string) ?? undefined,
   };
 }
 
@@ -145,6 +146,7 @@ function leadToDb(lead: Lead) {
     tags: lead.tags ?? [],
     created_at: lead.createdAt,
     last_activity: lead.lastActivity,
+    motivo_perda: lead.motivoPerda,
   };
 }
 
@@ -218,7 +220,8 @@ interface DataStoreContextValue {
   updateMetas: (partial: Partial<MetasMensais>) => void;
 
   addLead: (partial: Omit<Lead, "id" | "createdAt" | "lastActivity"> & { stage?: LeadStage }) => Lead;
-  updateLeadStage: (id: string, stage: LeadStage) => void;
+  updateLeadStage: (id: string, stage: LeadStage, motivoPerda?: string) => void;
+  deleteLead: (id: string) => void;
   addTask: (partial: Omit<Task, "id">) => Task;
   updateTask: (id: string, partial: Partial<Omit<Task, "id">>) => void;
   deleteTask: (id: string) => void;
@@ -227,6 +230,7 @@ interface DataStoreContextValue {
   updateClientStatus: (clientId: string, status: Client["status"]) => void;
   deleteClient: (clientId: string) => void;
   updateClientInfo: (clientId: string, partial: Partial<Pick<Client, "name" | "company" | "email" | "phone" | "contratoArquivo">>) => void;
+  addClientManual: (partial: Pick<Client, "name" | "company" | "owner" | "plan" | "monthlyValue" | "services"> & Partial<Client>) => Client;
   addComentario: (clientId: string, texto: string, autor: string) => void;
   removeComentario: (clientId: string, comentarioId: string) => void;
   criarClienteDeVenda: (lead: Lead, servicos: string[], plano?: string, contratoMeses?: number) => Client;
@@ -369,17 +373,17 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
     return lead;
   };
 
-  const updateLeadStage: DataStoreContextValue["updateLeadStage"] = (id, stage) => {
+  const updateLeadStage: DataStoreContextValue["updateLeadStage"] = (id, stage, motivoPerda) => {
     const targetLead = leads.find((l) => l.id === id);
     const now = new Date().toISOString();
 
     setLeads((prev) =>
-      prev.map((l) => (l.id === id ? { ...l, stage, lastActivity: now } : l)),
+      prev.map((l) => (l.id === id ? { ...l, stage, lastActivity: now, motivoPerda: motivoPerda ?? l.motivoPerda } : l)),
     );
 
     supabase
       .from("leads")
-      .update({ stage, last_activity: now })
+      .update({ stage, last_activity: now, ...(motivoPerda ? { motivo_perda: motivoPerda } : {}) })
       .eq("id", id)
       .then(({ error }) => {
         if (error) console.error("Erro ao atualizar estágio do lead no Supabase:", error.message);
@@ -417,6 +421,20 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
         });
       }
     }
+  };
+
+  const deleteLead: DataStoreContextValue["deleteLead"] = (id) => {
+    setLeads((prev) => prev.filter((l) => l.id !== id));
+    // Remove também tarefas soltas que ficaram ligadas a esse lead, pra não
+    // sobrar tarefa "órfã" apontando pra um lead que não existe mais.
+    setTasks((prev) => prev.filter((t) => t.leadId !== id));
+    supabase
+      .from("leads")
+      .delete()
+      .eq("id", id)
+      .then(({ error }) => {
+        if (error) console.error("Erro ao excluir lead no Supabase:", error.message);
+      });
   };
 
   const addTask: DataStoreContextValue["addTask"] = (partial) => {
@@ -491,6 +509,33 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
         if (error) console.error("Erro ao atualizar dados do cliente no Supabase:", error.message);
       });
   };
+
+  // Cadastro manual de cliente — pra quando o cliente entra sem passar pelo
+  // funil comercial (ex: indicação direta, migração de outra ferramenta).
+  const addClientManual: DataStoreContextValue["addClientManual"] = (partial) => {
+    const hoje = new Date();
+    const clientId = crypto.randomUUID();
+    const newClient: Client = {
+      id: clientId,
+      status: "onboarding",
+      since: hoje.toISOString().slice(0, 10),
+      renewalDate: addMonths(hoje, partial.contratoMeses ?? 12).toISOString().slice(0, 10),
+      contratoMeses: partial.contratoMeses ?? 12,
+      paymentDay: partial.paymentDay ?? 5,
+      timeline: [{ id: `tl-${Date.now()}`, time: "Agora", user: "Sistema", text: "Cliente cadastrado manualmente" }],
+      comentarios: [],
+      ...partial,
+    };
+    setClients((prev) => [newClient, ...prev]);
+    supabase
+      .from("clients")
+      .insert(clientToDb(newClient))
+      .then(({ error }) => {
+        if (error) console.error("Erro ao salvar cliente (cadastro manual) no Supabase:", error.message);
+      });
+    return newClient;
+  };
+
 
   const addComentario: DataStoreContextValue["addComentario"] = (clientId, texto, autor) => {
     const comentario: ClientComentario = {
@@ -751,6 +796,7 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
 
         addLead,
         updateLeadStage,
+        deleteLead,
         addTask,
         updateTask,
         deleteTask,
@@ -759,6 +805,7 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
         updateClientStatus,
         deleteClient,
         updateClientInfo,
+        addClientManual,
         addComentario,
         removeComentario,
         criarClienteDeVenda,

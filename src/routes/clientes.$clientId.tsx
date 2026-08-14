@@ -81,7 +81,8 @@ function ClienteDetalhe() {
     { value: "onboarding", label: "Onboarding" },
     { value: "ativo", label: "Ativo" },
     { value: "pausado", label: "Pausado" },
-    { value: "cancelado", label: "Cancelado / Arquivado" },
+    { value: "cancelado", label: "Cancelado" },
+    { value: "arquivado", label: "Arquivado" },
   ];
 
   return (
@@ -106,6 +107,7 @@ function ClienteDetalhe() {
                 client.status === "onboarding" && "bg-info/15 text-info",
                 client.status === "pausado" && "bg-warning/15 text-warning",
                 client.status === "cancelado" && "bg-destructive/15 text-destructive",
+                client.status === "arquivado" && "bg-muted text-muted-foreground",
               )}
             >
               {statusOptions.map((opt) => (
@@ -117,12 +119,13 @@ function ClienteDetalhe() {
             <ChevronDown className="pointer-events-none absolute right-1 top-1/2 h-3 w-3 -translate-y-1/2 opacity-60" />
           </div>
 
-          {/* Arquivar cliente — some da carteira ativa, mas o histórico continua salvo
-              (dados de projeto, financeiro, timeline) pra remarketing/follow-up futuro. */}
-          {client.status !== "cancelado" &&
+          {/* Fluxo em 2 passos, agora que Cancelado e Arquivado são coisas diferentes:
+              1) Cliente ativo → "Cancelar" (perdeu o cliente de vez, fica registrado quando)
+              2) Já cancelado → "Arquivar" (só organização interna, não mexe em mais nada) */}
+          {client.status !== "cancelado" && client.status !== "arquivado" &&
             (confirmArquivar ? (
               <div className="flex items-center gap-1.5 rounded-md border border-destructive/30 bg-destructive/5 px-2 py-1">
-                <span className="text-[11px] text-destructive">Arquivar cliente?</span>
+                <span className="text-[11px] text-destructive">Cancelar este cliente?</span>
                 <button
                   onClick={() => {
                     updateClientStatus(client.id, "cancelado");
@@ -133,13 +136,39 @@ function ClienteDetalhe() {
                   Confirmar
                 </button>
                 <button onClick={() => setConfirmArquivar(false)} className="text-[11px] text-muted-foreground hover:text-foreground">
-                  Cancelar
+                  Cancelar ação
                 </button>
               </div>
             ) : (
               <button
                 onClick={() => setConfirmArquivar(true)}
                 className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:border-destructive/40 hover:text-destructive"
+              >
+                <Archive className="h-3 w-3" /> Cancelar cliente
+              </button>
+            ))}
+
+          {client.status === "cancelado" &&
+            (confirmArquivar ? (
+              <div className="flex items-center gap-1.5 rounded-md border bg-surface px-2 py-1">
+                <span className="text-[11px] text-muted-foreground">Mover pra arquivados?</span>
+                <button
+                  onClick={() => {
+                    updateClientStatus(client.id, "arquivado");
+                    setConfirmArquivar(false);
+                  }}
+                  className="rounded bg-foreground px-2 py-0.5 text-[11px] font-medium text-background hover:opacity-90"
+                >
+                  Confirmar
+                </button>
+                <button onClick={() => setConfirmArquivar(false)} className="text-[11px] text-muted-foreground hover:text-foreground">
+                  Cancelar ação
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setConfirmArquivar(true)}
+                className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
               >
                 <Archive className="h-3 w-3" /> Arquivar
               </button>
@@ -1488,16 +1517,18 @@ function TabOperacao({ clientId }: { clientId: string }) {
           <OperacaoContinuaCenter client={client} clientProjects={clientProjects} clientTasks={clientTasks} />
         )}
 
-        {/* Comentários */}
+        {/* Observações — antes era "Comentários da equipe", mas hoje é uso individual:
+            serve pra anotar problema, algo técnico ou importante desse cliente específico,
+            documentado aqui pra não depender da memória. */}
         <div className="rounded-xl border bg-card p-4">
           <div className="mb-3 flex items-center gap-2">
             <MessageSquare className="h-3.5 w-3.5 text-muted-foreground" />
-            <h3 className="text-sm font-semibold tracking-tight">Comentários da equipe</h3>
+            <h3 className="text-sm font-semibold tracking-tight">Observações e pontos de atenção</h3>
           </div>
           <div className="space-y-3">
             {comentarios.length === 0 && (
               <div className="rounded-md border border-dashed py-4 text-center text-[11px] text-muted-foreground">
-                Nenhum comentário ainda.
+                Nenhuma observação registrada ainda.
               </div>
             )}
             {comentarios.map((c) => {
@@ -1526,7 +1557,7 @@ function TabOperacao({ clientId }: { clientId: string }) {
                         <button
                           onClick={() => setConfirmDeleteComId(c.id)}
                           className="text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
-                          title="Remover comentário"
+                          title="Remover observação"
                         >
                           <Trash2 className="h-3 w-3" />
                         </button>
@@ -1542,7 +1573,7 @@ function TabOperacao({ clientId }: { clientId: string }) {
                 value={novoComentario}
                 onChange={(e) => setNovoComentario(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) handleAddComentario(); }}
-                placeholder="Adicionar comentário… (Ctrl+Enter para enviar)"
+                placeholder="Anote um problema, algo técnico ou importante sobre este cliente… (Ctrl+Enter para salvar)"
                 rows={2}
                 className="flex-1 rounded-md border bg-background px-3 py-2 text-[13px] focus:border-primary/60 focus:outline-none"
               />
@@ -1551,7 +1582,7 @@ function TabOperacao({ clientId }: { clientId: string }) {
                 disabled={!novoComentario.trim()}
                 className="self-end rounded-md bg-primary px-3 py-2 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
               >
-                Enviar
+                Salvar
               </button>
             </div>
           </div>

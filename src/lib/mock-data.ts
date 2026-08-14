@@ -51,6 +51,7 @@ export interface Lead {
   createdAt: string;
   lastActivity: string;
   tags?: string[];
+  motivoPerda?: string;
 }
 
 export const owners = ["Rafael Souza", "Camila Torres", "Bruno Lima", "Ana Prado"];
@@ -117,7 +118,7 @@ export interface Client {
   renewalDate: string;
   contratoMeses?: number;
   owner: string;
-  status: "ativo" | "onboarding" | "pausado" | "cancelado";
+  status: "ativo" | "onboarding" | "pausado" | "cancelado" | "arquivado";
   since: string;
   canceledAt?: string;
   services: string[];
