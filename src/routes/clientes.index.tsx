@@ -23,7 +23,14 @@ const statusColor = {
   cancelado: "bg-destructive/15 text-destructive",
 };
 
-const SERVICOS = ["Tráfego", "Landing Page", "Site", "Consultoria", "Criativos", "Automação"] as const;
+const SERVICOS = [
+  "Tráfego",
+  "Landing Page",
+  "Site",
+  "Consultoria",
+  "Criativos",
+  "Automação",
+] as const;
 
 function ClientesList() {
   const { clients, updateClientStatus, addClientManual } = useDataStore();
@@ -37,9 +44,14 @@ function ClientesList() {
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
     return clients.filter((c) => {
-      const bateBusca = !q || c.company.toLowerCase().includes(q) || c.name.toLowerCase().includes(q);
+      const bateBusca =
+        !q || c.company.toLowerCase().includes(q) || c.name.toLowerCase().includes(q);
       const bateStatus =
-        statusFiltro === "todos" ? true : statusFiltro === "ativos" ? c.status !== "cancelado" : c.status === statusFiltro;
+        statusFiltro === "todos"
+          ? true
+          : statusFiltro === "ativos"
+            ? c.status !== "cancelado"
+            : c.status === statusFiltro;
       return bateBusca && bateStatus;
     });
   }, [clients, query, statusFiltro]);
@@ -47,7 +59,10 @@ function ClientesList() {
   return (
     <AppShell title="Clientes" subtitle="Carteira ativa">
       <div className="px-4 py-6 md:px-6">
-        <PageHeader title="Clientes" subtitle={`${clients.length} clientes · MRR ${formatBRL(mrr)}`}>
+        <PageHeader
+          title="Clientes"
+          subtitle={`${clients.length} clientes · MRR ${formatBRL(mrr)}`}
+        >
           <div className="relative">
             <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
             <input
@@ -96,7 +111,10 @@ function ClientesList() {
             </thead>
             <tbody>
               {visible.map((c) => (
-                <tr key={c.id} className="group border-b transition-colors last:border-b-0 hover:bg-surface/40">
+                <tr
+                  key={c.id}
+                  className="group border-b transition-colors last:border-b-0 hover:bg-surface/40"
+                >
                   <td className="px-4 py-3">
                     <Link
                       to="/clientes/$clientId"
@@ -104,7 +122,11 @@ function ClientesList() {
                       className="flex items-center gap-2.5"
                     >
                       <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/40 text-[10px] font-semibold text-primary-foreground">
-                        {c.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
+                        {c.name
+                          .split(" ")
+                          .map((n) => n[0])
+                          .join("")
+                          .slice(0, 2)}
                       </div>
                       <div className="min-w-0">
                         <div className="truncate text-[13px] font-medium">{c.company}</div>
@@ -113,23 +135,37 @@ function ClientesList() {
                     </Link>
                   </td>
                   <td className="px-4 py-3">
-                    <span className="rounded bg-accent px-1.5 py-0.5 text-[11px] font-medium">{c.plano ?? c.plan}</span>
+                    <span className="rounded bg-accent px-1.5 py-0.5 text-[11px] font-medium">
+                      {c.plano ?? c.plan}
+                    </span>
                   </td>
-                  <td className="px-4 py-3 font-mono text-[13px] text-primary">{formatBRL(c.monthlyValue)}</td>
+                  <td className="px-4 py-3 font-mono text-[13px] text-primary">
+                    {formatBRL(c.monthlyValue)}
+                  </td>
                   <td className="px-4 py-3">
                     <div className="flex flex-wrap gap-1">
                       {c.services.slice(0, 2).map((s) => (
-                        <span key={s} className="rounded bg-surface px-1.5 py-0.5 text-[10px] text-muted-foreground">{s}</span>
+                        <span
+                          key={s}
+                          className="rounded bg-surface px-1.5 py-0.5 text-[10px] text-muted-foreground"
+                        >
+                          {s}
+                        </span>
                       ))}
                       {c.services.length > 2 && (
-                        <span className="rounded bg-surface px-1.5 py-0.5 text-[10px] text-muted-foreground">+{c.services.length - 2}</span>
+                        <span className="rounded bg-surface px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                          +{c.services.length - 2}
+                        </span>
                       )}
                     </div>
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1 text-[12px] text-muted-foreground">
                       <Calendar className="h-3 w-3" />
-                      {new Date(c.renewalDate).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}
+                      {new Date(c.renewalDate).toLocaleDateString("pt-BR", {
+                        day: "2-digit",
+                        month: "short",
+                      })}
                     </div>
                   </td>
                   <td className="px-4 py-3 text-[12px] text-muted-foreground">{c.owner}</td>
@@ -161,7 +197,10 @@ function ClientesList() {
               ))}
               {visible.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="px-4 py-8 text-center text-[12px] text-muted-foreground">
+                  <td
+                    colSpan={8}
+                    className="px-4 py-8 text-center text-[12px] text-muted-foreground"
+                  >
                     Nenhum cliente encontrado com esse filtro.
                   </td>
                 </tr>
@@ -171,7 +210,9 @@ function ClientesList() {
         </div>
       </div>
 
-      {novoAberto && <NovoClienteModal onClose={() => setNovoAberto(false)} onSave={addClientManual} />}
+      {novoAberto && (
+        <NovoClienteModal onClose={() => setNovoAberto(false)} onSave={addClientManual} />
+      )}
     </AppShell>
   );
 }
@@ -181,7 +222,10 @@ function NovoClienteModal({
   onSave,
 }: {
   onClose: () => void;
-  onSave: (partial: Pick<Client, "name" | "company" | "owner" | "plan" | "monthlyValue" | "services"> & Partial<Client>) => Client;
+  onSave: (
+    partial: Pick<Client, "name" | "company" | "owner" | "plan" | "monthlyValue" | "services"> &
+      Partial<Client>,
+  ) => Client;
 }) {
   const [name, setName] = useState("");
   const [company, setCompany] = useState("");
@@ -199,14 +243,30 @@ function NovoClienteModal({
 
   const salvar = () => {
     if (!podeCadastrar) return;
-    const plan: Client["plan"] = monthlyValue >= 3000 ? "Scale" : monthlyValue >= 1500 ? "Growth" : "Starter";
-    onSave({ name, company, owner, plan, monthlyValue, services, email: email || undefined, phone: phone || undefined });
+    const plan: Client["plan"] =
+      monthlyValue >= 3000 ? "Scale" : monthlyValue >= 1500 ? "Growth" : "Starter";
+    onSave({
+      name,
+      company,
+      owner,
+      plan,
+      monthlyValue,
+      services,
+      email: email || undefined,
+      phone: phone || undefined,
+    });
     onClose();
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
-      <div onClick={(e) => e.stopPropagation()} className="w-full max-w-md rounded-xl border bg-card p-5 shadow-elegant">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      onClick={onClose}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-md rounded-xl border bg-card p-5 shadow-elegant"
+      >
         <div className="mb-4 flex items-center justify-between">
           <h3 className="text-sm font-semibold">Novo cliente</h3>
           <button onClick={onClose} className="rounded p-1 text-muted-foreground hover:bg-accent">
@@ -214,29 +274,56 @@ function NovoClienteModal({
           </button>
         </div>
         <p className="mb-4 text-[11px] text-muted-foreground">
-          Pra cliente que veio de venda fechada no CRM, ele já entra sozinho — use isso só pra cadastro direto (indicação, migração de outra ferramenta, etc).
+          Pra cliente que veio de venda fechada no CRM, ele já entra sozinho — use isso só pra
+          cadastro direto (indicação, migração de outra ferramenta, etc).
         </p>
 
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-2">
             <Field label="Empresa">
-              <input value={company} onChange={(e) => setCompany(e.target.value)} className={inputCls} placeholder="Empresa Ltda" />
+              <input
+                value={company}
+                onChange={(e) => setCompany(e.target.value)}
+                className={inputCls}
+                placeholder="Empresa Ltda"
+              />
             </Field>
             <Field label="Contato principal">
-              <input value={name} onChange={(e) => setName(e.target.value)} className={inputCls} placeholder="Nome do contato" />
+              <input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className={inputCls}
+                placeholder="Nome do contato"
+              />
             </Field>
           </div>
           <div className="grid grid-cols-2 gap-2">
             <Field label="E-mail">
-              <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" className={inputCls} placeholder="opcional" />
+              <input
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                type="email"
+                className={inputCls}
+                placeholder="opcional"
+              />
             </Field>
             <Field label="Telefone">
-              <input value={phone} onChange={(e) => setPhone(e.target.value)} className={inputCls} placeholder="opcional" />
+              <input
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                className={inputCls}
+                placeholder="opcional"
+              />
             </Field>
           </div>
           <div className="grid grid-cols-2 gap-2">
             <Field label="Responsável interno">
-              <input value={owner} onChange={(e) => setOwner(e.target.value)} className={inputCls} placeholder="Quem toca a conta" />
+              <input
+                value={owner}
+                onChange={(e) => setOwner(e.target.value)}
+                className={inputCls}
+                placeholder="Quem toca a conta"
+              />
             </Field>
             <Field label="Mensalidade (R$)">
               <input
@@ -257,7 +344,9 @@ function NovoClienteModal({
                   onClick={() => toggleServico(s)}
                   className={cn(
                     "rounded-md border px-2 py-1 text-[11px] font-medium transition-colors",
-                    services.includes(s) ? "border-primary/50 bg-primary/15 text-primary" : "bg-surface text-muted-foreground hover:bg-accent",
+                    services.includes(s)
+                      ? "border-primary/50 bg-primary/15 text-primary"
+                      : "bg-surface text-muted-foreground hover:bg-accent",
                   )}
                 >
                   {s}
@@ -279,7 +368,8 @@ function NovoClienteModal({
   );
 }
 
-const inputCls = "h-8 w-full rounded-md border bg-surface px-2 text-[12px] focus:border-primary/60 focus:outline-none";
+const inputCls =
+  "h-8 w-full rounded-md border bg-surface px-2 text-[12px] focus:border-primary/60 focus:outline-none";
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (

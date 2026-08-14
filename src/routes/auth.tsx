@@ -51,7 +51,11 @@ function Auth() {
       playLogin();
       navigate({ to: "/" });
     } catch (err) {
-      setErro(traduzirErroAuth(err instanceof Error ? err.message : "Não foi possível entrar. Tente de novo."));
+      setErro(
+        traduzirErroAuth(
+          err instanceof Error ? err.message : "Não foi possível entrar. Tente de novo.",
+        ),
+      );
     } finally {
       setLoading(false);
     }
@@ -80,10 +84,14 @@ function Auth() {
             <MailCheck className="mx-auto mb-3 h-8 w-8 text-primary" />
             <h2 className="text-[15px] font-semibold">Confirme seu e-mail</h2>
             <p className="mt-2 text-[13px] text-muted-foreground">
-              Enviamos um link de confirmação para <b>{email}</b>. Clique nele e depois volte aqui pra entrar.
+              Enviamos um link de confirmação para <b>{email}</b>. Clique nele e depois volte aqui
+              pra entrar.
             </p>
             <button
-              onClick={() => { setAguardandoConfirmacao(false); setMode("signin"); }}
+              onClick={() => {
+                setAguardandoConfirmacao(false);
+                setMode("signin");
+              }}
               className="mt-4 text-[12px] font-medium text-primary hover:underline"
             >
               Já confirmei, quero entrar
@@ -94,14 +102,20 @@ function Auth() {
             <div className="mb-4 flex items-center gap-1 rounded-md border bg-surface p-1 text-xs">
               <button
                 type="button"
-                onClick={() => { setMode("signin"); setErro(null); }}
+                onClick={() => {
+                  setMode("signin");
+                  setErro(null);
+                }}
                 className={`flex-1 rounded px-3 py-1.5 font-medium transition-colors ${mode === "signin" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
               >
                 Entrar
               </button>
               <button
                 type="button"
-                onClick={() => { setMode("signup"); setErro(null); }}
+                onClick={() => {
+                  setMode("signup");
+                  setErro(null);
+                }}
                 className={`flex-1 rounded px-3 py-1.5 font-medium transition-colors ${mode === "signup" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
               >
                 Criar conta

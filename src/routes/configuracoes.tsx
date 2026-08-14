@@ -1,12 +1,25 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import {
-  Palette, Zap, FileStack, ChevronRight, Check, Plus, Trash2, Sun, Moon,
+  Palette,
+  Zap,
+  FileStack,
+  ChevronRight,
+  Check,
+  Plus,
+  Trash2,
+  Sun,
+  Moon,
 } from "lucide-react";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { useDataStore } from "@/lib/data-store";
 import type { ServiceTemplate } from "@/lib/service-templates";
-import { automationRules, triggerLabels, actionLabels, type AutomationRule } from "@/lib/automation-engine";
+import {
+  automationRules,
+  triggerLabels,
+  actionLabels,
+  type AutomationRule,
+} from "@/lib/automation-engine";
 import { useTheme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 
@@ -14,9 +27,15 @@ export const Route = createFileRoute("/configuracoes")({
   head: () => ({
     meta: [
       { title: "Configurações · Veloce" },
-      { name: "description", content: "Aparência, templates operacionais editáveis e automações do sistema." },
+      {
+        name: "description",
+        content: "Aparência, templates operacionais editáveis e automações do sistema.",
+      },
       { property: "og:title", content: "Configurações · Veloce OS" },
-      { property: "og:description", content: "Ajuste tema, templates operacionais e automações da sua agência." },
+      {
+        property: "og:description",
+        content: "Ajuste tema, templates operacionais e automações da sua agência.",
+      },
     ],
   }),
   component: Config,
@@ -40,7 +59,9 @@ function ListEditor({
 }) {
   return (
     <div>
-      <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">{label}</div>
+      <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+        {label}
+      </div>
       <div className="space-y-1.5">
         {items.map((item, i) => (
           <div key={i} className="flex items-center gap-1.5">
@@ -96,7 +117,11 @@ function TemplateEditor({ template }: { template: ServiceTemplate }) {
       checklist: draft.checklist.map((s) => s.trim()).filter(Boolean),
       tasks: draft.tasks
         .filter((t) => t.title.trim())
-        .map((t) => ({ ...t, title: t.title.trim(), dueOffsetDays: Math.max(0, t.dueOffsetDays || 0) })),
+        .map((t) => ({
+          ...t,
+          title: t.title.trim(),
+          dueOffsetDays: Math.max(0, t.dueOffsetDays || 0),
+        })),
     });
     setSaved(true);
   };
@@ -114,7 +139,9 @@ function TemplateEditor({ template }: { template: ServiceTemplate }) {
             {template.tasks.length} tarefas iniciais
           </div>
         </div>
-        <span className="font-mono text-[10px] text-muted-foreground">Prazo: {template.defaultDeadlineDays}d</span>
+        <span className="font-mono text-[10px] text-muted-foreground">
+          Prazo: {template.defaultDeadlineDays}d
+        </span>
         <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-90" />
       </summary>
 
@@ -124,7 +151,11 @@ function TemplateEditor({ template }: { template: ServiceTemplate }) {
             <div className="mb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
               Nome do template
             </div>
-            <input className={inputCls} value={draft.name} onChange={(e) => set("name", e.target.value)} />
+            <input
+              className={inputCls}
+              value={draft.name}
+              onChange={(e) => set("name", e.target.value)}
+            />
           </div>
           <div>
             <div className="mb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
@@ -166,12 +197,22 @@ function TemplateEditor({ template }: { template: ServiceTemplate }) {
                       value={task.title}
                       placeholder="Título da tarefa"
                       onChange={(e) =>
-                        set("tasks", draft.tasks.map((t, j) => (j === i ? { ...t, title: e.target.value } : t)))
+                        set(
+                          "tasks",
+                          draft.tasks.map((t, j) =>
+                            j === i ? { ...t, title: e.target.value } : t,
+                          ),
+                        )
                       }
                     />
                     <button
                       type="button"
-                      onClick={() => set("tasks", draft.tasks.filter((_, j) => j !== i))}
+                      onClick={() =>
+                        set(
+                          "tasks",
+                          draft.tasks.filter((_, j) => j !== i),
+                        )
+                      }
                       className="shrink-0 rounded-md border bg-surface p-1.5 text-muted-foreground hover:text-destructive"
                       aria-label="Remover tarefa"
                     >
@@ -200,7 +241,9 @@ function TemplateEditor({ template }: { template: ServiceTemplate }) {
                         set(
                           "tasks",
                           draft.tasks.map((t, j) =>
-                            j === i ? { ...t, priority: e.target.value as (typeof prioridades)[number] } : t,
+                            j === i
+                              ? { ...t, priority: e.target.value as (typeof prioridades)[number] }
+                              : t,
                           ),
                         )
                       }
@@ -217,7 +260,10 @@ function TemplateEditor({ template }: { template: ServiceTemplate }) {
               <button
                 type="button"
                 onClick={() =>
-                  set("tasks", [...draft.tasks, { title: "", dueOffsetDays: 1, priority: "media" as const }])
+                  set("tasks", [
+                    ...draft.tasks,
+                    { title: "", dueOffsetDays: 1, priority: "media" as const },
+                  ])
                 }
                 className="inline-flex items-center gap-1 rounded-md border border-dashed px-2 py-1 text-[11px] text-muted-foreground hover:text-foreground"
               >
@@ -262,7 +308,10 @@ function Config() {
   return (
     <AppShell title="Configurações" subtitle="Aparência, templates operacionais e automações">
       <div className="px-4 py-6 md:px-6">
-        <PageHeader title="Configurações" subtitle="Tema da interface, templates da sua operação e automações" />
+        <PageHeader
+          title="Configurações"
+          subtitle="Tema da interface, templates da sua operação e automações"
+        />
 
         {/* Aparência */}
         <div className="rounded-xl border bg-card p-4">
@@ -276,10 +325,12 @@ function Config() {
             </div>
           </div>
           <div className="mt-4 grid grid-cols-2 gap-2 md:max-w-sm">
-            {([
-              { value: "light", label: "Claro", icon: Sun },
-              { value: "dark", label: "Escuro", icon: Moon },
-            ] as const).map((t) => {
+            {(
+              [
+                { value: "light", label: "Claro", icon: Sun },
+                { value: "dark", label: "Escuro", icon: Moon },
+              ] as const
+            ).map((t) => {
               const Icon = t.icon;
               const active = theme === t.value;
               return (
@@ -288,7 +339,9 @@ function Config() {
                   onClick={() => setTheme(t.value)}
                   className={cn(
                     "flex flex-col items-center gap-1.5 rounded-md border p-3 text-[12px] font-medium transition-all",
-                    active ? "border-primary bg-primary/10 text-primary" : "bg-surface hover:bg-accent",
+                    active
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "bg-surface hover:bg-accent",
                   )}
                 >
                   <Icon className="h-4 w-4" />
@@ -309,8 +362,8 @@ function Config() {
               <div>
                 <h3 className="text-sm font-semibold tracking-tight">Templates Operacionais</h3>
                 <p className="text-[11px] text-muted-foreground">
-                  Quando uma venda é fechada, o sistema monta a operação a partir destes templates — edite etapas,
-                  checklist e tarefas.
+                  Quando uma venda é fechada, o sistema monta a operação a partir destes templates —
+                  edite etapas, checklist e tarefas.
                 </p>
               </div>
             </div>
@@ -335,7 +388,9 @@ function Config() {
               </div>
               <div>
                 <h3 className="text-sm font-semibold tracking-tight">Automações do sistema</h3>
-                <p className="text-[11px] text-muted-foreground">Regras que executam ações automaticamente conforme eventos acontecem.</p>
+                <p className="text-[11px] text-muted-foreground">
+                  Regras que executam ações automaticamente conforme eventos acontecem.
+                </p>
               </div>
             </div>
             <span className="rounded bg-primary/10 px-2 py-0.5 font-mono text-[11px] text-primary">
@@ -346,10 +401,15 @@ function Config() {
           <div className="divide-y">
             {Object.entries(byCategory).map(([cat, list]) => (
               <div key={cat} className="p-4">
-                <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">{cat}</div>
+                <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                  {cat}
+                </div>
                 <div className="space-y-2">
                   {list.map((r) => (
-                    <div key={r.id} className="flex items-start gap-3 rounded-md border bg-surface/30 p-3">
+                    <div
+                      key={r.id}
+                      className="flex items-start gap-3 rounded-md border bg-surface/30 p-3"
+                    >
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
                           <span className="text-[13px] font-medium">{r.name}</span>
@@ -358,12 +418,21 @@ function Config() {
                           </span>
                         </div>
                         <div className="mt-1 text-[11px] text-muted-foreground">
-                          Quando: <span className="text-foreground/80">{triggerLabels[r.when]}</span>
-                          {r.condition && <> · <span>{r.condition}</span></>}
+                          Quando:{" "}
+                          <span className="text-foreground/80">{triggerLabels[r.when]}</span>
+                          {r.condition && (
+                            <>
+                              {" "}
+                              · <span>{r.condition}</span>
+                            </>
+                          )}
                         </div>
                         <div className="mt-0.5 flex flex-wrap gap-1">
                           {r.do.map((a) => (
-                            <span key={a} className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary">
+                            <span
+                              key={a}
+                              className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary"
+                            >
                               {actionLabels[a]}
                             </span>
                           ))}

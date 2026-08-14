@@ -1,4 +1,12 @@
-import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "@tanstack/react-router";
 import {
@@ -18,7 +26,6 @@ import type { LeadStage, LeadPotential, Task } from "@/lib/mock-data";
 import { useDataStore } from "@/lib/data-store";
 
 export type QuickKind = "lead" | "despesa" | "tarefa";
-
 
 // ─── Context ─────────────────────────────────────────────────────────────────
 
@@ -43,10 +50,28 @@ const items: {
   hint: string;
   shortcut: string;
 }[] = [
-    { key: "lead", label: "Novo Lead", icon: UserPlus, hint: "Adicionar oportunidade ao CRM", shortcut: "L" },
-    { key: "tarefa", label: "Nova Tarefa", icon: CheckSquare, hint: "Criar tarefa rápida", shortcut: "T" },
-    { key: "despesa", label: "Nova Despesa", icon: Receipt, hint: "Lançar despesa no financeiro", shortcut: "D" },
-  ];
+  {
+    key: "lead",
+    label: "Novo Lead",
+    icon: UserPlus,
+    hint: "Adicionar oportunidade ao CRM",
+    shortcut: "L",
+  },
+  {
+    key: "tarefa",
+    label: "Nova Tarefa",
+    icon: CheckSquare,
+    hint: "Criar tarefa rápida",
+    shortcut: "T",
+  },
+  {
+    key: "despesa",
+    label: "Nova Despesa",
+    icon: Receipt,
+    hint: "Lançar despesa no financeiro",
+    shortcut: "D",
+  },
+];
 
 // ─── Main Component ──────────────────────────────────────────────────────────
 
@@ -175,11 +200,7 @@ export function QuickActionsButton() {
         )}
 
       {/* Command Palette — portal to body */}
-      {openCmd &&
-        createPortal(
-          <CommandPalette onClose={() => setOpenCmd(false)} />,
-          document.body,
-        )}
+      {openCmd && createPortal(<CommandPalette onClose={() => setOpenCmd(false)} />, document.body)}
     </>
   );
 }
@@ -206,8 +227,12 @@ function CommandPalette({ onClose }: { onClose: () => void }) {
     if (!q) return { nav, leads: leads.slice(0, 4), clients: clients.slice(0, 4) };
     return {
       nav: nav.filter((n) => n.label.toLowerCase().includes(q)),
-      leads: leads.filter((l) => l.name.toLowerCase().includes(q) || l.company.toLowerCase().includes(q)).slice(0, 5),
-      clients: clients.filter((c) => c.company.toLowerCase().includes(q) || c.name.toLowerCase().includes(q)).slice(0, 5),
+      leads: leads
+        .filter((l) => l.name.toLowerCase().includes(q) || l.company.toLowerCase().includes(q))
+        .slice(0, 5),
+      clients: clients
+        .filter((c) => c.company.toLowerCase().includes(q) || c.name.toLowerCase().includes(q))
+        .slice(0, 5),
     };
   }, [query, leads, clients]);
 
@@ -230,9 +255,13 @@ function CommandPalette({ onClose }: { onClose: () => void }) {
         </div>
 
         <div className="max-h-[420px] overflow-y-auto p-1">
-          {results.nav.length === 0 && results.leads.length === 0 && results.clients.length === 0 && (
-            <p className="px-3 py-6 text-center text-[12px] text-muted-foreground">Nada encontrado para "{query}".</p>
-          )}
+          {results.nav.length === 0 &&
+            results.leads.length === 0 &&
+            results.clients.length === 0 && (
+              <p className="px-3 py-6 text-center text-[12px] text-muted-foreground">
+                Nada encontrado para "{query}".
+              </p>
+            )}
 
           {results.nav.length > 0 && (
             <Group title="Ir para">
@@ -357,7 +386,10 @@ function QuickDialog({
   const meta = kindMeta[kind];
 
   const [leadData, setLeadData] = useState<LeadFormData>(emptyLeadForm);
-  const [tarefaData, setTarefaData] = useState<TarefaFormData>({ ...emptyTarefaForm, dueDate: defaultDate ?? "" });
+  const [tarefaData, setTarefaData] = useState<TarefaFormData>({
+    ...emptyTarefaForm,
+    dueDate: defaultDate ?? "",
+  });
   const [despesaData, setDespesaData] = useState<DespesaFormData>(emptyDespesaForm);
 
   const submit = (e: React.FormEvent) => {
@@ -385,7 +417,12 @@ function QuickDialog({
         priority: tarefaData.priority,
         status: "backlog",
         dueDate: tarefaData.dueDate,
-        clientId: defaultContext?.type === "cliente" ? defaultContext.id : (!defaultContext ? tarefaData.clientId || undefined : undefined),
+        clientId:
+          defaultContext?.type === "cliente"
+            ? defaultContext.id
+            : !defaultContext
+              ? tarefaData.clientId || undefined
+              : undefined,
         projectId: defaultContext?.type === "projeto" ? defaultContext.id : undefined,
         leadId: defaultContext?.type === "lead" ? defaultContext.id : undefined,
       });
@@ -443,7 +480,12 @@ function QuickDialog({
             )}
             {kind === "despesa" && <DespesaForm data={despesaData} onChange={setDespesaData} />}
             {kind === "tarefa" && (
-              <TarefaForm data={tarefaData} onChange={setTarefaData} defaultContext={defaultContext} clients={realClients} />
+              <TarefaForm
+                data={tarefaData}
+                onChange={setTarefaData}
+                defaultContext={defaultContext}
+                clients={realClients}
+              />
             )}
 
             <div className="flex items-center justify-end gap-2 border-t pt-3">
@@ -469,7 +511,8 @@ function QuickDialog({
   );
 }
 
-const cls = "w-full rounded-md border bg-background px-3 py-1.5 text-[13px] focus:border-primary/60 focus:outline-none";
+const cls =
+  "w-full rounded-md border bg-background px-3 py-1.5 text-[13px] focus:border-primary/60 focus:outline-none";
 
 function Row2({ children }: { children: React.ReactNode }) {
   return <div className="grid grid-cols-2 gap-3">{children}</div>;
@@ -579,8 +622,12 @@ function LeadForm({
             value={data.origin}
             onChange={(e) => set("origin", e.target.value as LeadFormData["origin"])}
           >
-            <option>Instagram</option><option>Indicação</option><option>Google Ads</option>
-            <option>LinkedIn</option><option>Site</option><option>Outbound</option>
+            <option>Instagram</option>
+            <option>Indicação</option>
+            <option>Google Ads</option>
+            <option>LinkedIn</option>
+            <option>Site</option>
+            <option>Outbound</option>
           </select>
         </F>
       </Row2>
@@ -630,7 +677,14 @@ function LeadForm({
 
 export interface DespesaFormData {
   description: string;
-  costCenter: "Marketing" | "Ferramentas" | "Equipe" | "Impostos" | "Operacional" | "Administrativo" | "Investimentos";
+  costCenter:
+    | "Marketing"
+    | "Ferramentas"
+    | "Equipe"
+    | "Impostos"
+    | "Operacional"
+    | "Administrativo"
+    | "Investimentos";
   fornecedor: string;
   amount: string;
   date: string;
@@ -646,7 +700,13 @@ export const emptyDespesaForm: DespesaFormData = {
   recurring: false,
 };
 
-function DespesaForm({ data, onChange }: { data: DespesaFormData; onChange: (data: DespesaFormData) => void }) {
+function DespesaForm({
+  data,
+  onChange,
+}: {
+  data: DespesaFormData;
+  onChange: (data: DespesaFormData) => void;
+}) {
   const set = <K extends keyof DespesaFormData>(key: K, value: DespesaFormData[K]) =>
     onChange({ ...data, [key]: value });
 
@@ -719,7 +779,11 @@ function DespesaForm({ data, onChange }: { data: DespesaFormData; onChange: (dat
   );
 }
 
-export type TarefaDefaultContext = { type: "cliente" | "projeto" | "lead"; id: string; label: string };
+export type TarefaDefaultContext = {
+  type: "cliente" | "projeto" | "lead";
+  id: string;
+  label: string;
+};
 
 export interface TarefaFormData {
   title: string;
@@ -797,7 +861,11 @@ function TarefaForm({
         </F>
       ) : (
         <F label="Cliente">
-          <select className={cls} value={data.clientId} onChange={(e) => set("clientId", e.target.value)}>
+          <select
+            className={cls}
+            value={data.clientId}
+            onChange={(e) => set("clientId", e.target.value)}
+          >
             <option value="">Geral (sem cliente)</option>
             {clients.map((c) => (
               <option key={c.id} value={c.id}>
@@ -845,7 +913,12 @@ export function NewTaskButton({
       </button>
       {open &&
         createPortal(
-          <QuickDialog kind="tarefa" defaultContext={defaultContext} defaultDate={defaultDate} onClose={() => setOpen(false)} />,
+          <QuickDialog
+            kind="tarefa"
+            defaultContext={defaultContext}
+            defaultDate={defaultDate}
+            onClose={() => setOpen(false)}
+          />,
           document.body,
         )}
     </>
@@ -864,7 +937,11 @@ export function EditTaskDialog({ task, onClose }: { task: Task; onClose: () => v
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   const lockedContext: TarefaDefaultContext | undefined = task.leadId
-    ? { type: "lead", id: task.leadId, label: realLeads.find((l) => l.id === task.leadId)?.name ?? "Lead" }
+    ? {
+        type: "lead",
+        id: task.leadId,
+        label: realLeads.find((l) => l.id === task.leadId)?.name ?? "Lead",
+      }
     : task.projectId
       ? { type: "projeto", id: task.projectId, label: "Projeto vinculado" }
       : undefined;
@@ -908,7 +985,12 @@ export function EditTaskDialog({ task, onClose }: { task: Task; onClose: () => v
         </div>
 
         <form onSubmit={submit} className="max-h-[70vh] space-y-3 overflow-y-auto p-4">
-          <TarefaForm data={data} onChange={setData} defaultContext={lockedContext} clients={realClients} />
+          <TarefaForm
+            data={data}
+            onChange={setData}
+            defaultContext={lockedContext}
+            clients={realClients}
+          />
 
           <div className="flex items-center justify-between gap-2 border-t pt-3">
             {confirmDelete ? (

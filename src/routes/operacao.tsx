@@ -37,15 +37,15 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/operacao")({
   validateSearch: (s: Record<string, unknown>) => ({
     tab: (s.tab === "tarefas" || s.tab === "agenda" || s.tab === "projetos" ? s.tab : undefined) as
-      | "tarefas"
-      | "agenda"
-      | "projetos"
-      | undefined,
+      "tarefas" | "agenda" | "projetos" | undefined,
   }),
   head: () => ({
     meta: [
       { title: "Operação · Veloce" },
-      { name: "description", content: "Central de operação: projetos, tarefas e agenda em um só lugar." },
+      {
+        name: "description",
+        content: "Central de operação: projetos, tarefas e agenda em um só lugar.",
+      },
     ],
   }),
   component: Operacao,
@@ -74,13 +74,26 @@ function Operacao() {
   // Só projetos de Implementação entram na conta de "atrasado" — Gestão do Cliente
   // usa a data de renovação como "prazo", e isso não é a mesma coisa que um projeto atrasado.
   const projetosAtrasados = projetosReais.filter(
-    (p) => p.fase === "implementacao" && p.status !== "entregue" && new Date(p.deadline) < new Date(HOJE),
+    (p) =>
+      p.fase === "implementacao" &&
+      p.status !== "entregue" &&
+      new Date(p.deadline) < new Date(HOJE),
   );
   const reunioesHoje = agendaEvents.filter((e) => e.date === HOJE && e.type === "reuniao");
 
   const tabsList: { key: Tab; label: string; icon: typeof FolderKanban; count: number }[] = [
-    { key: "tarefas", label: "Minha Semana", icon: CheckSquare, count: tasks.filter((t) => t.status !== "concluida").length },
-    { key: "projetos", label: "Projetos", icon: FolderKanban, count: projetosReais.filter((p) => p.fase === "implementacao").length },
+    {
+      key: "tarefas",
+      label: "Minha Semana",
+      icon: CheckSquare,
+      count: tasks.filter((t) => t.status !== "concluida").length,
+    },
+    {
+      key: "projetos",
+      label: "Projetos",
+      icon: FolderKanban,
+      count: projetosReais.filter((p) => p.fase === "implementacao").length,
+    },
     { key: "agenda", label: "Agenda", icon: CalendarIcon, count: agendaEvents.length },
   ];
 
@@ -111,7 +124,10 @@ function Operacao() {
           />
           <PulseTile
             label="Projetos em produção"
-            value={projetosReais.filter((p) => p.fase === "implementacao" && p.status === "producao").length}
+            value={
+              projetosReais.filter((p) => p.fase === "implementacao" && p.status === "producao")
+                .length
+            }
             tone="primary"
             icon={Flame}
             hint={`${projetosAtrasados.length} com risco de atraso`}
@@ -137,11 +153,15 @@ function Operacao() {
                 onClick={() => setTab(t.key)}
                 className={cn(
                   "-mb-px inline-flex items-center gap-1.5 border-b-2 px-3 py-2 text-[13px] font-medium transition-colors",
-                  active ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground",
+                  active
+                    ? "border-primary text-foreground"
+                    : "border-transparent text-muted-foreground hover:text-foreground",
                 )}
               >
                 <Icon className="h-3.5 w-3.5" /> {t.label}
-                <span className="rounded bg-accent px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">{t.count}</span>
+                <span className="rounded bg-accent px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">
+                  {t.count}
+                </span>
               </button>
             );
           })}
@@ -186,11 +206,18 @@ function PulseTile({
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">{label}</div>
+          <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+            {label}
+          </div>
           <div className="mt-2 font-mono text-[22px] font-semibold tracking-tight">{value}</div>
           {hint && <div className="mt-1 text-[11px] text-muted-foreground">{hint}</div>}
         </div>
-        <div className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-md", toneMap[tone])}>
+        <div
+          className={cn(
+            "flex h-8 w-8 shrink-0 items-center justify-center rounded-md",
+            toneMap[tone],
+          )}
+        >
           <Icon className="h-4 w-4" />
         </div>
       </div>
@@ -220,7 +247,12 @@ function ProjetosPanel() {
             <div key={g} className="rounded-xl border bg-surface/40 p-3">
               <div className="mb-3 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className={cn("rounded px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider", projStatus[g].color)}>
+                  <span
+                    className={cn(
+                      "rounded px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider",
+                      projStatus[g].color,
+                    )}
+                  >
                     {projStatus[g].label}
                   </span>
                   <span className="font-mono text-[10px] text-muted-foreground">{list.length}</span>
@@ -230,7 +262,12 @@ function ProjetosPanel() {
               <div className="space-y-2">
                 {list.map((p) => {
                   const checklist = p.checklist ?? [];
-                  const pct = checklist.length > 0 ? Math.round((checklist.filter((i) => i.done).length / checklist.length) * 100) : p.progress;
+                  const pct =
+                    checklist.length > 0
+                      ? Math.round(
+                          (checklist.filter((i) => i.done).length / checklist.length) * 100,
+                        )
+                      : p.progress;
                   return (
                     <div key={p.id} className="rounded-md border bg-card p-3">
                       <div className="text-[13px] font-medium">{p.name}</div>
@@ -247,7 +284,9 @@ function ProjetosPanel() {
                     </div>
                   );
                 })}
-                {list.length === 0 && <p className="text-center text-[11px] text-muted-foreground">Nada aqui.</p>}
+                {list.length === 0 && (
+                  <p className="text-center text-[11px] text-muted-foreground">Nada aqui.</p>
+                )}
               </div>
             </div>
           );
@@ -257,8 +296,8 @@ function ProjetosPanel() {
       {emOperacaoContinua.length > 0 && (
         <div className="rounded-xl border bg-surface/30 p-3 text-[12px] text-muted-foreground">
           <b className="text-foreground">{emOperacaoContinua.length}</b> cliente
-          {emOperacaoContinua.length === 1 ? "" : "s"} em Gestão do Cliente — veja o detalhe na ficha de cada cliente, aba
-          Operação.
+          {emOperacaoContinua.length === 1 ? "" : "s"} em Gestão do Cliente — veja o detalhe na
+          ficha de cada cliente, aba Operação.
         </div>
       )}
     </div>
@@ -280,7 +319,11 @@ function getWeekDays(hojeStr: string): string[] {
 
 const weekdayLabels = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"];
 
-function taskLink(task: Task, clients: Client[], leads: Lead[]): { label: string; kind: "cliente" | "lead" | "geral" } {
+function taskLink(
+  task: Task,
+  clients: Client[],
+  leads: Lead[],
+): { label: string; kind: "cliente" | "lead" | "geral" } {
   if (task.clientId) {
     const c = clients.find((c) => c.id === task.clientId);
     if (c) return { label: c.company, kind: "cliente" };
@@ -312,12 +355,16 @@ function TaskCard({
   const link = taskLink(task, clients, leads);
   const done = task.status === "concluida";
   const [editOpen, setEditOpen] = useState(false);
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: task.id });
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: task.id,
+  });
   const dragStyle =
     draggable && transform
       ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`, zIndex: 40 }
       : undefined;
-  const priorityLabel = { urgente: "Urgente", alta: "Alta", media: "Média", baixa: "Baixa" }[task.priority];
+  const priorityLabel = { urgente: "Urgente", alta: "Alta", media: "Média", baixa: "Baixa" }[
+    task.priority
+  ];
   const priorityClass = {
     urgente: "bg-destructive text-destructive-foreground",
     alta: "bg-warning text-warning-foreground",
@@ -344,11 +391,7 @@ function TaskCard({
       <div className="pointer-events-none absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-md bg-surface/90 text-muted-foreground opacity-0 shadow-sm transition-opacity group-hover:opacity-100">
         <Pencil className="h-2.5 w-2.5" />
       </div>
-      {!done && (
-        <span className={cn("pill-label mb-1.5", priorityClass)}>
-          {priorityLabel}
-        </span>
-      )}
+      {!done && <span className={cn("pill-label mb-1.5", priorityClass)}>{priorityLabel}</span>}
       <div className="flex items-start gap-2">
         <button
           onClick={(e) => {
@@ -357,21 +400,36 @@ function TaskCard({
           }}
           className={cn(
             "mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border-2 transition-colors",
-            done ? "border-success bg-success text-success-foreground" : "border-muted-foreground/40 hover:border-primary",
+            done
+              ? "border-success bg-success text-success-foreground"
+              : "border-muted-foreground/40 hover:border-primary",
           )}
         >
           {done && <Check className="h-3 w-3" />}
         </button>
         <div className="min-w-0 flex-1">
-          <div className={cn("line-clamp-1 break-all text-[13px] font-semibold leading-snug", done && "line-through")}>{task.title}</div>
+          <div
+            className={cn(
+              "line-clamp-1 break-all text-[13px] font-semibold leading-snug",
+              done && "line-through",
+            )}
+          >
+            {task.title}
+          </div>
           {task.description && (
-            <p className="mt-0.5 line-clamp-1 break-all text-[11px] leading-snug text-muted-foreground">{task.description}</p>
+            <p className="mt-0.5 line-clamp-1 break-all text-[11px] leading-snug text-muted-foreground">
+              {task.description}
+            </p>
           )}
           <div className="mt-1 flex flex-wrap items-center gap-1">
             {overdue && !done && (
               <span className="inline-flex items-center gap-1 rounded bg-destructive/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-destructive">
                 <AlertTriangle className="h-2.5 w-2.5" />
-                Atrasada · {new Date(task.dueDate + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}
+                Atrasada ·{" "}
+                {new Date(task.dueDate + "T00:00:00").toLocaleDateString("pt-BR", {
+                  day: "2-digit",
+                  month: "2-digit",
+                })}
               </span>
             )}
             {showLink && (
@@ -390,7 +448,10 @@ function TaskCard({
         </div>
       </div>
       {editOpen &&
-        createPortal(<EditTaskDialog task={task} onClose={() => setEditOpen(false)} />, document.body)}
+        createPortal(
+          <EditTaskDialog task={task} onClose={() => setEditOpen(false)} />,
+          document.body,
+        )}
     </div>
   );
 }
@@ -409,9 +470,14 @@ function OverdueMiniList({ tasks, onToggle }: { tasks: Task[]; onToggle: (id: st
           className="flex w-full items-center gap-1.5 rounded-md border border-destructive/30 bg-destructive/5 px-2 py-1.5 text-left transition-colors hover:bg-destructive/10"
         >
           <span className="h-3 w-3 shrink-0 rounded-sm border-2 border-destructive/50" />
-          <span className="min-w-0 flex-1 truncate text-[11.5px] font-medium text-foreground">{t.title}</span>
+          <span className="min-w-0 flex-1 truncate text-[11.5px] font-medium text-foreground">
+            {t.title}
+          </span>
           <span className="shrink-0 font-mono text-[9px] font-semibold text-destructive">
-            {new Date(t.dueDate + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}
+            {new Date(t.dueDate + "T00:00:00").toLocaleDateString("pt-BR", {
+              day: "2-digit",
+              month: "2-digit",
+            })}
           </span>
         </button>
       ))}
@@ -457,7 +523,9 @@ function SemanaPanel() {
               onClick={() => setView("dia")}
               className={cn(
                 "inline-flex items-center gap-1.5 rounded px-2.5 py-1 text-[12px] font-medium transition-colors",
-                view === "dia" ? "bg-card shadow-sm" : "text-muted-foreground hover:text-foreground",
+                view === "dia"
+                  ? "bg-card shadow-sm"
+                  : "text-muted-foreground hover:text-foreground",
               )}
             >
               <LayoutGrid className="h-3 w-3" /> Por dia
@@ -466,7 +534,9 @@ function SemanaPanel() {
               onClick={() => setView("cliente")}
               className={cn(
                 "inline-flex items-center gap-1.5 rounded px-2.5 py-1 text-[12px] font-medium transition-colors",
-                view === "cliente" ? "bg-card shadow-sm" : "text-muted-foreground hover:text-foreground",
+                view === "cliente"
+                  ? "bg-card shadow-sm"
+                  : "text-muted-foreground hover:text-foreground",
               )}
             >
               <User className="h-3 w-3" /> Por cliente
@@ -491,7 +561,13 @@ function SemanaPanel() {
             ))}
           </div>
         ) : (
-          <ClienteView tasks={[...atrasadas, ...daSemana]} clients={clients} leads={leads} toggleTaskDone={toggleTaskDone} hoje={HOJE} />
+          <ClienteView
+            tasks={[...atrasadas, ...daSemana]}
+            clients={clients}
+            leads={leads}
+            toggleTaskDone={toggleTaskDone}
+            hoje={HOJE}
+          />
         )}
 
         {futuras.length > 0 && (
@@ -509,12 +585,23 @@ function SemanaPanel() {
                   baixa: "bg-surface-3 text-muted-foreground",
                 }[t.priority];
                 return (
-                  <div key={t.id} className="group relative rounded-md border bg-card px-2.5 py-2 text-[12px]">
+                  <div
+                    key={t.id}
+                    className="group relative rounded-md border bg-card px-2.5 py-2 text-[12px]"
+                  >
                     <div className="flex items-center gap-1.5">
                       <span className="font-mono text-[10px] text-muted-foreground">
-                        {new Date(t.dueDate + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}
+                        {new Date(t.dueDate + "T00:00:00").toLocaleDateString("pt-BR", {
+                          day: "2-digit",
+                          month: "2-digit",
+                        })}
                       </span>
-                      <span className={cn("rounded px-1 py-0.5 text-[9px] font-semibold uppercase", priorityClass)}>
+                      <span
+                        className={cn(
+                          "rounded px-1 py-0.5 text-[9px] font-semibold uppercase",
+                          priorityClass,
+                        )}
+                      >
                         {t.priority}
                       </span>
                     </div>
@@ -590,10 +677,17 @@ function DayColumn({
       <div className="mb-3 flex items-center justify-between">
         <span className="text-[13px] font-bold uppercase tracking-wide">
           {label}
-          {isToday && <span className="ml-1.5 rounded bg-primary px-1.5 py-0.5 text-[9px] normal-case text-primary-foreground">hoje</span>}
+          {isToday && (
+            <span className="ml-1.5 rounded bg-primary px-1.5 py-0.5 text-[9px] normal-case text-primary-foreground">
+              hoje
+            </span>
+          )}
         </span>
         <span className="font-mono text-[11px] font-medium text-muted-foreground">
-          {new Date(date + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}
+          {new Date(date + "T00:00:00").toLocaleDateString("pt-BR", {
+            day: "2-digit",
+            month: "2-digit",
+          })}
         </span>
       </div>
 
@@ -642,7 +736,8 @@ function ClienteView({
   for (const t of tasks) {
     const link = taskLink(t, clients, leads);
     const key = `${link.kind}-${link.label}`;
-    if (!groups.has(key)) groups.set(key, { label: link.label, kind: link.kind, tasks: [], clientId: t.clientId });
+    if (!groups.has(key))
+      groups.set(key, { label: link.label, kind: link.kind, tasks: [], clientId: t.clientId });
     groups.get(key)!.tasks.push(t);
   }
   for (const g of groups.values()) g.tasks.sort((a, b) => a.dueDate.localeCompare(b.dueDate));
@@ -661,10 +756,14 @@ function ClienteView({
       {contas.length > 0 && (
         <div className="grid max-h-[70vh] grid-cols-1 items-start gap-3 overflow-y-auto pr-1 md:grid-cols-2 xl:grid-cols-3">
           {contas.map((g) => {
-            const client = g.kind === "cliente" ? clients.find((c) => c.id === g.clientId) : undefined;
-            const overdueCount = g.tasks.filter((t) => t.dueDate < hoje && t.status !== "concluida").length;
+            const client =
+              g.kind === "cliente" ? clients.find((c) => c.id === g.clientId) : undefined;
+            const overdueCount = g.tasks.filter(
+              (t) => t.dueDate < hoje && t.status !== "concluida",
+            ).length;
             const concluidasCount = g.tasks.filter((t) => t.status === "concluida").length;
-            const pct = g.tasks.length > 0 ? Math.round((concluidasCount / g.tasks.length) * 100) : 0;
+            const pct =
+              g.tasks.length > 0 ? Math.round((concluidasCount / g.tasks.length) * 100) : 0;
             const iniciais = g.label
               .split(" ")
               .slice(0, 2)
@@ -706,11 +805,23 @@ function ClienteView({
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-[13px] font-bold">{g.label}</div>
                     <div className="flex flex-wrap items-center gap-1 pt-0.5">
-                      <span className={cn("rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide", statusInfo.cls)}>
+                      <span
+                        className={cn(
+                          "rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide",
+                          statusInfo.cls,
+                        )}
+                      >
                         {statusInfo.label}
                       </span>
                       {faseInfo && (
-                        <span className={cn("rounded px-1.5 py-0.5 text-[9px] font-medium", faseInfo.cls)}>{faseInfo.label}</span>
+                        <span
+                          className={cn(
+                            "rounded px-1.5 py-0.5 text-[9px] font-medium",
+                            faseInfo.cls,
+                          )}
+                        >
+                          {faseInfo.label}
+                        </span>
                       )}
                     </div>
                   </div>
@@ -723,11 +834,16 @@ function ClienteView({
                 {g.tasks.length > 0 && (
                   <div className="px-3.5 pt-2.5">
                     <div className="mb-1 flex items-center justify-between text-[10px] text-muted-foreground">
-                      <span>{concluidasCount}/{g.tasks.length} concluídas</span>
+                      <span>
+                        {concluidasCount}/{g.tasks.length} concluídas
+                      </span>
                       <span className="font-mono text-primary">{pct}%</span>
                     </div>
                     <div className="h-1 overflow-hidden rounded-full bg-border">
-                      <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${pct}%` }} />
+                      <div
+                        className="h-full rounded-full bg-primary transition-all"
+                        style={{ width: `${pct}%` }}
+                      />
                     </div>
                   </div>
                 )}
@@ -754,7 +870,9 @@ function ClienteView({
       {geral && (
         <div className="rounded-xl border border-dashed bg-transparent p-3.5">
           <div className="mb-3 flex items-center justify-between border-b pb-2.5">
-            <span className="text-[13px] font-bold text-muted-foreground">Geral · administrativo</span>
+            <span className="text-[13px] font-bold text-muted-foreground">
+              Geral · administrativo
+            </span>
             <span className="rounded-full bg-muted px-2 py-0.5 font-mono text-[10px] font-semibold text-muted-foreground">
               {geral.tasks.length}
             </span>
@@ -787,19 +905,29 @@ function AgendaPanel() {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-[12px] text-warning">
-        Essa aba ainda mostra dados de exemplo — reuniões/compromissos reais ainda não têm cadastro próprio. Em construção.
+        Essa aba ainda mostra dados de exemplo — reuniões/compromissos reais ainda não têm cadastro
+        próprio. Em construção.
       </div>
       {dates.map((d) => (
         <div key={d} className="rounded-xl border bg-card p-4">
           <div className="mb-3 flex items-center justify-between">
             <h3 className="text-sm font-semibold tracking-tight">
-              {new Date(d).toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long" })}
+              {new Date(d).toLocaleDateString("pt-BR", {
+                weekday: "long",
+                day: "2-digit",
+                month: "long",
+              })}
             </h3>
-            <span className="text-[11px] text-muted-foreground">{grouped[d].length} compromissos</span>
+            <span className="text-[11px] text-muted-foreground">
+              {grouped[d].length} compromissos
+            </span>
           </div>
           <ul className="space-y-1">
             {grouped[d].map((e) => (
-              <li key={e.id} className="flex items-center gap-3 rounded-md border bg-surface/50 px-3 py-2">
+              <li
+                key={e.id}
+                className="flex items-center gap-3 rounded-md border bg-surface/50 px-3 py-2"
+              >
                 <span className="font-mono text-[12px] text-primary">{e.time}</span>
                 <span className="min-w-0 flex-1 truncate text-[13px]">{e.title}</span>
                 {e.with && <span className="text-[10px] text-muted-foreground">com {e.with}</span>}

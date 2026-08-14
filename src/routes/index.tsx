@@ -14,21 +14,19 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { AppShell, PageHeader } from "@/components/app-shell";
-import {
-  dashboardKPIs,
-  formatBRL,
-  agendaEvents,
-} from "@/lib/mock-data";
+import { dashboardKPIs, formatBRL, agendaEvents } from "@/lib/mock-data";
 import { useDataStore } from "@/lib/data-store";
 import { sortByPriority } from "@/lib/ai-engine";
 import { cn } from "@/lib/utils";
-
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "Dashboard · Veloce" },
-      { name: "description", content: "Como está sua agência hoje: pulso da operação em tempo real." },
+      {
+        name: "description",
+        content: "Como está sua agência hoje: pulso da operação em tempo real.",
+      },
     ],
   }),
   component: Dashboard,
@@ -45,11 +43,15 @@ function Dashboard() {
   const hojeISO = hoje.toISOString().slice(0, 10);
   const diaAtual = hoje.getDate();
   const diasNoMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).getDate();
-  const reunioesHoje = agendaEvents.filter((e) => e.date === hojeISO && e.type === "reuniao").length;
+  const reunioesHoje = agendaEvents.filter(
+    (e) => e.date === hojeISO && e.type === "reuniao",
+  ).length;
   const tarefasAtrasadas = tasks.filter(
     (t) => t.status !== "concluida" && new Date(t.dueDate) < new Date(hojeISO),
   ).length;
-  const cobrancasPendentes = clients.filter((c) => c.status === "ativo" && c.paymentDay <= diaAtual).length;
+  const cobrancasPendentes = clients.filter(
+    (c) => c.status === "ativo" && c.paymentDay <= diaAtual,
+  ).length;
 
   const fechados = leads.filter((l) => l.stage === "fechado");
   const vendasMes = fechados.length;
@@ -65,17 +67,54 @@ function Dashboard() {
   const contratosNecessarios = ticketMedio > 0 ? Math.max(0, Math.ceil(gap / ticketMedio)) : 0;
   const taxaReuniaoFech = pontoControleAtual?.taxaReuniaoFechamento || 30;
   const taxaProspReuniao = pontoControleAtual?.taxaProspeccaoReuniao || 20;
-  const reunioesNecessarias = taxaReuniaoFech > 0 ? Math.ceil(contratosNecessarios / (taxaReuniaoFech / 100)) : 0;
-  const prospeccoesNecessarias = taxaProspReuniao > 0 ? Math.ceil(reunioesNecessarias / (taxaProspReuniao / 100)) : 0;
+  const reunioesNecessarias =
+    taxaReuniaoFech > 0 ? Math.ceil(contratosNecessarios / (taxaReuniaoFech / 100)) : 0;
+  const prospeccoesNecessarias =
+    taxaProspReuniao > 0 ? Math.ceil(reunioesNecessarias / (taxaProspReuniao / 100)) : 0;
 
-
-  const pulse: { label: string; value: number | string; icon: typeof Sparkles; tone: PulseTone; to: string }[] = [
+  const pulse: {
+    label: string;
+    value: number | string;
+    icon: typeof Sparkles;
+    tone: PulseTone;
+    to: string;
+  }[] = [
     { label: "Leads novos", value: leadsNovos, icon: Sparkles, tone: "primary", to: "/comercial" },
-    { label: "Aguardando contato", value: leadsAguardando, icon: Users2, tone: "info", to: "/comercial" },
-    { label: "Follow-ups pendentes", value: followupsPendentes, icon: Clock4, tone: "warning", to: "/comercial" },
-    { label: "Reuniões hoje", value: reunioesHoje, icon: Calendar, tone: "primary", to: "/operacao" },
-    { label: "Tarefas atrasadas", value: tarefasAtrasadas, icon: AlertTriangle, tone: "destructive", to: "/operacao" },
-    { label: "Cobranças pendentes", value: cobrancasPendentes, icon: Wallet, tone: "warning", to: "/dre" },
+    {
+      label: "Aguardando contato",
+      value: leadsAguardando,
+      icon: Users2,
+      tone: "info",
+      to: "/comercial",
+    },
+    {
+      label: "Follow-ups pendentes",
+      value: followupsPendentes,
+      icon: Clock4,
+      tone: "warning",
+      to: "/comercial",
+    },
+    {
+      label: "Reuniões hoje",
+      value: reunioesHoje,
+      icon: Calendar,
+      tone: "primary",
+      to: "/operacao",
+    },
+    {
+      label: "Tarefas atrasadas",
+      value: tarefasAtrasadas,
+      icon: AlertTriangle,
+      tone: "destructive",
+      to: "/operacao",
+    },
+    {
+      label: "Cobranças pendentes",
+      value: cobrancasPendentes,
+      icon: Wallet,
+      tone: "warning",
+      to: "/dre",
+    },
   ];
 
   const proximasAcoes = sortByPriority(insights)
@@ -94,11 +133,13 @@ function Dashboard() {
       to: i.to,
     }));
 
-
   return (
     <AppShell title="Dashboard" subtitle="Como está sua agência hoje">
       <div className="px-4 py-6 md:px-6">
-        <PageHeader title="Bom dia, Rafael" subtitle="Aqui está o pulso da operação — atualizado agora.">
+        <PageHeader
+          title="Bom dia, Rafael"
+          subtitle="Aqui está o pulso da operação — atualizado agora."
+        >
           <Link
             to="/comercial"
             className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
@@ -116,7 +157,15 @@ function Dashboard() {
 
         {/* Meta + IA Executiva */}
         <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-5">
-          <MetaCard vendas={vendasMes} meta={meta} receita={receita} projecao={projecao} pct={pct} noRitmo={noRitmo} diasRestantes={diasRestantes} />
+          <MetaCard
+            vendas={vendasMes}
+            meta={meta}
+            receita={receita}
+            projecao={projecao}
+            pct={pct}
+            noRitmo={noRitmo}
+            diasRestantes={diasRestantes}
+          />
           <IAExecutivaCard
             meta={meta}
             projecao={projecao}
@@ -138,7 +187,10 @@ function Dashboard() {
                 <h3 className="text-sm font-semibold tracking-tight">Próximas ações</h3>
                 <p className="text-[11px] text-muted-foreground">Priorizadas pela IA para hoje</p>
               </div>
-              <Link to="/central-ia" className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline">
+              <Link
+                to="/central-ia"
+                className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline"
+              >
                 Ver todas <ArrowRight className="h-3 w-3" />
               </Link>
             </div>
@@ -149,7 +201,6 @@ function Dashboard() {
                     to={a.to as string}
                     className="flex items-center gap-2.5 rounded-md p-2 transition-colors hover:bg-accent"
                   >
-
                     <span
                       className={cn(
                         "h-1.5 w-1.5 shrink-0 rounded-full",
@@ -172,12 +223,19 @@ function Dashboard() {
               <div>
                 <h3 className="text-sm font-semibold tracking-tight">Agenda de hoje</h3>
                 <p className="text-[11px] text-muted-foreground">
-                  {new Date(hojeISO + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" })}
+                  {new Date(hojeISO + "T00:00:00").toLocaleDateString("pt-BR", {
+                    day: "2-digit",
+                    month: "short",
+                    year: "numeric",
+                  })}
                   {" · "}
                   {agendaEvents.filter((e) => e.date === hojeISO).length} compromissos
                 </p>
               </div>
-              <Link to="/operacao" className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline">
+              <Link
+                to="/operacao"
+                className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline"
+              >
                 Abrir agenda <ArrowRight className="h-3 w-3" />
               </Link>
             </div>
@@ -192,7 +250,9 @@ function Dashboard() {
                     <span className="font-mono text-[11px] text-primary">{e.time}</span>
                     <span className="min-w-0 flex-1 truncate text-[13px]">{e.title}</span>
                     {e.with && (
-                      <span className="hidden text-[10px] text-muted-foreground sm:inline">com {e.with}</span>
+                      <span className="hidden text-[10px] text-muted-foreground sm:inline">
+                        com {e.with}
+                      </span>
                     )}
                   </li>
                 ))}
@@ -206,7 +266,9 @@ function Dashboard() {
                   >
                     <CheckSquare className="h-3 w-3 text-muted-foreground" />
                     <span className="min-w-0 flex-1 truncate text-[13px]">{t.title}</span>
-                    <span className="text-[10px] text-muted-foreground">{t.owner.split(" ")[0]}</span>
+                    <span className="text-[10px] text-muted-foreground">
+                      {t.owner.split(" ")[0]}
+                    </span>
                   </li>
                 ))}
             </ul>
@@ -249,7 +311,12 @@ function PulseCard({
           </div>
           <div className="mt-2 font-mono text-[24px] font-semibold tracking-tight">{value}</div>
         </div>
-        <div className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-md", toneMap[tone])}>
+        <div
+          className={cn(
+            "flex h-8 w-8 shrink-0 items-center justify-center rounded-md",
+            toneMap[tone],
+          )}
+        >
           <Icon className="h-4 w-4" />
         </div>
       </div>
@@ -287,7 +354,10 @@ function MetaCard({
             <h3 className="text-sm font-semibold tracking-tight">Meta do mês</h3>
           </div>
           <p className="mt-1 text-[11px] text-muted-foreground">
-            {pontoControleAtual ? "Meta do Ponto de Controle" : "Meta padrão — defina no Ponto de Controle"} · {diasRestantes} dias restantes
+            {pontoControleAtual
+              ? "Meta do Ponto de Controle"
+              : "Meta padrão — defina no Ponto de Controle"}{" "}
+            · {diasRestantes} dias restantes
           </p>
         </div>
         <span
@@ -309,11 +379,18 @@ function MetaCard({
         </div>
         <div className="rounded-md bg-surface/60 px-2.5 py-2">
           <div className="text-muted-foreground">Receita atual</div>
-          <div className="font-mono text-[15px] font-semibold text-primary">{formatBRL(receita)}</div>
+          <div className="font-mono text-[15px] font-semibold text-primary">
+            {formatBRL(receita)}
+          </div>
         </div>
         <div className="rounded-md bg-surface/60 px-2.5 py-2">
           <div className="text-muted-foreground">Receita prevista</div>
-          <div className={cn("font-mono text-[15px] font-semibold", noRitmo ? "text-success" : "text-warning")}>
+          <div
+            className={cn(
+              "font-mono text-[15px] font-semibold",
+              noRitmo ? "text-success" : "text-warning",
+            )}
+          >
             {formatBRL(projecao)}
           </div>
         </div>
@@ -367,14 +444,14 @@ function IAExecutivaCard({
               IA Executiva
             </div>
             <h3 className="mt-0.5 text-[15px] font-semibold leading-snug tracking-tight md:text-base">
-              Para bater {formatBRL(meta)}, faltam {diasRestantes} dias.
-              {" "}
+              Para bater {formatBRL(meta)}, faltam {diasRestantes} dias.{" "}
               <span className={cn(noRitmo ? "text-success" : "text-warning")}>
                 Ritmo atual projeta {formatBRL(projecao)}.
               </span>
             </h3>
             <p className="mt-2 text-[12.5px] leading-relaxed text-muted-foreground">
-              Com {taxaProspReuniao}% de agendamento e {taxaReuniaoFech}% de fechamento (do seu Ponto de Controle), recomendo executar hoje:
+              Com {taxaProspReuniao}% de agendamento e {taxaReuniaoFech}% de fechamento (do seu
+              Ponto de Controle), recomendo executar hoje:
             </p>
           </div>
         </div>
@@ -389,7 +466,15 @@ function IAExecutivaCard({
   );
 }
 
-function Recommendation({ label, value, highlight }: { label: string; value: number; highlight?: boolean }) {
+function Recommendation({
+  label,
+  value,
+  highlight,
+}: {
+  label: string;
+  value: number;
+  highlight?: boolean;
+}) {
   return (
     <div
       className={cn(
@@ -398,7 +483,9 @@ function Recommendation({ label, value, highlight }: { label: string; value: num
       )}
     >
       <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{label}</div>
-      <div className={cn("mt-1 font-mono text-xl font-semibold", highlight && "text-primary")}>{value}</div>
+      <div className={cn("mt-1 font-mono text-xl font-semibold", highlight && "text-primary")}>
+        {value}
+      </div>
     </div>
   );
 }

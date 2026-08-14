@@ -13,7 +13,13 @@ import {
 import { useState, useRef, useEffect, useMemo } from "react";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { useDataStore } from "@/lib/data-store";
-import { gerarResumoCliente, classificarSentimento, exportarRelatorioPDF, linkWhatsApp, type RelatorioCliente } from "@/lib/client-report";
+import {
+  gerarResumoCliente,
+  classificarSentimento,
+  exportarRelatorioPDF,
+  linkWhatsApp,
+  type RelatorioCliente,
+} from "@/lib/client-report";
 import { playPop } from "@/lib/sound";
 import { cn } from "@/lib/utils";
 
@@ -37,9 +43,18 @@ const sugestoes = [
 
 type ChatMessage =
   | { id: string; kind: "text"; role: "user" | "assistant"; text: string; hora: string }
-  | { id: string; kind: "relatorio"; role: "assistant"; relatorio: RelatorioCliente; sentimento: ReturnType<typeof classificarSentimento>; clientPhone?: string; hora: string };
+  | {
+      id: string;
+      kind: "relatorio";
+      role: "assistant";
+      relatorio: RelatorioCliente;
+      sentimento: ReturnType<typeof classificarSentimento>;
+      clientPhone?: string;
+      hora: string;
+    };
 
-const horaAgora = () => new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+const horaAgora = () =>
+  new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 
 function CentralIA() {
   const { clients, projects } = useDataStore();
@@ -75,7 +90,13 @@ function CentralIA() {
   const enviarMensagem = (texto: string) => {
     const limpo = texto.trim();
     if (!limpo) return;
-    const userMsg: ChatMessage = { id: `u-${Date.now()}`, kind: "text", role: "user", text: limpo, hora: horaAgora() };
+    const userMsg: ChatMessage = {
+      id: `u-${Date.now()}`,
+      kind: "text",
+      role: "user",
+      text: limpo,
+      hora: horaAgora(),
+    };
     setMessages((prev) => [...prev, userMsg]);
     setChatInput("");
     responderComAtraso({
@@ -96,7 +117,13 @@ function CentralIA() {
 
     setMessages((prev) => [
       ...prev,
-      { id: `u-${Date.now()}`, kind: "text", role: "user", text: `Gerar relatório mensal de ${client.company}`, hora: horaAgora() },
+      {
+        id: `u-${Date.now()}`,
+        kind: "text",
+        role: "user",
+        text: `Gerar relatório mensal de ${client.company}`,
+        hora: horaAgora(),
+      },
     ]);
     responderComAtraso({
       id: `a-${Date.now()}`,
@@ -109,12 +136,18 @@ function CentralIA() {
     });
   };
 
-  const clienteAtivo = useMemo(() => clients.find((c) => c.id === clienteSelecionado), [clients, clienteSelecionado]);
+  const clienteAtivo = useMemo(
+    () => clients.find((c) => c.id === clienteSelecionado),
+    [clients, clienteSelecionado],
+  );
 
   return (
     <AppShell title="Central de IA" subtitle="Assistente inteligente da Veloce">
       <div className="flex h-[calc(100vh-3.5rem)] flex-col px-4 py-6 md:px-6">
-        <PageHeader title="Central de IA" subtitle="Converse com o assistente ou gere um relatório pra um cliente" />
+        <PageHeader
+          title="Central de IA"
+          subtitle="Converse com o assistente ou gere um relatório pra um cliente"
+        />
 
         {/* ─── Chat — visual premium ──────────────────────────────────────────── */}
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border bg-card shadow-[0_1px_0_0_rgba(255,255,255,0.03)_inset,0_20px_60px_-24px_rgba(0,0,0,0.5)]">
@@ -127,7 +160,9 @@ function CentralIA() {
               </div>
               <div>
                 <div className="text-[15px] font-semibold leading-tight">Assistente Veloce</div>
-                <div className="text-[12px] text-muted-foreground">Sua operação, em uma conversa</div>
+                <div className="text-[12px] text-muted-foreground">
+                  Sua operação, em uma conversa
+                </div>
               </div>
             </div>
             <span className="rounded-full border border-warning/30 bg-warning/10 px-3 py-1.5 text-[11px] font-medium uppercase tracking-wider text-warning">
@@ -136,10 +171,16 @@ function CentralIA() {
           </div>
 
           {/* Mensagens */}
-          <div ref={scrollRef} className="flex flex-1 flex-col gap-3.5 overflow-y-auto bg-background/40 px-5 py-6">
+          <div
+            ref={scrollRef}
+            className="flex flex-1 flex-col gap-3.5 overflow-y-auto bg-background/40 px-5 py-6"
+          >
             {messages.map((m) =>
               m.kind === "text" ? (
-                <div key={m.id} className={cn("flex", m.role === "user" ? "justify-end" : "justify-start")}>
+                <div
+                  key={m.id}
+                  className={cn("flex", m.role === "user" ? "justify-end" : "justify-start")}
+                >
                   <div
                     className={cn(
                       "max-w-[70%] rounded-2xl px-4 py-3 text-[14px] leading-relaxed shadow-sm",
@@ -149,7 +190,14 @@ function CentralIA() {
                     )}
                   >
                     {m.text}
-                    <div className={cn("mt-1.5 text-[10px] text-muted-foreground", m.role === "user" && "text-right")}>{m.hora}</div>
+                    <div
+                      className={cn(
+                        "mt-1.5 text-[10px] text-muted-foreground",
+                        m.role === "user" && "text-right",
+                      )}
+                    >
+                      {m.hora}
+                    </div>
                   </div>
                 </div>
               ) : (
@@ -171,7 +219,9 @@ function CentralIA() {
 
           {/* Ações — organizadas em blocos com rótulo, em vez de tudo espremido numa linha só */}
           <div className="border-t bg-surface/50 px-5 py-3.5">
-            <div className="mb-2 text-[10px] font-medium uppercase tracking-widest text-muted-foreground">Ações</div>
+            <div className="mb-2 text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+              Ações
+            </div>
             <div className="flex flex-wrap items-center gap-2">
               {!mostrarSeletorRelatorio ? (
                 <button
@@ -220,7 +270,9 @@ function CentralIA() {
 
           {/* Sugestões rápidas — bloco próprio, separado das ações */}
           <div className="border-t bg-surface/40 px-5 py-3">
-            <div className="mb-2 text-[10px] font-medium uppercase tracking-widest text-muted-foreground">Perguntas sugeridas</div>
+            <div className="mb-2 text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+              Perguntas sugeridas
+            </div>
             <div className="flex flex-wrap gap-1.5">
               {sugestoes.map((s) => (
                 <button
@@ -271,11 +323,18 @@ function RelatorioBubble({ msg }: { msg: Extract<ChatMessage, { kind: "relatorio
         ) : (
           <CircleAlert className="h-3.5 w-3.5 text-warning" />
         )}
-        <span className={cn("text-[11px] font-medium", sentimento.status === "bom" ? "text-success" : "text-warning")}>
+        <span
+          className={cn(
+            "text-[11px] font-medium",
+            sentimento.status === "bom" ? "text-success" : "text-warning",
+          )}
+        >
           {sentimento.status === "bom" ? "Indo bem" : "Precisa de atenção"} · {sentimento.motivo}
         </span>
       </div>
-      <div className="whitespace-pre-line px-4 py-3 text-[13px] leading-relaxed">{relatorio.resumo}</div>
+      <div className="whitespace-pre-line px-4 py-3 text-[13px] leading-relaxed">
+        {relatorio.resumo}
+      </div>
       <div className="flex items-center gap-2 border-t bg-surface/30 px-4 py-2.5">
         <button
           onClick={() => exportarRelatorioPDF(relatorio)}

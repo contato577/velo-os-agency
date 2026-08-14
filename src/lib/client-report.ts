@@ -32,17 +32,26 @@ function periodoAtual(): string {
 // Classificação simples de sentimento — usada pra dar um resumo objetivo
 // ("indo bem" / "precisa de atenção") sem inventar número nenhum:
 // olha só prazo estourado e progresso médio dos projetos ativos.
-export function classificarSentimento(projetos: Project[]): { status: "bom" | "atencao"; motivo: string } {
+export function classificarSentimento(projetos: Project[]): {
+  status: "bom" | "atencao";
+  motivo: string;
+} {
   const ativos = projetos.filter((p) => p.status !== "entregue");
   if (ativos.length === 0) return { status: "bom", motivo: "Nenhum projeto em aberto no momento." };
   const hoje = new Date();
   const atrasados = ativos.filter((p) => new Date(p.deadline) < hoje);
   if (atrasados.length > 0) {
-    return { status: "atencao", motivo: `${atrasados.length} projeto${atrasados.length === 1 ? "" : "s"} com prazo estourado.` };
+    return {
+      status: "atencao",
+      motivo: `${atrasados.length} projeto${atrasados.length === 1 ? "" : "s"} com prazo estourado.`,
+    };
   }
   const progressoMedio = ativos.reduce((s, p) => s + p.progress, 0) / ativos.length;
   if (progressoMedio < 30) {
-    return { status: "atencao", motivo: "Progresso ainda baixo nos projetos ativos — vale reforçar o ritmo." };
+    return {
+      status: "atencao",
+      motivo: "Progresso ainda baixo nos projetos ativos — vale reforçar o ritmo.",
+    };
   }
   return { status: "bom", motivo: "Projetos dentro do prazo, progresso saudável." };
 }
@@ -57,16 +66,19 @@ export function gerarResumoCliente(
     .filter((p) => p.status === "entregue" || p.progress >= 80)
     .map((p) => p.name);
 
-  const proximosPassos = projetosAtivos.map((p) =>
-    `Avançar ${p.name} (${p.progress}% concluído — prazo ${new Date(p.deadline).toLocaleDateString("pt-BR")})`,
+  const proximosPassos = projetosAtivos.map(
+    (p) =>
+      `Avançar ${p.name} (${p.progress}% concluído — prazo ${new Date(p.deadline).toLocaleDateString("pt-BR")})`,
   );
 
   const resumo =
     `Olá ${client.name},\n\n` +
     `Este é o resumo da sua operação em ${periodo}. ` +
-    `${projetosAtivos.length > 0
-      ? `Estamos com ${projetosAtivos.length} ${projetosAtivos.length === 1 ? "projeto" : "projetos"} em andamento`
-      : "Todos os projetos do período foram concluídos"}` +
+    `${
+      projetosAtivos.length > 0
+        ? `Estamos com ${projetosAtivos.length} ${projetosAtivos.length === 1 ? "projeto" : "projetos"} em andamento`
+        : "Todos os projetos do período foram concluídos"
+    }` +
     `${entregas.length > 0 ? ` e já entregamos ${entregas.length} ${entregas.length === 1 ? "iniciativa" : "iniciativas"} importantes` : ""}. ` +
     `\n\nSua mensalidade atual é de R$ ${client.monthlyValue.toLocaleString("pt-BR")} e o próximo pagamento vence no dia ${client.paymentDay}. ` +
     `\n\nOs próximos passos combinados são:\n${proximosPassos.map((p) => `• ${p}`).join("\n")}\n\n` +

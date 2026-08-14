@@ -204,7 +204,9 @@ export function AppShell({
               <h1 className="truncate text-sm font-semibold tracking-tight">
                 {title === "Dashboard" ? "Comercial" : title}
               </h1>
-              {subtitle && <span className="truncate text-xs text-muted-foreground">{subtitle}</span>}
+              {subtitle && (
+                <span className="truncate text-xs text-muted-foreground">{subtitle}</span>
+              )}
             </div>
           </div>
           <div className="hidden max-w-md flex-1 md:block">
@@ -241,14 +243,21 @@ export function AppShell({
                   <div className="absolute right-0 top-10 z-40 w-80 rounded-lg border bg-popover p-2 shadow-elegant">
                     <div className="mb-1 flex items-center justify-between px-2 py-1">
                       <span className="text-xs font-semibold">Notificações</span>
-                      <span className="text-[10px] text-muted-foreground">{notifications.length} {notifications.length === 1 ? "ativa" : "ativas"}</span>
+                      <span className="text-[10px] text-muted-foreground">
+                        {notifications.length} {notifications.length === 1 ? "ativa" : "ativas"}
+                      </span>
                     </div>
                     <div className="flex max-h-80 flex-col gap-0.5 overflow-y-auto">
                       {notifications.length === 0 && (
-                        <div className="px-2 py-4 text-center text-[12px] text-muted-foreground">Tudo tranquilo por aqui.</div>
+                        <div className="px-2 py-4 text-center text-[12px] text-muted-foreground">
+                          Tudo tranquilo por aqui.
+                        </div>
                       )}
                       {notifications.map((n) => (
-                        <div key={n.id} className="flex items-start gap-2 rounded-md p-2 hover:bg-accent">
+                        <div
+                          key={n.id}
+                          className="flex items-start gap-2 rounded-md p-2 hover:bg-accent"
+                        >
                           <span
                             className={cn(
                               "mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full",
@@ -259,7 +268,9 @@ export function AppShell({
                           />
                           <div className="min-w-0 flex-1">
                             <div className="truncate text-[12px] font-medium">{n.title}</div>
-                            <div className="truncate text-[11px] text-muted-foreground">{n.description}</div>
+                            <div className="truncate text-[11px] text-muted-foreground">
+                              {n.description}
+                            </div>
                           </div>
                         </div>
                       ))}

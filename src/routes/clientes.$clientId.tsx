@@ -50,7 +50,11 @@ export const Route = createFileRoute("/clientes/$clientId")({
   head: () => ({
     meta: [
       { title: "Cliente · Veloce" },
-      { name: "description", content: "Visão 360° do cliente: geral, performance, operação, financeiro, documentos e histórico." },
+      {
+        name: "description",
+        content:
+          "Visão 360° do cliente: geral, performance, operação, financeiro, documentos e histórico.",
+      },
     ],
   }),
   component: ClienteDetalhe,
@@ -86,15 +90,24 @@ function ClienteDetalhe() {
   ];
 
   return (
-    <AppShell title={client.company} subtitle={`${client.plan} · ${formatBRL(client.monthlyValue)}/mês`}>
+    <AppShell
+      title={client.company}
+      subtitle={`${client.plan} · ${formatBRL(client.monthlyValue)}/mês`}
+    >
       <div className="px-4 py-6 md:px-6">
         <div className="mb-4">
-          <Link to="/clientes" className="inline-flex items-center gap-1.5 text-[12px] text-muted-foreground hover:text-foreground">
+          <Link
+            to="/clientes"
+            className="inline-flex items-center gap-1.5 text-[12px] text-muted-foreground hover:text-foreground"
+          >
             <ArrowLeft className="h-3.5 w-3.5" /> Voltar para clientes
           </Link>
         </div>
 
-        <PageHeader title={client.company} subtitle={`${client.name} · Responsável ${client.owner}`}>
+        <PageHeader
+          title={client.company}
+          subtitle={`${client.name} · Responsável ${client.owner}`}
+        >
           {/* Status agora é editável — antes era só um texto fixo, e o sistema não tinha como
               contabilizar o status real do cliente sem alguém poder atualizá-lo manualmente. */}
           <div className="relative">
@@ -122,7 +135,8 @@ function ClienteDetalhe() {
           {/* Fluxo em 2 passos, agora que Cancelado e Arquivado são coisas diferentes:
               1) Cliente ativo → "Cancelar" (perdeu o cliente de vez, fica registrado quando)
               2) Já cancelado → "Arquivar" (só organização interna, não mexe em mais nada) */}
-          {client.status !== "cancelado" && client.status !== "arquivado" &&
+          {client.status !== "cancelado" &&
+            client.status !== "arquivado" &&
             (confirmArquivar ? (
               <div className="flex items-center gap-1.5 rounded-md border border-destructive/30 bg-destructive/5 px-2 py-1">
                 <span className="text-[11px] text-destructive">Cancelar este cliente?</span>
@@ -135,7 +149,10 @@ function ClienteDetalhe() {
                 >
                   Confirmar
                 </button>
-                <button onClick={() => setConfirmArquivar(false)} className="text-[11px] text-muted-foreground hover:text-foreground">
+                <button
+                  onClick={() => setConfirmArquivar(false)}
+                  className="text-[11px] text-muted-foreground hover:text-foreground"
+                >
                   Cancelar ação
                 </button>
               </div>
@@ -161,7 +178,10 @@ function ClienteDetalhe() {
                 >
                   Confirmar
                 </button>
-                <button onClick={() => setConfirmArquivar(false)} className="text-[11px] text-muted-foreground hover:text-foreground">
+                <button
+                  onClick={() => setConfirmArquivar(false)}
+                  className="text-[11px] text-muted-foreground hover:text-foreground"
+                >
                   Cancelar ação
                 </button>
               </div>
@@ -256,7 +276,12 @@ function TabGeral({ client }: { client: Client }) {
   const [form, setForm] = useState({
     name: client.name,
     company: client.company,
-    email: client.email ?? `contato@${client.company.toLowerCase().replace(/[^a-z]/g, "").slice(0, 12)}.com.br`,
+    email:
+      client.email ??
+      `contato@${client.company
+        .toLowerCase()
+        .replace(/[^a-z]/g, "")
+        .slice(0, 12)}.com.br`,
     phone: client.phone ?? `+55 11 9${String(80000000 + client.id.length * 12345).slice(0, 8)}`,
   });
 
@@ -265,7 +290,12 @@ function TabGeral({ client }: { client: Client }) {
     setForm({
       name: client.name,
       company: client.company,
-      email: client.email ?? `contato@${client.company.toLowerCase().replace(/[^a-z]/g, "").slice(0, 12)}.com.br`,
+      email:
+        client.email ??
+        `contato@${client.company
+          .toLowerCase()
+          .replace(/[^a-z]/g, "")
+          .slice(0, 12)}.com.br`,
       phone: client.phone ?? `+55 11 9${String(80000000 + client.id.length * 12345).slice(0, 8)}`,
     });
     setEditing(true);
@@ -278,7 +308,9 @@ function TabGeral({ client }: { client: Client }) {
 
   // Contract state (stored on the client object via updateClientInfo-like approach)
   const [showContractUpload, setShowContractUpload] = useState(false);
-  const [contrato, setContrato] = useState<{ nome: string; url: string } | undefined>(client.contratoArquivo);
+  const [contrato, setContrato] = useState<{ nome: string; url: string } | undefined>(
+    client.contratoArquivo,
+  );
   const contratoInputRef = useRef<HTMLInputElement>(null);
 
   const handleContratoUpload = (files: FileList | null) => {
@@ -347,7 +379,11 @@ function TabGeral({ client }: { client: Client }) {
                 value={form.email}
                 onChange={(v) => setForm((f) => ({ ...f, email: v }))}
               />
-              <Field icon={Calendar} label="Cliente desde" value={new Date(client.since).toLocaleDateString("pt-BR")} />
+              <Field
+                icon={Calendar}
+                label="Cliente desde"
+                value={new Date(client.since).toLocaleDateString("pt-BR")}
+              />
               <Field icon={User} label="Responsável Veloce" value={client.owner} />
             </>
           ) : (
@@ -357,14 +393,27 @@ function TabGeral({ client }: { client: Client }) {
               <Field
                 icon={Phone}
                 label="Telefone"
-                value={client.phone ?? `+55 11 9${String(80000000 + client.id.length * 12345).slice(0, 8)}`}
+                value={
+                  client.phone ??
+                  `+55 11 9${String(80000000 + client.id.length * 12345).slice(0, 8)}`
+                }
               />
               <Field
                 icon={Mail}
                 label="E-mail"
-                value={client.email ?? `contato@${client.company.toLowerCase().replace(/[^a-z]/g, "").slice(0, 12)}.com.br`}
+                value={
+                  client.email ??
+                  `contato@${client.company
+                    .toLowerCase()
+                    .replace(/[^a-z]/g, "")
+                    .slice(0, 12)}.com.br`
+                }
               />
-              <Field icon={Calendar} label="Cliente desde" value={new Date(client.since).toLocaleDateString("pt-BR")} />
+              <Field
+                icon={Calendar}
+                label="Cliente desde"
+                value={new Date(client.since).toLocaleDateString("pt-BR")}
+              />
               <Field icon={User} label="Responsável Veloce" value={client.owner} />
             </>
           )}
@@ -375,7 +424,9 @@ function TabGeral({ client }: { client: Client }) {
         <h3 className="mb-4 text-sm font-semibold tracking-tight">Contrato</h3>
         <div className="space-y-3">
           <div>
-            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Plano contratado</div>
+            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
+              Plano contratado
+            </div>
             <div className="mt-1 text-[15px] font-semibold">{client.plano || client.plan}</div>
             {client.plano && (
               <span className="mt-1 inline-block rounded bg-muted px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wider text-muted-foreground">
@@ -384,25 +435,47 @@ function TabGeral({ client }: { client: Client }) {
             )}
           </div>
           <div>
-            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Mensalidade</div>
-            <div className="mt-1 font-mono text-[20px] font-semibold text-primary">{formatBRL(client.monthlyValue)}</div>
-          </div>
-          <div>
-            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Vencimento (mensalidade)</div>
-            <div className="mt-1 text-[13px]">
-              {proximoVencimento(client.paymentDay).toLocaleDateString("pt-BR", { day: "2-digit", month: "long" })}
+            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
+              Mensalidade
             </div>
-            <div className="text-[10px] text-muted-foreground">Cobra todo dia {client.paymentDay}</div>
+            <div className="mt-1 font-mono text-[20px] font-semibold text-primary">
+              {formatBRL(client.monthlyValue)}
+            </div>
           </div>
           <div>
-            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Renovação (fim de contrato)</div>
-            <div className="mt-1 text-[13px]">{new Date(client.renewalDate).toLocaleDateString("pt-BR")}</div>
+            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
+              Vencimento (mensalidade)
+            </div>
+            <div className="mt-1 text-[13px]">
+              {proximoVencimento(client.paymentDay).toLocaleDateString("pt-BR", {
+                day: "2-digit",
+                month: "long",
+              })}
+            </div>
+            <div className="text-[10px] text-muted-foreground">
+              Cobra todo dia {client.paymentDay}
+            </div>
           </div>
           <div>
-            <div className="mb-1.5 text-[10px] uppercase tracking-widest text-muted-foreground">Serviços</div>
+            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
+              Renovação (fim de contrato)
+            </div>
+            <div className="mt-1 text-[13px]">
+              {new Date(client.renewalDate).toLocaleDateString("pt-BR")}
+            </div>
+          </div>
+          <div>
+            <div className="mb-1.5 text-[10px] uppercase tracking-widest text-muted-foreground">
+              Serviços
+            </div>
             <div className="flex flex-wrap gap-1">
               {client.services.map((s) => (
-                <span key={s} className="rounded bg-surface px-1.5 py-0.5 text-[11px] text-muted-foreground">{s}</span>
+                <span
+                  key={s}
+                  className="rounded bg-surface px-1.5 py-0.5 text-[11px] text-muted-foreground"
+                >
+                  {s}
+                </span>
               ))}
             </div>
           </div>
@@ -446,7 +519,9 @@ function TabGeral({ client }: { client: Client }) {
             <>
               {showContractUpload ? (
                 <div className="rounded-md border border-dashed p-3 text-center">
-                  <p className="mb-2 text-[11px] text-muted-foreground">Selecione o arquivo de contrato (PDF ou Word)</p>
+                  <p className="mb-2 text-[11px] text-muted-foreground">
+                    Selecione o arquivo de contrato (PDF ou Word)
+                  </p>
                   <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90">
                     <FileUp className="h-3.5 w-3.5" /> Escolher arquivo
                     <input
@@ -569,14 +644,18 @@ const adIntegrations = [
 // Toast de aviso de integração em breve
 function ComingSoonToast({ name, onClose }: { name: string; onClose: () => void }) {
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex items-start gap-3 rounded-xl border bg-card p-4 shadow-elegant animate-in fade-in slide-in-from-bottom-2 duration-200" style={{ maxWidth: 320 }}>
+    <div
+      className="fixed bottom-6 right-6 z-50 flex items-start gap-3 rounded-xl border bg-card p-4 shadow-elegant animate-in fade-in slide-in-from-bottom-2 duration-200"
+      style={{ maxWidth: 320 }}
+    >
       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-info/15">
         <Plug className="h-4 w-4 text-info" />
       </div>
       <div className="flex-1">
         <div className="text-[13px] font-semibold">Integração em breve</div>
         <p className="mt-0.5 text-[12px] text-muted-foreground">
-          A conexão com <strong>{name}</strong> requer backend com armazenamento seguro de tokens OAuth. Disponível quando o banco de dados for ativado.
+          A conexão com <strong>{name}</strong> requer backend com armazenamento seguro de tokens
+          OAuth. Disponível quando o banco de dados for ativado.
         </p>
       </div>
       <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
@@ -591,7 +670,10 @@ function TabPerformance({ client }: { client: Client }) {
   const [exporting, setExporting] = useState(false);
   const [toastIntegration, setToastIntegration] = useState<string | null>(null);
   const clientProjects = projects.filter((p) => p.clientId === client.id);
-  const relatorio = useMemo(() => gerarResumoCliente(client, clientProjects), [client, clientProjects]);
+  const relatorio = useMemo(
+    () => gerarResumoCliente(client, clientProjects),
+    [client, clientProjects],
+  );
 
   const handleExport = async () => {
     setExporting(true);
@@ -609,7 +691,9 @@ function TabPerformance({ client }: { client: Client }) {
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <div>
             <h3 className="text-sm font-semibold tracking-tight">Resumo do período</h3>
-            <p className="text-[11px] text-muted-foreground">{relatorio.periodo} · gerado automaticamente</p>
+            <p className="text-[11px] text-muted-foreground">
+              {relatorio.periodo} · gerado automaticamente
+            </p>
           </div>
           <div className="flex gap-2">
             <button
@@ -638,7 +722,9 @@ function TabPerformance({ client }: { client: Client }) {
       <div>
         <div className="mb-1">
           <h3 className="text-sm font-semibold tracking-tight">Integrações de anúncios</h3>
-          <p className="text-[12px] text-muted-foreground">Conecte as contas de anúncios do cliente para trazer dados em tempo real.</p>
+          <p className="text-[12px] text-muted-foreground">
+            Conecte as contas de anúncios do cliente para trazer dados em tempo real.
+          </p>
         </div>
         <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
           {adIntegrations.map((intg) => {
@@ -647,7 +733,12 @@ function TabPerformance({ client }: { client: Client }) {
               <div key={intg.key} className="flex flex-col rounded-xl border bg-card p-4">
                 {/* Header */}
                 <div className="mb-3 flex items-center justify-between">
-                  <div className={cn("flex h-9 w-9 items-center justify-center rounded-lg", intg.iconBg)}>
+                  <div
+                    className={cn(
+                      "flex h-9 w-9 items-center justify-center rounded-lg",
+                      intg.iconBg,
+                    )}
+                  >
                     <Icon className={cn("h-4.5 w-4.5", intg.iconColor)} />
                   </div>
                   <span className="flex items-center gap-1 rounded-full border border-destructive/20 bg-destructive/8 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-destructive/70">
@@ -657,13 +748,20 @@ function TabPerformance({ client }: { client: Client }) {
                 </div>
 
                 <h4 className="text-[14px] font-semibold tracking-tight">{intg.name}</h4>
-                <p className="mt-1 flex-1 text-[12px] leading-relaxed text-muted-foreground">{intg.description}</p>
+                <p className="mt-1 flex-1 text-[12px] leading-relaxed text-muted-foreground">
+                  {intg.description}
+                </p>
 
                 {/* Métricas — placeholder */}
                 <div className="mt-3 grid grid-cols-2 gap-1.5">
                   {intg.metrics.map((m) => (
-                    <div key={m.key} className="rounded-md border border-dashed bg-surface/40 px-2 py-1.5">
-                      <div className="text-[9px] uppercase tracking-wider text-muted-foreground/60">{m.label}</div>
+                    <div
+                      key={m.key}
+                      className="rounded-md border border-dashed bg-surface/40 px-2 py-1.5"
+                    >
+                      <div className="text-[9px] uppercase tracking-wider text-muted-foreground/60">
+                        {m.label}
+                      </div>
                       <div className="mt-0.5 text-[12px] font-mono text-muted-foreground/40">—</div>
                     </div>
                   ))}
@@ -689,14 +787,29 @@ function TabPerformance({ client }: { client: Client }) {
       <div>
         <div className="mb-3">
           <h3 className="text-sm font-semibold tracking-tight">Outras integrações</h3>
-          <p className="text-[12px] text-muted-foreground">Dados de SEO e páginas de conversão — disponíveis em breve.</p>
+          <p className="text-[12px] text-muted-foreground">
+            Dados de SEO e páginas de conversão — disponíveis em breve.
+          </p>
         </div>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           {[
-            { key: "gsc", name: "Google Search Console", description: "Impressões orgânicas, cliques, CTR e posição média.", Icon: SearchIcon },
-            { key: "landing", name: "Landing Pages", description: "Visitantes, tempo na página e taxa de conversão.", Icon: LayoutIcon },
+            {
+              key: "gsc",
+              name: "Google Search Console",
+              description: "Impressões orgânicas, cliques, CTR e posição média.",
+              Icon: SearchIcon,
+            },
+            {
+              key: "landing",
+              name: "Landing Pages",
+              description: "Visitantes, tempo na página e taxa de conversão.",
+              Icon: LayoutIcon,
+            },
           ].map((item) => (
-            <div key={item.key} className="flex items-center gap-3 rounded-xl border bg-card p-3.5 opacity-60">
+            <div
+              key={item.key}
+              className="flex items-center gap-3 rounded-xl border bg-card p-3.5 opacity-60"
+            >
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border bg-surface">
                 <item.Icon className="h-4 w-4 text-muted-foreground" />
               </div>
@@ -704,7 +817,9 @@ function TabPerformance({ client }: { client: Client }) {
                 <div className="text-[13px] font-medium">{item.name}</div>
                 <div className="text-[11px] text-muted-foreground">{item.description}</div>
               </div>
-              <span className="shrink-0 rounded border border-info/30 bg-info/10 px-1.5 py-0.5 text-[10px] font-medium text-info">Em breve</span>
+              <span className="shrink-0 rounded border border-info/30 bg-info/10 px-1.5 py-0.5 text-[10px] font-medium text-info">
+                Em breve
+              </span>
             </div>
           ))}
         </div>
@@ -727,9 +842,33 @@ interface DocItem {
 }
 
 const seedDocs: DocItem[] = [
-  { id: "d1", title: "Ata reunião kickoff.pdf", category: "Atas", type: "file", size: "420 KB", addedBy: "Rafael Souza", addedAt: "2026-06-01" },
-  { id: "d2", title: "Relatório Junho 2026.pdf", category: "Relatórios", type: "file", size: "1.2 MB", addedBy: "Camila Torres", addedAt: "2026-07-01" },
-  { id: "d3", title: "Plano estratégico Q3", category: "Estratégia", type: "link", url: "https://miro.com/app/board/exemplo", addedBy: "Rafael Souza", addedAt: "2026-06-15" },
+  {
+    id: "d1",
+    title: "Ata reunião kickoff.pdf",
+    category: "Atas",
+    type: "file",
+    size: "420 KB",
+    addedBy: "Rafael Souza",
+    addedAt: "2026-06-01",
+  },
+  {
+    id: "d2",
+    title: "Relatório Junho 2026.pdf",
+    category: "Relatórios",
+    type: "file",
+    size: "1.2 MB",
+    addedBy: "Camila Torres",
+    addedAt: "2026-07-01",
+  },
+  {
+    id: "d3",
+    title: "Plano estratégico Q3",
+    category: "Estratégia",
+    type: "link",
+    url: "https://miro.com/app/board/exemplo",
+    addedBy: "Rafael Souza",
+    addedAt: "2026-06-15",
+  },
 ];
 
 const categoryMeta: Record<DocCategory, { icon: typeof FolderOpen; color: string; bg: string }> = {
@@ -797,7 +936,9 @@ function TabDocumentos() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h3 className="text-sm font-semibold tracking-tight">Documentos do cliente</h3>
-            <p className="text-[12px] text-muted-foreground">Atas, relatórios, estratégia e outros arquivos.</p>
+            <p className="text-[12px] text-muted-foreground">
+              Atas, relatórios, estratégia e outros arquivos.
+            </p>
           </div>
           <div className="relative">
             <SearchIcon className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
@@ -813,13 +954,24 @@ function TabDocumentos() {
         {/* Se há busca ativa, mostra lista flat */}
         {query.trim() ? (
           <div className="rounded-xl border bg-card p-4">
-            <p className="mb-2 text-[11px] text-muted-foreground">{filtered.length} resultado(s) para "{query}"</p>
+            <p className="mb-2 text-[11px] text-muted-foreground">
+              {filtered.length} resultado(s) para "{query}"
+            </p>
             {filtered.length === 0 ? (
-              <div className="rounded-md border border-dashed py-6 text-center text-[11px] text-muted-foreground">Nenhum documento encontrado.</div>
+              <div className="rounded-md border border-dashed py-6 text-center text-[11px] text-muted-foreground">
+                Nenhum documento encontrado.
+              </div>
             ) : (
               <ul className="space-y-1">
                 {filtered.map((d) => (
-                  <DocRow key={d.id} doc={d} onDelete={() => setConfirmDeleteId(d.id)} confirmDeleteId={confirmDeleteId} onConfirmDelete={deleteDoc} onCancelDelete={() => setConfirmDeleteId(null)} />
+                  <DocRow
+                    key={d.id}
+                    doc={d}
+                    onDelete={() => setConfirmDeleteId(d.id)}
+                    confirmDeleteId={confirmDeleteId}
+                    onConfirmDelete={deleteDoc}
+                    onCancelDelete={() => setConfirmDeleteId(null)}
+                  />
                 ))}
               </ul>
             )}
@@ -838,7 +990,12 @@ function TabDocumentos() {
                   onClick={() => setOpenCategory(cat)}
                   className="group flex flex-col rounded-xl border bg-card p-4 text-left transition-all hover:-translate-y-0.5 hover:shadow-elegant"
                 >
-                  <div className={cn("mb-3 flex h-10 w-10 items-center justify-center rounded-lg", meta.bg)}>
+                  <div
+                    className={cn(
+                      "mb-3 flex h-10 w-10 items-center justify-center rounded-lg",
+                      meta.bg,
+                    )}
+                  >
                     <IconComp className={cn("h-5 w-5", meta.color)} />
                   </div>
                   <div className="text-[14px] font-semibold tracking-tight">{cat}</div>
@@ -873,7 +1030,10 @@ function TabDocumentos() {
     <div className="space-y-4">
       <div className="flex items-center gap-3">
         <button
-          onClick={() => { setOpenCategory(null); setAddingIn(null); }}
+          onClick={() => {
+            setOpenCategory(null);
+            setAddingIn(null);
+          }}
           className="inline-flex items-center gap-1 text-[12px] text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="h-3.5 w-3.5" /> Voltar
@@ -882,11 +1042,18 @@ function TabDocumentos() {
           <CatIcon className={cn("h-4 w-4", catMeta.color)} />
         </div>
         <h3 className="text-sm font-semibold tracking-tight">{openCategory}</h3>
-        <span className="rounded bg-accent px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">{catItems.length}</span>
+        <span className="rounded bg-accent px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
+          {catItems.length}
+        </span>
         <div className="ml-auto flex gap-2">
           <label className="inline-flex cursor-pointer items-center gap-1 rounded-md border bg-surface px-2.5 py-1.5 text-[11px] hover:bg-accent">
             <FileUp className="h-3 w-3" /> Arquivo
-            <input type="file" multiple className="hidden" onChange={(e) => addFile(openCategory, e.target.files)} />
+            <input
+              type="file"
+              multiple
+              className="hidden"
+              onChange={(e) => addFile(openCategory, e.target.files)}
+            />
           </label>
           <button
             onClick={() => setAddingIn(addingIn ? null : openCategory)}
@@ -960,35 +1127,71 @@ function DocRow({
   const isConfirming = confirmDeleteId === doc.id;
   return (
     <li className="flex items-center gap-2.5 rounded-md border bg-surface/50 px-3 py-2 text-[12px]">
-      {doc.type === "file" ? <FileText className="h-3.5 w-3.5 text-muted-foreground" /> : <LinkIcon className="h-3.5 w-3.5 text-info" />}
+      {doc.type === "file" ? (
+        <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+      ) : (
+        <LinkIcon className="h-3.5 w-3.5 text-info" />
+      )}
       {doc.type === "link" ? (
-        <a href={doc.url} target="_blank" rel="noopener noreferrer" className="min-w-0 flex-1 truncate hover:text-primary">
+        <a
+          href={doc.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="min-w-0 flex-1 truncate hover:text-primary"
+        >
           {doc.title}
         </a>
       ) : (
         <span className="min-w-0 flex-1 truncate">{doc.title}</span>
       )}
       <span className="hidden text-[10px] text-muted-foreground sm:inline">{doc.addedBy}</span>
-      <span className="text-[10px] text-muted-foreground">{new Date(doc.addedAt).toLocaleDateString("pt-BR")}</span>
+      <span className="text-[10px] text-muted-foreground">
+        {new Date(doc.addedAt).toLocaleDateString("pt-BR")}
+      </span>
       {doc.size && <span className="text-[10px] text-muted-foreground">{doc.size}</span>}
       {doc.url && doc.type === "file" && (
-        <a href={doc.url} download={doc.title} className="text-muted-foreground hover:text-foreground" title="Baixar">
+        <a
+          href={doc.url}
+          download={doc.title}
+          className="text-muted-foreground hover:text-foreground"
+          title="Baixar"
+        >
           <Download className="h-3 w-3" />
         </a>
       )}
       {doc.type === "link" && doc.url && (
-        <a href={doc.url} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground" title="Abrir">
+        <a
+          href={doc.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-muted-foreground hover:text-foreground"
+          title="Abrir"
+        >
           <ExternalLink className="h-3 w-3" />
         </a>
       )}
       {isConfirming ? (
         <div className="flex items-center gap-1">
           <span className="text-[10px] text-destructive">Excluir?</span>
-          <button onClick={() => onConfirmDelete(doc.id)} className="rounded bg-destructive/10 px-1.5 py-0.5 text-[10px] text-destructive hover:bg-destructive/20">Sim</button>
-          <button onClick={onCancelDelete} className="rounded bg-surface px-1.5 py-0.5 text-[10px] hover:bg-accent">Não</button>
+          <button
+            onClick={() => onConfirmDelete(doc.id)}
+            className="rounded bg-destructive/10 px-1.5 py-0.5 text-[10px] text-destructive hover:bg-destructive/20"
+          >
+            Sim
+          </button>
+          <button
+            onClick={onCancelDelete}
+            className="rounded bg-surface px-1.5 py-0.5 text-[10px] hover:bg-accent"
+          >
+            Não
+          </button>
         </div>
       ) : (
-        <button onClick={onDelete} className="text-muted-foreground hover:text-destructive" title="Excluir">
+        <button
+          onClick={onDelete}
+          className="text-muted-foreground hover:text-destructive"
+          title="Excluir"
+        >
           <Trash2 className="h-3 w-3" />
         </button>
       )}
@@ -1023,7 +1226,14 @@ const statusProjectMeta: Record<string, { label: string; className: string }> = 
 //   pendentes   → NUNCA são apagadas; continuam aparecendo (com aviso "semana passada")
 //                 até serem concluídas ou reagendadas — não somem sozinhas
 //   futuras     → seguem em Próximas Entregas até a semana delas chegar
-const CATEGORIAS_OPERACAO = ["Otimização", "Performance", "Criativos", "Relatório", "Reunião", "Outras"] as const;
+const CATEGORIAS_OPERACAO = [
+  "Otimização",
+  "Performance",
+  "Criativos",
+  "Relatório",
+  "Reunião",
+  "Outras",
+] as const;
 
 function inicioFimSemana(base: Date) {
   const inicio = new Date(base);
@@ -1066,7 +1276,9 @@ function OperacaoContinuaCenter({
     return d >= inicioSemana && d <= fimSemana;
   };
 
-  const planejamentoSemana = rotinas.filter((t) => t.status !== "concluida" && dataNaSemanaAtual(t.dueDate));
+  const planejamentoSemana = rotinas.filter(
+    (t) => t.status !== "concluida" && dataNaSemanaAtual(t.dueDate),
+  );
   // Pendências de semanas anteriores — não são apagadas nem escondidas, só separadas
   // do planejamento da semana atual pra ficar claro que já passaram do previsto.
   const pendenciasAnteriores = rotinas
@@ -1091,7 +1303,8 @@ function OperacaoContinuaCenter({
 
   // ── Formulário rápido de planejamento ──
   const [novoTitulo, setNovoTitulo] = useState("");
-  const [novaCategoria, setNovaCategoria] = useState<(typeof CATEGORIAS_OPERACAO)[number]>("Otimização");
+  const [novaCategoria, setNovaCategoria] =
+    useState<(typeof CATEGORIAS_OPERACAO)[number]>("Otimização");
   const [novaData, setNovaData] = useState(hoje.toISOString().slice(0, 10));
   const [novoProjetoId, setNovoProjetoId] = useState(opProjects[0]?.id ?? "");
 
@@ -1127,28 +1340,47 @@ function OperacaoContinuaCenter({
           <div className="flex h-7 w-7 items-center justify-center rounded-md bg-success/15">
             <CheckCircle2 className="h-3.5 w-3.5 text-success" />
           </div>
-          <h3 className="text-sm font-semibold tracking-tight">{client.company} · Gestão do Cliente</h3>
+          <h3 className="text-sm font-semibold tracking-tight">
+            {client.company} · Gestão do Cliente
+          </h3>
         </div>
         <p className="text-[11px] text-muted-foreground">
-          Serviço{opProjects.length > 1 ? "s" : ""} ativo{opProjects.length > 1 ? "s" : ""}: {opProjects.map((p) => p.type).join(", ")}
+          Serviço{opProjects.length > 1 ? "s" : ""} ativo{opProjects.length > 1 ? "s" : ""}:{" "}
+          {opProjects.map((p) => p.type).join(", ")}
         </p>
         <div className="mt-3 grid grid-cols-2 gap-1.5 sm:grid-cols-4">
           <div className="rounded-lg border bg-surface/40 p-2 text-center">
-            <div className="font-mono text-[15px] font-semibold text-primary">{planejamentoSemana.length}</div>
+            <div className="font-mono text-[15px] font-semibold text-primary">
+              {planejamentoSemana.length}
+            </div>
             <div className="text-[10px] text-muted-foreground">Nesta semana</div>
           </div>
-          <div className={cn("rounded-lg border p-2 text-center", pendenciasAnteriores.length > 0 ? "border-warning/40 bg-warning/5" : "bg-surface/40")}>
-            <div className={cn("font-mono text-[15px] font-semibold", pendenciasAnteriores.length > 0 ? "text-warning" : "text-muted-foreground")}>
+          <div
+            className={cn(
+              "rounded-lg border p-2 text-center",
+              pendenciasAnteriores.length > 0 ? "border-warning/40 bg-warning/5" : "bg-surface/40",
+            )}
+          >
+            <div
+              className={cn(
+                "font-mono text-[15px] font-semibold",
+                pendenciasAnteriores.length > 0 ? "text-warning" : "text-muted-foreground",
+              )}
+            >
               {pendenciasAnteriores.length}
             </div>
             <div className="text-[10px] text-muted-foreground">Pendente (atrasada)</div>
           </div>
           <div className="rounded-lg border bg-surface/40 p-2 text-center">
-            <div className="font-mono text-[15px] font-semibold text-success">{historicoPorSemana.reduce((s, [, g]) => s + g.itens.length, 0)}</div>
+            <div className="font-mono text-[15px] font-semibold text-success">
+              {historicoPorSemana.reduce((s, [, g]) => s + g.itens.length, 0)}
+            </div>
             <div className="text-[10px] text-muted-foreground">Concluídas (total)</div>
           </div>
           <div className="rounded-lg border bg-surface/40 p-2 text-center">
-            <div className="font-mono text-[15px] font-semibold text-muted-foreground">{proximasEntregas.length}</div>
+            <div className="font-mono text-[15px] font-semibold text-muted-foreground">
+              {proximasEntregas.length}
+            </div>
             <div className="text-[10px] text-muted-foreground">Próximas entregas</div>
           </div>
         </div>
@@ -1157,23 +1389,34 @@ function OperacaoContinuaCenter({
       {/* Pendências de semanas anteriores — não somem sozinhas, ficam até reagendar ou concluir */}
       {pendenciasAnteriores.length > 0 && (
         <div className="rounded-xl border border-warning/30 bg-warning/5 p-4">
-          <h3 className="mb-1 text-sm font-semibold tracking-tight text-warning">Pendências de semanas anteriores</h3>
+          <h3 className="mb-1 text-sm font-semibold tracking-tight text-warning">
+            Pendências de semanas anteriores
+          </h3>
           <p className="mb-3 text-[11px] text-muted-foreground">
-            Ficaram sem concluir na semana planejada. Continuam em Minha Semana — reagende pra essa semana ou conclua.
+            Ficaram sem concluir na semana planejada. Continuam em Minha Semana — reagende pra essa
+            semana ou conclua.
           </p>
           <ul className="space-y-1">
             {pendenciasAnteriores.map((t) => (
-              <li key={t.id} className="flex items-center gap-2.5 rounded-md border bg-card px-2.5 py-2">
+              <li
+                key={t.id}
+                className="flex items-center gap-2.5 rounded-md border bg-card px-2.5 py-2"
+              >
                 <button
                   onClick={() => toggleTaskDone(t.id)}
                   className="flex h-4 w-4 shrink-0 items-center justify-center rounded border-2 border-muted-foreground/40 hover:border-primary"
                 />
                 <span className="min-w-0 flex-1 truncate text-[13px]">{t.title}</span>
                 {t.labels?.[0] && (
-                  <span className="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 text-[9px] font-medium text-primary">{t.labels[0]}</span>
+                  <span className="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 text-[9px] font-medium text-primary">
+                    {t.labels[0]}
+                  </span>
                 )}
                 <span className="shrink-0 font-mono text-[10px] text-destructive">
-                  {new Date(t.dueDate + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}
+                  {new Date(t.dueDate + "T00:00:00").toLocaleDateString("pt-BR", {
+                    day: "2-digit",
+                    month: "2-digit",
+                  })}
                 </span>
                 <button
                   onClick={() => updateTask(t.id, { dueDate: hoje.toISOString().slice(0, 10) })}
@@ -1193,15 +1436,22 @@ function OperacaoContinuaCenter({
         <h3 className="mb-1 text-sm font-semibold tracking-tight">Planejamento da semana</h3>
         <p className="mb-3 text-[11px] text-muted-foreground">
           {inicioSemana.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })} a{" "}
-          {fimSemana.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })} — adicione só o que será executado nesse período.
+          {fimSemana.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })} — adicione
+          só o que será executado nesse período.
         </p>
 
         {/* Adicionar rápido */}
         <div className="mb-3 flex flex-wrap items-center gap-1.5 rounded-lg border bg-surface/40 p-2">
           {opProjects.length > 1 && (
-            <select value={novoProjetoId} onChange={(e) => setNovoProjetoId(e.target.value)} className="h-8 rounded-md border bg-card px-2 text-[11px]">
+            <select
+              value={novoProjetoId}
+              onChange={(e) => setNovoProjetoId(e.target.value)}
+              className="h-8 rounded-md border bg-card px-2 text-[11px]"
+            >
               {opProjects.map((p) => (
-                <option key={p.id} value={p.id}>{p.type}</option>
+                <option key={p.id} value={p.id}>
+                  {p.type}
+                </option>
               ))}
             </select>
           )}
@@ -1211,7 +1461,9 @@ function OperacaoContinuaCenter({
             className="h-8 rounded-md border bg-card px-2 text-[11px]"
           >
             {CATEGORIAS_OPERACAO.map((c) => (
-              <option key={c} value={c}>{c}</option>
+              <option key={c} value={c}>
+                {c}
+              </option>
             ))}
           </select>
           <input
@@ -1244,17 +1496,25 @@ function OperacaoContinuaCenter({
         ) : (
           <ul className="space-y-1">
             {planejamentoSemana.map((t) => (
-              <li key={t.id} className="flex items-center gap-2.5 rounded-md border bg-surface/50 px-2.5 py-2">
+              <li
+                key={t.id}
+                className="flex items-center gap-2.5 rounded-md border bg-surface/50 px-2.5 py-2"
+              >
                 <button
                   onClick={() => toggleTaskDone(t.id)}
                   className="flex h-4 w-4 shrink-0 items-center justify-center rounded border-2 border-muted-foreground/40 hover:border-primary"
                 />
                 <span className="min-w-0 flex-1 truncate text-[13px]">{t.title}</span>
                 {t.labels?.[0] && (
-                  <span className="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 text-[9px] font-medium text-primary">{t.labels[0]}</span>
+                  <span className="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 text-[9px] font-medium text-primary">
+                    {t.labels[0]}
+                  </span>
                 )}
                 <span className="shrink-0 font-mono text-[10px] text-muted-foreground">
-                  {new Date(t.dueDate + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}
+                  {new Date(t.dueDate + "T00:00:00").toLocaleDateString("pt-BR", {
+                    day: "2-digit",
+                    month: "2-digit",
+                  })}
                 </span>
               </li>
             ))}
@@ -1272,13 +1532,21 @@ function OperacaoContinuaCenter({
             <div className="max-h-64 space-y-3 overflow-y-auto pr-1">
               {historicoPorSemana.map(([label, grupo]) => (
                 <div key={label}>
-                  <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Semana {label}</div>
+                  <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Semana {label}
+                  </div>
                   <ul className="space-y-1">
                     {grupo.itens.map((t) => (
-                      <li key={t.id} className="flex items-center justify-between text-[12px] text-muted-foreground">
+                      <li
+                        key={t.id}
+                        className="flex items-center justify-between text-[12px] text-muted-foreground"
+                      >
                         <span className="truncate line-through">{t.title}</span>
                         <span className="shrink-0 font-mono text-[10px]">
-                          {new Date(t.dueDate + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}
+                          {new Date(t.dueDate + "T00:00:00").toLocaleDateString("pt-BR", {
+                            day: "2-digit",
+                            month: "2-digit",
+                          })}
                         </span>
                       </li>
                     ))}
@@ -1291,14 +1559,19 @@ function OperacaoContinuaCenter({
         <div className="rounded-xl border bg-card p-4">
           <h3 className="mb-2 text-sm font-semibold tracking-tight">Próximas entregas</h3>
           {proximasEntregas.length === 0 ? (
-            <p className="text-[11px] text-muted-foreground">Nada planejado além dessa semana ainda.</p>
+            <p className="text-[11px] text-muted-foreground">
+              Nada planejado além dessa semana ainda.
+            </p>
           ) : (
             <ul className="space-y-1">
               {proximasEntregas.map((t) => (
                 <li key={t.id} className="flex items-center justify-between text-[12px]">
                   <span className="truncate">{t.title}</span>
                   <span className="shrink-0 font-mono text-[10px] text-muted-foreground">
-                    {new Date(t.dueDate + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}
+                    {new Date(t.dueDate + "T00:00:00").toLocaleDateString("pt-BR", {
+                      day: "2-digit",
+                      month: "2-digit",
+                    })}
                   </span>
                 </li>
               ))}
@@ -1315,7 +1588,10 @@ function ProjectCard({ project }: { project: import("@/lib/mock-data").Project }
   const [expanded, setExpanded] = useState(false);
   const checklist = project.checklist ?? [];
   const doneCount = checklist.filter((i) => i.done).length;
-  const statusMeta = statusProjectMeta[project.status] ?? { label: project.status, className: "bg-surface text-muted-foreground" };
+  const statusMeta = statusProjectMeta[project.status] ?? {
+    label: project.status,
+    className: "bg-surface text-muted-foreground",
+  };
 
   return (
     <div className="rounded-xl border bg-card p-4 transition-all">
@@ -1328,14 +1604,21 @@ function ProjectCard({ project }: { project: import("@/lib/mock-data").Project }
             <span
               className={cn(
                 "rounded px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wide",
-                project.fase === "operacao_continua" ? "bg-info/15 text-info" : "bg-primary/10 text-primary",
+                project.fase === "operacao_continua"
+                  ? "bg-info/15 text-info"
+                  : "bg-primary/10 text-primary",
               )}
             >
               {project.fase === "operacao_continua" ? "Gestão do cliente" : "Implementação"}
             </span>
           </div>
         </div>
-        <span className={cn("shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider", statusMeta.className)}>
+        <span
+          className={cn(
+            "shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider",
+            statusMeta.className,
+          )}
+        >
           {statusMeta.label}
         </span>
       </div>
@@ -1346,7 +1629,9 @@ function ProjectCard({ project }: { project: import("@/lib/mock-data").Project }
         <div className="mt-3">
           <div className="mb-1 flex items-center justify-between">
             <span className="text-[10px] text-muted-foreground">Progresso do checklist</span>
-            <span className="font-mono text-[10px] text-primary">{Math.round((doneCount / checklist.length) * 100)}%</span>
+            <span className="font-mono text-[10px] text-primary">
+              {Math.round((doneCount / checklist.length) * 100)}%
+            </span>
           </div>
           <div className="h-1.5 overflow-hidden rounded-full bg-border">
             <div
@@ -1360,7 +1645,8 @@ function ProjectCard({ project }: { project: import("@/lib/mock-data").Project }
       {/* Prazo — Implementação tem data de entrega; Gestão do Cliente não tem fim,
           então mostra a data de renovação como próximo marco em vez de "prazo". */}
       <div className="mt-2 text-[11px] text-muted-foreground">
-        {project.fase === "operacao_continua" ? "Próxima renovação" : "Prazo"}: {new Date(project.deadline).toLocaleDateString("pt-BR")}
+        {project.fase === "operacao_continua" ? "Próxima renovação" : "Prazo"}:{" "}
+        {new Date(project.deadline).toLocaleDateString("pt-BR")}
       </div>
 
       {/* Checklist */}
@@ -1370,8 +1656,12 @@ function ProjectCard({ project }: { project: import("@/lib/mock-data").Project }
             onClick={() => setExpanded((v) => !v)}
             className="flex w-full items-center justify-between text-[11px] text-muted-foreground hover:text-foreground"
           >
-            <span>Checklist ({doneCount}/{checklist.length})</span>
-            <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", expanded && "rotate-180")} />
+            <span>
+              Checklist ({doneCount}/{checklist.length})
+            </span>
+            <ChevronDown
+              className={cn("h-3.5 w-3.5 transition-transform", expanded && "rotate-180")}
+            />
           </button>
           {expanded && (
             <ul className="mt-2 space-y-1">
@@ -1384,12 +1674,19 @@ function ProjectCard({ project }: { project: import("@/lib/mock-data").Project }
                   <span
                     className={cn(
                       "flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded border transition-colors",
-                      item.done ? "border-primary bg-primary text-primary-foreground" : "border-border",
+                      item.done
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border",
                     )}
                   >
                     {item.done && <span className="text-[8px] font-bold">✓</span>}
                   </span>
-                  <span className={cn("min-w-0 flex-1 truncate text-[12px]", item.done && "text-muted-foreground line-through")}>
+                  <span
+                    className={cn(
+                      "min-w-0 flex-1 truncate text-[12px]",
+                      item.done && "text-muted-foreground line-through",
+                    )}
+                  >
                     {item.text}
                   </span>
                 </li>
@@ -1419,9 +1716,10 @@ function TabOperacao({ clientId }: { clientId: string }) {
     const novos: ArquivoItem[] = Array.from(files).map((f, i) => ({
       id: `f-${Date.now()}-${i}`,
       name: f.name,
-      size: f.size < 1024 * 1024
-        ? `${Math.max(1, Math.round(f.size / 1024))} KB`
-        : `${(f.size / (1024 * 1024)).toFixed(1)} MB`,
+      size:
+        f.size < 1024 * 1024
+          ? `${Math.max(1, Math.round(f.size / 1024))} KB`
+          : `${(f.size / (1024 * 1024)).toFixed(1)} MB`,
       url: URL.createObjectURL(f),
     }));
     setArquivos((prev) => [...novos, ...prev]);
@@ -1454,13 +1752,19 @@ function TabOperacao({ clientId }: { clientId: string }) {
             <div className="rounded-xl border bg-card p-4">
               <div className="mb-3 flex items-center justify-between">
                 <h3 className="text-sm font-semibold tracking-tight">Projetos ativos</h3>
-                <span className="text-[11px] text-muted-foreground">{clientProjects.length} projeto{clientProjects.length !== 1 ? "s" : ""}</span>
+                <span className="text-[11px] text-muted-foreground">
+                  {clientProjects.length} projeto{clientProjects.length !== 1 ? "s" : ""}
+                </span>
               </div>
               {clientProjects.length === 0 ? (
                 <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed py-10 text-center">
                   <Folder className="h-8 w-8 text-muted-foreground/40" />
-                  <div className="text-[13px] font-medium text-muted-foreground">Nenhum projeto ativo</div>
-                  <p className="text-[11px] text-muted-foreground/70">Crie um projeto para este cliente no módulo Operação.</p>
+                  <div className="text-[13px] font-medium text-muted-foreground">
+                    Nenhum projeto ativo
+                  </div>
+                  <p className="text-[11px] text-muted-foreground/70">
+                    Crie um projeto para este cliente no módulo Operação.
+                  </p>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -1476,7 +1780,9 @@ function TabOperacao({ clientId }: { clientId: string }) {
               <div className="mb-3 flex items-center justify-between">
                 <h3 className="text-sm font-semibold tracking-tight">Tarefas</h3>
                 <div className="flex items-center gap-2">
-                  <span className="text-[11px] text-muted-foreground">{clientTasks.length} tarefas</span>
+                  <span className="text-[11px] text-muted-foreground">
+                    {clientTasks.length} tarefas
+                  </span>
                   <NewTaskButton
                     defaultContext={{ type: "cliente", id: client.id, label: client.company }}
                   />
@@ -1493,7 +1799,10 @@ function TabOperacao({ clientId }: { clientId: string }) {
                   </li>
                 )}
                 {clientTasks.map((t) => (
-                  <li key={t.id} className="flex items-center gap-2.5 rounded-md border bg-surface/50 px-2.5 py-2">
+                  <li
+                    key={t.id}
+                    className="flex items-center gap-2.5 rounded-md border bg-surface/50 px-2.5 py-2"
+                  >
                     <span
                       className={cn(
                         "h-1.5 w-1.5 rounded-full",
@@ -1504,7 +1813,9 @@ function TabOperacao({ clientId }: { clientId: string }) {
                       )}
                     />
                     <span className="min-w-0 flex-1 truncate text-[13px]">{t.title}</span>
-                    <span className="text-[10px] text-muted-foreground">{t.owner.split(" ")[0]}</span>
+                    <span className="text-[10px] text-muted-foreground">
+                      {t.owner.split(" ")[0]}
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -1514,7 +1825,11 @@ function TabOperacao({ clientId }: { clientId: string }) {
           // Fase de Gestão do Cliente — centro visual de acompanhamento, sem checklist
           // permanente. As "rotinas" são as próprias tarefas vinculadas ao projeto de
           // Gestão do Cliente — a mesma tarefa que aparece em Minha Semana, não uma cópia.
-          <OperacaoContinuaCenter client={client} clientProjects={clientProjects} clientTasks={clientTasks} />
+          <OperacaoContinuaCenter
+            client={client}
+            clientProjects={clientProjects}
+            clientTasks={clientTasks}
+          />
         )}
 
         {/* Observações — antes era "Comentários da equipe", mas hoje é uso individual:
@@ -1523,7 +1838,9 @@ function TabOperacao({ clientId }: { clientId: string }) {
         <div className="rounded-xl border bg-card p-4">
           <div className="mb-3 flex items-center gap-2">
             <MessageSquare className="h-3.5 w-3.5 text-muted-foreground" />
-            <h3 className="text-sm font-semibold tracking-tight">Observações e pontos de atenção</h3>
+            <h3 className="text-sm font-semibold tracking-tight">
+              Observações e pontos de atenção
+            </h3>
           </div>
           <div className="space-y-3">
             {comentarios.length === 0 && (
@@ -1539,19 +1856,31 @@ function TabOperacao({ clientId }: { clientId: string }) {
                     <span className="text-[12px] font-medium">{c.autor}</span>
                     <div className="flex items-center gap-2">
                       <span className="text-[10px] text-muted-foreground">
-                        {new Date(c.data).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+                        {new Date(c.data).toLocaleDateString("pt-BR", {
+                          day: "2-digit",
+                          month: "short",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
                       </span>
                       {isConfirmingDel ? (
                         <div className="flex items-center gap-1">
                           <span className="text-[10px] text-destructive">Excluir?</span>
                           <button
-                            onClick={() => { removeComentario(clientId, c.id); setConfirmDeleteComId(null); }}
+                            onClick={() => {
+                              removeComentario(clientId, c.id);
+                              setConfirmDeleteComId(null);
+                            }}
                             className="rounded bg-destructive/10 px-1.5 py-0.5 text-[10px] text-destructive hover:bg-destructive/20"
-                          >Sim</button>
+                          >
+                            Sim
+                          </button>
                           <button
                             onClick={() => setConfirmDeleteComId(null)}
                             className="rounded bg-surface px-1.5 py-0.5 text-[10px] hover:bg-accent"
-                          >Não</button>
+                          >
+                            Não
+                          </button>
                         </div>
                       ) : (
                         <button
@@ -1572,7 +1901,9 @@ function TabOperacao({ clientId }: { clientId: string }) {
               <textarea
                 value={novoComentario}
                 onChange={(e) => setNovoComentario(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) handleAddComentario(); }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) handleAddComentario();
+                }}
                 placeholder="Anote um problema, algo técnico ou importante sobre este cliente… (Ctrl+Enter para salvar)"
                 rows={2}
                 className="flex-1 rounded-md border bg-background px-3 py-2 text-[13px] focus:border-primary/60 focus:outline-none"
@@ -1619,7 +1950,10 @@ function TabOperacao({ clientId }: { clientId: string }) {
             {arquivos.map((a) => {
               const isConfirmingDel = confirmDeleteArquivoId === a.id;
               return (
-                <li key={a.id} className="group flex items-center gap-2 rounded-md border bg-surface/50 px-2.5 py-2">
+                <li
+                  key={a.id}
+                  className="group flex items-center gap-2 rounded-md border bg-surface/50 px-2.5 py-2"
+                >
                   <FileText className="h-3.5 w-3.5 text-muted-foreground" />
                   {a.url ? (
                     <a
@@ -1649,11 +1983,15 @@ function TabOperacao({ clientId }: { clientId: string }) {
                       <button
                         onClick={() => deleteArquivo(a.id)}
                         className="rounded bg-destructive/10 px-1.5 py-0.5 text-[10px] text-destructive hover:bg-destructive/20"
-                      >Sim</button>
+                      >
+                        Sim
+                      </button>
                       <button
                         onClick={() => setConfirmDeleteArquivoId(null)}
                         className="rounded bg-surface px-1.5 py-0.5 text-[10px] hover:bg-accent"
-                      >Não</button>
+                      >
+                        Não
+                      </button>
                     </div>
                   ) : (
                     <button
@@ -1698,7 +2036,8 @@ function JornadaCliente({
     fim.setHours(0, 0, 0, 0);
     const diffDias = Math.round((fim.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
     if (diffDias > 3) return { label: "No prazo", variant: "success" as const };
-    if (diffDias >= 0) return { label: `Atenção — faltam ${diffDias}d`, variant: "warning" as const };
+    if (diffDias >= 0)
+      return { label: `Atenção — faltam ${diffDias}d`, variant: "warning" as const };
     return { label: `Atrasado ${Math.abs(diffDias)} dias`, variant: "destructive" as const };
   })();
 
@@ -1716,7 +2055,13 @@ function JornadaCliente({
           <h3 className="text-sm font-semibold tracking-tight">Gestão do Cliente</h3>
         </div>
         <p className="text-[12px] text-muted-foreground">
-          Cliente ativo desde {new Date(client.since).toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })}.
+          Cliente ativo desde{" "}
+          {new Date(client.since).toLocaleDateString("pt-BR", {
+            day: "2-digit",
+            month: "long",
+            year: "numeric",
+          })}
+          .
         </p>
 
         {operacaoContinua.length > 0 && (
@@ -1725,9 +2070,14 @@ function JornadaCliente({
               const done = (p.checklist ?? []).filter((i) => i.done).length;
               const total = (p.checklist ?? []).length;
               return (
-                <div key={p.id} className="flex items-center justify-between rounded-lg border bg-surface/40 px-2.5 py-2">
+                <div
+                  key={p.id}
+                  className="flex items-center justify-between rounded-lg border bg-surface/40 px-2.5 py-2"
+                >
                   <span className="text-[12px] font-medium">{p.type}</span>
-                  <span className="font-mono text-[10px] text-muted-foreground">{done}/{total} configurado</span>
+                  <span className="font-mono text-[10px] text-muted-foreground">
+                    {done}/{total} configurado
+                  </span>
                 </div>
               );
             })}
@@ -1735,8 +2085,12 @@ function JornadaCliente({
         )}
 
         <p className="mt-3 text-[11px] text-muted-foreground">
-          Próximo vencimento: {proximoVencimento(client.paymentDay).toLocaleDateString("pt-BR", { day: "2-digit", month: "long" })} ·
-          renovação em {new Date(client.renewalDate).toLocaleDateString("pt-BR")}.
+          Próximo vencimento:{" "}
+          {proximoVencimento(client.paymentDay).toLocaleDateString("pt-BR", {
+            day: "2-digit",
+            month: "long",
+          })}{" "}
+          · renovação em {new Date(client.renewalDate).toLocaleDateString("pt-BR")}.
         </p>
       </div>
     );
@@ -1747,7 +2101,9 @@ function JornadaCliente({
       <div className="mb-3 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <CheckSquare className="h-3.5 w-3.5 text-muted-foreground" />
-          <h3 className="text-sm font-semibold tracking-tight">Jornada do cliente (implementação)</h3>
+          <h3 className="text-sm font-semibold tracking-tight">
+            Jornada do cliente (implementação)
+          </h3>
         </div>
         {prazoStatus && (
           <span
@@ -1782,10 +2138,18 @@ function JornadaCliente({
                   )}
                   {p.type}
                 </span>
-                <span className="font-mono text-[10px] text-muted-foreground">{done}/{total}</span>
+                <span className="font-mono text-[10px] text-muted-foreground">
+                  {done}/{total}
+                </span>
               </div>
               <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-border">
-                <div className={cn("h-full rounded-full transition-all", entregue ? "bg-success" : "bg-primary")} style={{ width: `${pct}%` }} />
+                <div
+                  className={cn(
+                    "h-full rounded-full transition-all",
+                    entregue ? "bg-success" : "bg-primary",
+                  )}
+                  style={{ width: `${pct}%` }}
+                />
               </div>
             </div>
           );
@@ -1793,13 +2157,13 @@ function JornadaCliente({
       </div>
 
       <p className="mt-3 text-[11px] text-muted-foreground">
-        Checklist detalhado, item a item, disponível em Operação → Projetos ativos. Quando todos os projetos de
-        implementação chegarem a 100%, o cliente entra na Gestão do Cliente automaticamente.
+        Checklist detalhado, item a item, disponível em Operação → Projetos ativos. Quando todos os
+        projetos de implementação chegarem a 100%, o cliente entra na Gestão do Cliente
+        automaticamente.
       </p>
     </div>
   );
 }
-
 
 // ─── FINANCEIRO ──────────────────────────────────────────────────────────────
 // Calcula a próxima data de vencimento de verdade (não só "dia X"), pra dar pro
@@ -1825,24 +2189,35 @@ function TabFinanceiro({ client }: { client: Client }) {
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
       <div className="rounded-xl border bg-card p-5">
-        <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Mensalidade</div>
-        <div className="mt-2 font-mono text-3xl font-semibold text-primary">{formatBRL(client.monthlyValue)}</div>
+        <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
+          Mensalidade
+        </div>
+        <div className="mt-2 font-mono text-3xl font-semibold text-primary">
+          {formatBRL(client.monthlyValue)}
+        </div>
         <div className="mt-1 text-[12px] text-muted-foreground">
-          Próximo vencimento: {vencimento.toLocaleDateString("pt-BR", { day: "2-digit", month: "long" })}
+          Próximo vencimento:{" "}
+          {vencimento.toLocaleDateString("pt-BR", { day: "2-digit", month: "long" })}
         </div>
       </div>
       <div className="rounded-xl border bg-card p-4 lg:col-span-2">
         <h3 className="mb-3 text-sm font-semibold tracking-tight">Últimos pagamentos</h3>
         {pagamentosReais.length === 0 ? (
           <p className="rounded-md border border-dashed bg-surface/40 px-3 py-4 text-center text-[12px] text-muted-foreground">
-            Nenhum lançamento financeiro registrado ainda pra este cliente. Lance uma mensalidade no DRE pra ela aparecer aqui.
+            Nenhum lançamento financeiro registrado ainda pra este cliente. Lance uma mensalidade no
+            DRE pra ela aparecer aqui.
           </p>
         ) : (
           <ul className="space-y-1">
             {pagamentosReais.map((p) => (
-              <li key={p.id} className="flex items-center gap-3 rounded-md border bg-surface/50 px-3 py-2 text-[13px]">
+              <li
+                key={p.id}
+                className="flex items-center gap-3 rounded-md border bg-surface/50 px-3 py-2 text-[13px]"
+              >
                 <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                <span className="font-mono">{new Date(p.date + "T00:00:00").toLocaleDateString("pt-BR")}</span>
+                <span className="font-mono">
+                  {new Date(p.date + "T00:00:00").toLocaleDateString("pt-BR")}
+                </span>
                 <span className="ml-auto font-mono text-primary">{formatBRL(p.amount)}</span>
                 <span className="rounded bg-success/15 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-success">
                   recebido
@@ -1884,7 +2259,9 @@ function TabHistorico({ client }: { client: Client }) {
               </div>
               <div className="flex-1 pb-3">
                 <div className="text-[13px]">{e.text}</div>
-                <div className="mt-0.5 text-[10px] text-muted-foreground">{e.user} · {e.time}</div>
+                <div className="mt-0.5 text-[10px] text-muted-foreground">
+                  {e.user} · {e.time}
+                </div>
               </div>
             </div>
           ))}

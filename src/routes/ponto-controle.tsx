@@ -43,7 +43,10 @@ export const Route = createFileRoute("/ponto-controle")({
           "Reunião estratégica mensal: análise do mês anterior, metas, prioridades e próximos passos da agência.",
       },
       { property: "og:title", content: "Ponto de Controle · Veloce" },
-      { property: "og:description", content: "Planejamento estratégico mensal da Veloce Performance." },
+      {
+        property: "og:description",
+        content: "Planejamento estratégico mensal da Veloce Performance.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
@@ -82,7 +85,9 @@ function Field({
 }) {
   return (
     <div className="space-y-1.5">
-      <label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</label>
+      <label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+        {label}
+      </label>
       {children}
       {/* Explicação curta do campo — pensada pra quem não lembra o que cada número representa */}
       {hint && <p className="text-[11px] leading-relaxed text-muted-foreground">{hint}</p>}
@@ -103,13 +108,19 @@ const STEPS = [
 // por baixo, só não aparecem aqui até definirmos algo que faça sentido de verdade.
 
 function PontoControlePage() {
-  const { pontosControle, pontoControleAtual, salvarPontoControle, clients, expenses, tasks } = useDataStore();
+  const { pontosControle, pontoControleAtual, salvarPontoControle, clients, expenses, tasks } =
+    useDataStore();
   const [mes, setMes] = useState(mesAtualISO());
   const [step, setStep] = useState(0);
-  const existente = useMemo(() => pontosControle.find((p) => p.mes === mes) ?? null, [pontosControle, mes]);
+  const existente = useMemo(
+    () => pontosControle.find((p) => p.mes === mes) ?? null,
+    [pontosControle, mes],
+  );
   const [form, setForm] = useState<FormState>(() => {
     const atual = pontosControle.find((p) => p.mes === mesAtualISO());
-    return atual ? { ...atual, qualidade: atual.qualidade.map((q) => ({ ...q })) } : emptyForm(mesAtualISO());
+    return atual
+      ? { ...atual, qualidade: atual.qualidade.map((q) => ({ ...q })) }
+      : emptyForm(mesAtualISO());
   });
   const [saved, setSaved] = useState(false);
 
@@ -119,7 +130,8 @@ function PontoControlePage() {
     const clientesNovos = clients.filter((c) => c.since.startsWith(mesAnterior));
     const clientesCancelados = clients.filter((c) => c.canceledAt?.startsWith(mesAnterior));
     const baseAtiva =
-      clients.filter((c) => c.status === "ativo" || c.status === "onboarding").length + clientesCancelados.length;
+      clients.filter((c) => c.status === "ativo" || c.status === "onboarding").length +
+      clientesCancelados.length;
 
     const entradas = expenses
       .filter((e) => e.type === "entrada" && e.date.startsWith(mesAnterior))
@@ -132,15 +144,21 @@ function PontoControlePage() {
     const tarefasNoPrazo = tarefasDoMes.filter((t) => t.status === "concluida").length;
 
     const clientesAtivosHoje = clients.filter((c) => c.status === "ativo").length;
-    const clientesTotalHoje = clients.filter((c) => c.status === "ativo" || c.status === "cancelado" || c.status === "pausado").length;
+    const clientesTotalHoje = clients.filter(
+      (c) => c.status === "ativo" || c.status === "cancelado" || c.status === "pausado",
+    ).length;
 
     return {
       receita: entradas,
       novosClientes: clientesNovos.length,
       churn: baseAtiva > 0 ? (clientesCancelados.length / baseAtiva) * 100 : null,
-      ticketMedio: clientesNovos.length > 0 ? clientesNovos.reduce((s, c) => s + c.monthlyValue, 0) / clientesNovos.length : null,
+      ticketMedio:
+        clientesNovos.length > 0
+          ? clientesNovos.reduce((s, c) => s + c.monthlyValue, 0) / clientesNovos.length
+          : null,
       margem: entradas > 0 ? ((entradas - saidas) / entradas) * 100 : null,
-      entregasNoPrazo: tarefasDoMes.length > 0 ? (tarefasNoPrazo / tarefasDoMes.length) * 100 : null,
+      entregasNoPrazo:
+        tarefasDoMes.length > 0 ? (tarefasNoPrazo / tarefasDoMes.length) * 100 : null,
       retencaoAtual: clientesTotalHoje > 0 ? (clientesAtivosHoje / clientesTotalHoje) * 100 : null,
       temDados: entradas > 0 || clientesNovos.length > 0 || tarefasDoMes.length > 0,
     };
@@ -154,7 +172,11 @@ function PontoControlePage() {
   const trocarMes = (novoMes: string) => {
     setMes(novoMes);
     const registro = pontosControle.find((p) => p.mes === novoMes);
-    setForm(registro ? { ...registro, qualidade: registro.qualidade.map((q) => ({ ...q })) } : emptyForm(novoMes));
+    setForm(
+      registro
+        ? { ...registro, qualidade: registro.qualidade.map((q) => ({ ...q })) }
+        : emptyForm(novoMes),
+    );
     setSaved(false);
     setStep(0);
   };
@@ -214,16 +236,24 @@ function PontoControlePage() {
   };
 
   // Projeções derivadas do planejamento
-  const ticketAlvo = form.novosClientesDesejados > 0 ? form.metaComercial / form.novosClientesDesejados : 0;
+  const ticketAlvo =
+    form.novosClientesDesejados > 0 ? form.metaComercial / form.novosClientesDesejados : 0;
   const reunioesNecessarias =
-    form.taxaReuniaoFechamento > 0 ? Math.ceil(form.novosClientesDesejados / (form.taxaReuniaoFechamento / 100)) : 0;
+    form.taxaReuniaoFechamento > 0
+      ? Math.ceil(form.novosClientesDesejados / (form.taxaReuniaoFechamento / 100))
+      : 0;
   const leadsNecessarios =
-    form.taxaProspeccaoReuniao > 0 ? Math.ceil(reunioesNecessarias / (form.taxaProspeccaoReuniao / 100)) : 0;
+    form.taxaProspeccaoReuniao > 0
+      ? Math.ceil(reunioesNecessarias / (form.taxaProspeccaoReuniao / 100))
+      : 0;
 
   return (
     <AppShell title="Ponto de Controle" subtitle="Reunião estratégica mensal">
       <div className="space-y-6 p-4 md:p-6">
-        <PageHeader title={`Planejamento · ${formatMesLabel(mes)}`} subtitle="Uma etapa de cada vez — leva 5 minutos">
+        <PageHeader
+          title={`Planejamento · ${formatMesLabel(mes)}`}
+          subtitle="Uma etapa de cada vez — leva 5 minutos"
+        >
           <input
             type="month"
             value={mes}
@@ -255,13 +285,17 @@ function PontoControlePage() {
                 <button
                   key={s.title}
                   onClick={() => setStep(i)}
-                  className={`flex flex-1 flex-col items-start gap-1 rounded-lg border px-3 py-2 text-left transition ${i === step ? "border-primary/50 bg-primary/10" : "bg-surface/40 hover:bg-accent"
-                    }`}
+                  className={`flex flex-1 flex-col items-start gap-1 rounded-lg border px-3 py-2 text-left transition ${
+                    i === step ? "border-primary/50 bg-primary/10" : "bg-surface/40 hover:bg-accent"
+                  }`}
                 >
                   <span className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                     <span
-                      className={`flex h-4 w-4 items-center justify-center rounded-full text-[9px] ${i === step ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
-                        }`}
+                      className={`flex h-4 w-4 items-center justify-center rounded-full text-[9px] ${
+                        i === step
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted text-muted-foreground"
+                      }`}
                     >
                       {i + 1}
                     </span>
@@ -278,20 +312,25 @@ function PontoControlePage() {
                 <div>
                   <h2 className="text-sm font-semibold">Análise do mês anterior</h2>
                   <p className="text-[11px] text-muted-foreground">
-                    Números de {formatMesLabel(mesAnterior)}, puxados automaticamente do Comercial, DRE e Operação —
-                    nada aqui precisa ser digitado, é só pra você olhar antes de planejar o próximo mês.
+                    Números de {formatMesLabel(mesAnterior)}, puxados automaticamente do Comercial,
+                    DRE e Operação — nada aqui precisa ser digitado, é só pra você olhar antes de
+                    planejar o próximo mês.
                   </p>
                 </div>
 
                 {!kpis.temDados ? (
                   <p className="rounded-lg border border-dashed bg-surface/40 px-3 py-2 text-[11px] text-muted-foreground">
-                    Sem dados suficientes de {formatMesLabel(mesAnterior)} ainda — os cartões abaixo vão se preencher
-                    conforme você lançar vendas, despesas e tarefas naquele mês.
+                    Sem dados suficientes de {formatMesLabel(mesAnterior)} ainda — os cartões abaixo
+                    vão se preencher conforme você lançar vendas, despesas e tarefas naquele mês.
                   </p>
                 ) : (
                   <div className="grid grid-cols-2 gap-2.5 md:grid-cols-3">
                     <KpiCard icon={Wallet} label="Receita" value={formatBRL(kpis.receita)} />
-                    <KpiCard icon={Users} label="Novos clientes" value={String(kpis.novosClientes)} />
+                    <KpiCard
+                      icon={Users}
+                      label="Novos clientes"
+                      value={String(kpis.novosClientes)}
+                    />
                     <KpiCard
                       icon={Percent}
                       label="Churn"
@@ -312,17 +351,36 @@ function PontoControlePage() {
                     <KpiCard
                       icon={Truck}
                       label="Entregas no prazo"
-                      value={kpis.entregasNoPrazo !== null ? `${kpis.entregasNoPrazo.toFixed(0)}%` : "Sem dados"}
-                      tone={kpis.entregasNoPrazo !== null && kpis.entregasNoPrazo < 80 ? "warning" : "default"}
+                      value={
+                        kpis.entregasNoPrazo !== null
+                          ? `${kpis.entregasNoPrazo.toFixed(0)}%`
+                          : "Sem dados"
+                      }
+                      tone={
+                        kpis.entregasNoPrazo !== null && kpis.entregasNoPrazo < 80
+                          ? "warning"
+                          : "default"
+                      }
                     />
                   </div>
                 )}
 
                 <div className="grid gap-4 md:grid-cols-2">
-                  <Field label="Principais acertos" hint="O que, olhando os números acima, vale manter e repetir esse mês.">
-                    <textarea rows={3} value={form.funcionou} onChange={(e) => set("funcionou", e.target.value)} className={inputCls} />
+                  <Field
+                    label="Principais acertos"
+                    hint="O que, olhando os números acima, vale manter e repetir esse mês."
+                  >
+                    <textarea
+                      rows={3}
+                      value={form.funcionou}
+                      onChange={(e) => set("funcionou", e.target.value)}
+                      className={inputCls}
+                    />
                   </Field>
-                  <Field label="Principais problemas" hint="O que os números acima mostram que precisa mudar.">
+                  <Field
+                    label="Principais problemas"
+                    hint="O que os números acima mostram que precisa mudar."
+                  >
                     <textarea
                       rows={3}
                       value={form.naoFuncionou}
@@ -339,10 +397,15 @@ function PontoControlePage() {
               <section className="card-trello space-y-4 p-4">
                 <div>
                   <h2 className="text-sm font-semibold">Metas do mês</h2>
-                  <p className="text-[11px] text-muted-foreground">Os números que definem tudo mais — quanto vender e com que eficiência.</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    Os números que definem tudo mais — quanto vender e com que eficiência.
+                  </p>
                 </div>
                 <div className="grid gap-4 md:grid-cols-3">
-                  <Field label="Meta comercial (R$)" hint="Quanto em vendas novas vocês querem fechar esse mês.">
+                  <Field
+                    label="Meta comercial (R$)"
+                    hint="Quanto em vendas novas vocês querem fechar esse mês."
+                  >
                     <input
                       type="number"
                       min={0}
@@ -351,7 +414,10 @@ function PontoControlePage() {
                       className={inputCls}
                     />
                   </Field>
-                  <Field label="Novos clientes" hint="Quantos contratos novos fechados isso representa.">
+                  <Field
+                    label="Novos clientes"
+                    hint="Quantos contratos novos fechados isso representa."
+                  >
                     <input
                       type="number"
                       min={0}
@@ -360,7 +426,10 @@ function PontoControlePage() {
                       className={inputCls}
                     />
                   </Field>
-                  <Field label="Serviços a entregar" hint="Quantas entregas/projetos a operação precisa fechar esse mês.">
+                  <Field
+                    label="Serviços a entregar"
+                    hint="Quantas entregas/projetos a operação precisa fechar esse mês."
+                  >
                     <input
                       type="number"
                       min={0}
@@ -417,13 +486,32 @@ function PontoControlePage() {
             {step === 2 && (
               <section className="card-trello space-y-4 p-4">
                 <h2 className="text-sm font-semibold">Objetivos, prioridades e próximos passos</h2>
-                <Field label="Objetivos do mês" hint="O resultado principal que vocês querem alcançar — em 1 ou 2 frases.">
-                  <textarea rows={3} value={form.objetivos} onChange={(e) => set("objetivos", e.target.value)} className={inputCls} />
+                <Field
+                  label="Objetivos do mês"
+                  hint="O resultado principal que vocês querem alcançar — em 1 ou 2 frases."
+                >
+                  <textarea
+                    rows={3}
+                    value={form.objetivos}
+                    onChange={(e) => set("objetivos", e.target.value)}
+                    className={inputCls}
+                  />
                 </Field>
-                <Field label="Prioridades" hint="O que vem primeiro se o tempo apertar — evita que tudo pareça igualmente urgente.">
-                  <textarea rows={3} value={form.prioridades} onChange={(e) => set("prioridades", e.target.value)} className={inputCls} />
+                <Field
+                  label="Prioridades"
+                  hint="O que vem primeiro se o tempo apertar — evita que tudo pareça igualmente urgente."
+                >
+                  <textarea
+                    rows={3}
+                    value={form.prioridades}
+                    onChange={(e) => set("prioridades", e.target.value)}
+                    className={inputCls}
+                  />
                 </Field>
-                <Field label="Próximos passos" hint="As primeiras ações concretas pra sair do papel — o que fazer na próxima semana.">
+                <Field
+                  label="Próximos passos"
+                  hint="As primeiras ações concretas pra sair do papel — o que fazer na próxima semana."
+                >
                   <textarea
                     rows={3}
                     value={form.proximosPassos}
@@ -455,7 +543,8 @@ function PontoControlePage() {
                   onClick={salvar}
                   className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-1.5 text-xs font-semibold text-primary-foreground hover:opacity-90"
                 >
-                  <Check className="h-3.5 w-3.5" /> {existente ? "Atualizar planejamento" : "Salvar planejamento"}
+                  <Check className="h-3.5 w-3.5" />{" "}
+                  {existente ? "Atualizar planejamento" : "Salvar planejamento"}
                 </button>
               )}
             </div>
@@ -482,17 +571,25 @@ function PontoControlePage() {
                 <CalendarDays className="h-4 w-4 text-muted-foreground" />
                 <h2 className="text-sm font-semibold">Histórico</h2>
               </div>
-              {pontosControle.length === 0 && <p className="text-xs text-muted-foreground">Nenhuma reunião registrada ainda.</p>}
+              {pontosControle.length === 0 && (
+                <p className="text-xs text-muted-foreground">Nenhuma reunião registrada ainda.</p>
+              )}
               <div className="space-y-1.5">
                 {pontosControle.map((p) => (
                   <div
                     key={p.id}
-                    className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-2 text-xs transition ${p.mes === mes ? "border-primary/40 bg-primary/5" : "bg-surface/40"
-                      }`}
+                    className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-2 text-xs transition ${
+                      p.mes === mes ? "border-primary/40 bg-primary/5" : "bg-surface/40"
+                    }`}
                   >
-                    <button onClick={() => trocarMes(p.mes)} className="flex flex-1 items-center justify-between text-left hover:opacity-80">
+                    <button
+                      onClick={() => trocarMes(p.mes)}
+                      className="flex flex-1 items-center justify-between text-left hover:opacity-80"
+                    >
                       <span className="font-medium">{formatMesLabel(p.mes)}</span>
-                      <span className="font-mono text-[11px] text-muted-foreground">{formatBRL(p.metaComercial)}</span>
+                      <span className="font-mono text-[11px] text-muted-foreground">
+                        {formatBRL(p.metaComercial)}
+                      </span>
                     </button>
                     <button
                       onClick={() => exportarWord(p, p.mes)}
@@ -504,7 +601,11 @@ function PontoControlePage() {
                   </div>
                 ))}
               </div>
-              {pontoControleAtual && <p className="text-[10px] text-muted-foreground">Mês corrente planejado — metas ativas no sistema.</p>}
+              {pontoControleAtual && (
+                <p className="text-[10px] text-muted-foreground">
+                  Mês corrente planejado — metas ativas no sistema.
+                </p>
+              )}
             </section>
           </div>
         </div>
@@ -525,11 +626,17 @@ function KpiCard({
   tone?: "default" | "warning";
 }) {
   return (
-    <div className={`rounded-lg border p-2.5 ${tone === "warning" ? "border-warning/40 bg-warning/5" : "bg-surface/40"}`}>
+    <div
+      className={`rounded-lg border p-2.5 ${tone === "warning" ? "border-warning/40 bg-warning/5" : "bg-surface/40"}`}
+    >
       <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
         <Icon className="h-3 w-3" /> {label}
       </div>
-      <div className={`mt-1 font-mono text-[15px] font-semibold ${tone === "warning" ? "text-warning" : ""}`}>{value}</div>
+      <div
+        className={`mt-1 font-mono text-[15px] font-semibold ${tone === "warning" ? "text-warning" : ""}`}
+      >
+        {value}
+      </div>
     </div>
   );
 }
@@ -562,13 +669,20 @@ function IndicadorQualidade({
           placeholder="Meta / critério"
         />
         <span
-          className={`inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 font-mono text-[11px] font-semibold ${neutro ? "bg-muted text-muted-foreground" : alerta ? "bg-warning/15 text-warning" : "bg-success/10 text-success"
-            }`}
+          className={`inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 font-mono text-[11px] font-semibold ${
+            neutro
+              ? "bg-muted text-muted-foreground"
+              : alerta
+                ? "bg-warning/15 text-warning"
+                : "bg-success/10 text-success"
+          }`}
         >
           {valorReal}
         </span>
       </div>
-      {hint && <p className="mt-1.5 text-[10px] text-muted-foreground md:ml-36 md:pl-2.5">{hint}</p>}
+      {hint && (
+        <p className="mt-1.5 text-[10px] text-muted-foreground md:ml-36 md:pl-2.5">{hint}</p>
+      )}
     </div>
   );
 }

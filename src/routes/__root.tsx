@@ -102,7 +102,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         href: "https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap",
       },
       { rel: "stylesheet", href: appCss },
-      { rel: "icon", type: "image/jpeg", href: "/__l5e/assets-v1/9ac6f0eb-7e12-43d9-842c-163d7d4b872d/veloce-logo.jpg" },
+      {
+        rel: "icon",
+        type: "image/jpeg",
+        href: "/__l5e/assets-v1/9ac6f0eb-7e12-43d9-842c-163d7d4b872d/veloce-logo.jpg",
+      },
     ],
   }),
   shellComponent: RootShell,

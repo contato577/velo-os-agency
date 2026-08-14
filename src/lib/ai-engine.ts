@@ -4,12 +4,7 @@
 import type { Lead, Task, Client, FinanceEntry, AgendaEvent } from "./mock-data";
 
 export type InsightArea =
-  | "Comercial"
-  | "Financeiro"
-  | "Operacional"
-  | "Clientes"
-  | "Agenda"
-  | "Metas";
+  "Comercial" | "Financeiro" | "Operacional" | "Clientes" | "Agenda" | "Metas";
 
 export type InsightPriority = "critica" | "alta" | "media" | "baixa";
 
@@ -55,7 +50,9 @@ export function gerarInsights(input: AIInputs): Insight[] {
   const insights: Insight[] = [];
 
   const leadsSemFollowup = leads.filter(
-    (l) => ["novo", "contato"].includes(l.stage) && HOJE.getTime() - new Date(l.lastActivity).getTime() > 48 * 3600000,
+    (l) =>
+      ["novo", "contato"].includes(l.stage) &&
+      HOJE.getTime() - new Date(l.lastActivity).getTime() > 48 * 3600000,
   ).length;
   if (leadsSemFollowup > 0) {
     insights.push({
@@ -71,14 +68,16 @@ export function gerarInsights(input: AIInputs): Insight[] {
   }
 
   const propostasAbertas = leads.filter(
-    (l) => l.stage === "proposta" && HOJE.getTime() - new Date(l.lastActivity).getTime() > 5 * 86400000,
+    (l) =>
+      l.stage === "proposta" && HOJE.getTime() - new Date(l.lastActivity).getTime() > 5 * 86400000,
   ).length;
   if (propostasAbertas > 0) {
     insights.push({
       id: "d-propostas",
       area: "Comercial",
       titulo: `${propostasAbertas} propostas aguardando retorno`,
-      descricao: "Propostas enviadas há mais de 5 dias sem resposta. Recomendo cadência de nutrição.",
+      descricao:
+        "Propostas enviadas há mais de 5 dias sem resposta. Recomendo cadência de nutrição.",
       prioridade: "alta",
       impacto: "Ciclo de venda alongando 22%",
       acaoLabel: "Ver propostas",
@@ -86,8 +85,9 @@ export function gerarInsights(input: AIInputs): Insight[] {
     });
   }
 
-  const tarefasAtrasadas =
-    tasks.filter((t) => t.status !== "concluida" && new Date(t.dueDate) < HOJE).length;
+  const tarefasAtrasadas = tasks.filter(
+    (t) => t.status !== "concluida" && new Date(t.dueDate) < HOJE,
+  ).length;
   if (tarefasAtrasadas > 0) {
     insights.push({
       id: "d-tarefas-atrasadas",
@@ -121,7 +121,10 @@ export function gerarInsights(input: AIInputs): Insight[] {
   }
 
   const clientesOnboardingAtrasado = clients.filter(
-    (c) => c.status === "onboarding" && c.dataPrevistaFimOnboarding && new Date(c.dataPrevistaFimOnboarding) < HOJE,
+    (c) =>
+      c.status === "onboarding" &&
+      c.dataPrevistaFimOnboarding &&
+      new Date(c.dataPrevistaFimOnboarding) < HOJE,
   );
   clientesOnboardingAtrasado.forEach((c) => {
     const diasAtraso = Math.floor(
@@ -145,12 +148,15 @@ export function gerarInsights(input: AIInputs): Insight[] {
     return diff >= 0 && diff <= RENEWAL_ALERT_DAYS;
   });
   clientesRenovacaoProxima.forEach((c) => {
-    const diasRestantes = Math.ceil((new Date(c.renewalDate).getTime() - HOJE.getTime()) / 86400000);
+    const diasRestantes = Math.ceil(
+      (new Date(c.renewalDate).getTime() - HOJE.getTime()) / 86400000,
+    );
     insights.push({
       id: `d-renovacao-urgente-${c.id}`,
       area: "Clientes",
       titulo: `Renovação de ${c.company} em ${diasRestantes} dia(s)`,
-      descricao: "Contrato vence em breve. Confirme a renovação ou agende uma conversa antes do vencimento.",
+      descricao:
+        "Contrato vence em breve. Confirme a renovação ou agende uma conversa antes do vencimento.",
       prioridade: "critica",
       impacto: `MRR: ${BRL(c.monthlyValue)}`,
       acaoLabel: "Ver cliente",
@@ -164,7 +170,8 @@ export function gerarInsights(input: AIInputs): Insight[] {
       id: "d-meta",
       area: "Metas",
       titulo: `Você está ${gapMeta.toFixed(1)}% abaixo da meta`,
-      descricao: "Faltam poucos dias para o fim do mês. Concentre esforços nas negociações quentes.",
+      descricao:
+        "Faltam poucos dias para o fim do mês. Concentre esforços nas negociações quentes.",
       prioridade: gapMeta > 20 ? "alta" : "media",
       impacto: `Gap: ${BRL(kpis.metaMes - kpis.vendasMes)}`,
       acaoLabel: "Ver funil",

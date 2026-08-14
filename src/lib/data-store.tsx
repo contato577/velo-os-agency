@@ -32,8 +32,16 @@ export interface QualidadeItem {
 
 export const qualidadePadrao: QualidadeItem[] = [
   { id: "q-clientes-ativos", titulo: "Clientes ativos", descricao: "Manter 100% clientes na base" },
-  { id: "q-relatorios", titulo: "Relatórios semanais", descricao: "Entregar 100% relatórios semanais" },
-  { id: "q-entregas", titulo: "Entregas de serviços", descricao: "Entregar 100% serviços no prazo" },
+  {
+    id: "q-relatorios",
+    titulo: "Relatórios semanais",
+    descricao: "Entregar 100% relatórios semanais",
+  },
+  {
+    id: "q-entregas",
+    titulo: "Entregas de serviços",
+    descricao: "Entregar 100% serviços no prazo",
+  },
 ];
 
 export interface PontoControle {
@@ -78,8 +86,18 @@ export function mesAtualISO(d = new Date()) {
 export function formatMesLabel(mes: string) {
   const [y, m] = mes.split("-");
   const nomes = [
-    "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
-    "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
+    "Janeiro",
+    "Fevereiro",
+    "Março",
+    "Abril",
+    "Maio",
+    "Junho",
+    "Julho",
+    "Agosto",
+    "Setembro",
+    "Outubro",
+    "Novembro",
+    "Dezembro",
   ];
   return `${nomes[Number(m) - 1] ?? m} ${y}`;
 }
@@ -219,7 +237,9 @@ interface DataStoreContextValue {
   salvarPontoControle: (pc: Omit<PontoControle, "id" | "criadoEm" | "ano">) => PontoControle;
   updateMetas: (partial: Partial<MetasMensais>) => void;
 
-  addLead: (partial: Omit<Lead, "id" | "createdAt" | "lastActivity"> & { stage?: LeadStage }) => Lead;
+  addLead: (
+    partial: Omit<Lead, "id" | "createdAt" | "lastActivity"> & { stage?: LeadStage },
+  ) => Lead;
   updateLeadStage: (id: string, stage: LeadStage, motivoPerda?: string) => void;
   deleteLead: (id: string) => void;
   addTask: (partial: Omit<Task, "id">) => Task;
@@ -229,11 +249,22 @@ interface DataStoreContextValue {
   toggleTaskDone: (taskId: string) => void;
   updateClientStatus: (clientId: string, status: Client["status"]) => void;
   deleteClient: (clientId: string) => void;
-  updateClientInfo: (clientId: string, partial: Partial<Pick<Client, "name" | "company" | "email" | "phone" | "contratoArquivo">>) => void;
-  addClientManual: (partial: Pick<Client, "name" | "company" | "owner" | "plan" | "monthlyValue" | "services"> & Partial<Client>) => Client;
+  updateClientInfo: (
+    clientId: string,
+    partial: Partial<Pick<Client, "name" | "company" | "email" | "phone" | "contratoArquivo">>,
+  ) => void;
+  addClientManual: (
+    partial: Pick<Client, "name" | "company" | "owner" | "plan" | "monthlyValue" | "services"> &
+      Partial<Client>,
+  ) => Client;
   addComentario: (clientId: string, texto: string, autor: string) => void;
   removeComentario: (clientId: string, comentarioId: string) => void;
-  criarClienteDeVenda: (lead: Lead, servicos: string[], plano?: string, contratoMeses?: number) => Client;
+  criarClienteDeVenda: (
+    lead: Lead,
+    servicos: string[],
+    plano?: string,
+    contratoMeses?: number,
+  ) => Client;
   serviceTemplates: ServiceTemplate[];
   updateServiceTemplate: (id: string, partial: Partial<Omit<ServiceTemplate, "id">>) => void;
   toggleChecklistItem: (projectId: string, itemId: string) => void;
@@ -317,7 +348,6 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
     return registro;
   };
 
-
   const insights = useMemo(
     () =>
       gerarInsights({
@@ -378,7 +408,11 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
     const now = new Date().toISOString();
 
     setLeads((prev) =>
-      prev.map((l) => (l.id === id ? { ...l, stage, lastActivity: now, motivoPerda: motivoPerda ?? l.motivoPerda } : l)),
+      prev.map((l) =>
+        l.id === id
+          ? { ...l, stage, lastActivity: now, motivoPerda: motivoPerda ?? l.motivoPerda }
+          : l,
+      ),
     );
 
     supabase
@@ -390,11 +424,16 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
       });
 
     if (targetLead && targetLead.stage !== stage) {
-      const stageTaskTitles: Partial<Record<LeadStage, { title: string; priority: Task["priority"] }>> = {
+      const stageTaskTitles: Partial<
+        Record<LeadStage, { title: string; priority: Task["priority"] }>
+      > = {
         contato: { title: `Contato inicial com ${targetLead.name}`, priority: "alta" },
         diagnostico: { title: `Realizar diagnóstico de ${targetLead.name}`, priority: "alta" },
         reuniao: { title: `Preparar reunião com ${targetLead.name}`, priority: "urgente" },
-        proposta: { title: `Fazer follow-up da proposta com ${targetLead.name}`, priority: "urgente" },
+        proposta: {
+          title: `Fazer follow-up da proposta com ${targetLead.name}`,
+          priority: "urgente",
+        },
         negociacao: { title: `Acompanhar negociação com ${targetLead.name}`, priority: "urgente" },
       };
 
@@ -403,7 +442,9 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
         const amanha = new Date(Date.now() + 24 * 3600 * 1000).toISOString().slice(0, 10);
         setTasks((prevTasks) => {
           const hasDuplicate = prevTasks.some(
-            (t) => t.leadId === id && (t.title === taskConfig.title || (t.labels && t.labels.includes(stageLabels[stage]))),
+            (t) =>
+              t.leadId === id &&
+              (t.title === taskConfig.title || (t.labels && t.labels.includes(stageLabels[stage]))),
           );
           if (hasDuplicate) return prevTasks;
 
@@ -459,7 +500,9 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
 
   const toggleTaskDone: DataStoreContextValue["toggleTaskDone"] = (taskId) => {
     setTasks((prev) =>
-      prev.map((t) => (t.id === taskId ? { ...t, status: t.status === "concluida" ? "hoje" : "concluida" } : t)),
+      prev.map((t) =>
+        t.id === taskId ? { ...t, status: t.status === "concluida" ? "hoje" : "concluida" } : t,
+      ),
     );
   };
 
@@ -469,7 +512,8 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
     setClients((prev) =>
       prev.map((c) => {
         if (c.id !== clientId) return c;
-        canceledAtValue = status === "cancelado" ? hoje : status === "ativo" ? undefined : c.canceledAt;
+        canceledAtValue =
+          status === "cancelado" ? hoje : status === "ativo" ? undefined : c.canceledAt;
         return { ...c, status, canceledAt: canceledAtValue };
       }),
     );
@@ -495,9 +539,7 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
   };
 
   const updateClientInfo: DataStoreContextValue["updateClientInfo"] = (clientId, partial) => {
-    setClients((prev) =>
-      prev.map((c) => (c.id === clientId ? { ...c, ...partial } : c)),
-    );
+    setClients((prev) => prev.map((c) => (c.id === clientId ? { ...c, ...partial } : c)));
     const { contratoArquivo, ...resto } = partial;
     const dbPartial: Record<string, unknown> = { ...resto };
     if ("contratoArquivo" in partial) dbPartial.contrato_arquivo = contratoArquivo;
@@ -519,10 +561,19 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
       id: clientId,
       status: "onboarding",
       since: hoje.toISOString().slice(0, 10),
-      renewalDate: addMonths(hoje, partial.contratoMeses ?? 12).toISOString().slice(0, 10),
+      renewalDate: addMonths(hoje, partial.contratoMeses ?? 12)
+        .toISOString()
+        .slice(0, 10),
       contratoMeses: partial.contratoMeses ?? 12,
       paymentDay: partial.paymentDay ?? 5,
-      timeline: [{ id: `tl-${Date.now()}`, time: "Agora", user: "Sistema", text: "Cliente cadastrado manualmente" }],
+      timeline: [
+        {
+          id: `tl-${Date.now()}`,
+          time: "Agora",
+          user: "Sistema",
+          text: "Cliente cadastrado manualmente",
+        },
+      ],
       comentarios: [],
       ...partial,
     };
@@ -531,11 +582,11 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
       .from("clients")
       .insert(clientToDb(newClient))
       .then(({ error }) => {
-        if (error) console.error("Erro ao salvar cliente (cadastro manual) no Supabase:", error.message);
+        if (error)
+          console.error("Erro ao salvar cliente (cadastro manual) no Supabase:", error.message);
       });
     return newClient;
   };
-
 
   const addComentario: DataStoreContextValue["addComentario"] = (clientId, texto, autor) => {
     const comentario: ClientComentario = {
@@ -546,9 +597,7 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
     };
     setClients((prev) =>
       prev.map((c) =>
-        c.id === clientId
-          ? { ...c, comentarios: [comentario, ...(c.comentarios ?? [])] }
-          : c,
+        c.id === clientId ? { ...c, comentarios: [comentario, ...(c.comentarios ?? [])] } : c,
       ),
     );
   };
@@ -567,7 +616,12 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
     setServiceTemplates((prev) => prev.map((t) => (t.id === id ? { ...t, ...partial } : t)));
   };
 
-  const criarClienteDeVenda = (lead: Lead, servicos: string[], plano?: string, contratoMeses = 12): Client => {
+  const criarClienteDeVenda = (
+    lead: Lead,
+    servicos: string[],
+    plano?: string,
+    contratoMeses = 12,
+  ): Client => {
     const hoje = new Date();
     const dataInicioJornada = hoje.toISOString().slice(0, 10);
 
@@ -576,9 +630,10 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
       .map((s) => serviceTemplates.find((t) => t.name === s || t.id === s))
       .filter((t): t is ServiceTemplate => Boolean(t));
 
-    const prazoJornadaDias = matchedTemplates.length > 0
-      ? Math.max(...matchedTemplates.map((t) => t.defaultDeadlineDays))
-      : 15;
+    const prazoJornadaDias =
+      matchedTemplates.length > 0
+        ? Math.max(...matchedTemplates.map((t) => t.defaultDeadlineDays))
+        : 15;
 
     // 3. Define dataInicioJornada (hoje) e dataPrevistaFimOnboarding (hoje + prazoJornadaDias)
     const fimDate = new Date(hoje.getTime() + prazoJornadaDias * 24 * 60 * 60 * 1000);
@@ -588,7 +643,13 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
     const etapaJornada = matchedTemplates[0]?.stages[0] ?? "Briefing";
 
     const plan: Client["plan"] =
-      lead.value >= 15000 ? "Enterprise" : lead.value >= 10000 ? "Scale" : lead.value >= 5000 ? "Growth" : "Starter";
+      lead.value >= 15000
+        ? "Enterprise"
+        : lead.value >= 10000
+          ? "Scale"
+          : lead.value >= 5000
+            ? "Growth"
+            : "Starter";
 
     // 7. Registra a primeira entrada da timeline do cliente
     const timelineEntry = {
@@ -638,7 +699,9 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
     servicos.forEach((s, idx) => {
       const tpl = serviceTemplates.find((t) => t.name === s || t.id === s);
       const deadlineDays = tpl?.defaultDeadlineDays ?? 15;
-      const projDeadline = new Date(hoje.getTime() + deadlineDays * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+      const projDeadline = new Date(hoje.getTime() + deadlineDays * 24 * 60 * 60 * 1000)
+        .toISOString()
+        .slice(0, 10);
       const projId = `p-${Date.now()}-${idx}`;
 
       let type: Project["type"] = "Tráfego";
@@ -660,12 +723,16 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
         progress: 0,
         deadline: projDeadline,
         owner: lead.owner,
-        checklist: tpl?.checklist ? tpl.checklist.map((item, i) => ({ id: `chk-${projId}-${i}`, text: item, done: false })) : [],
+        checklist: tpl?.checklist
+          ? tpl.checklist.map((item, i) => ({ id: `chk-${projId}-${i}`, text: item, done: false }))
+          : [],
       });
 
       if (tpl?.tasks) {
         tpl.tasks.forEach((t, taskIdx) => {
-          const taskDue = new Date(hoje.getTime() + t.dueOffsetDays * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+          const taskDue = new Date(hoje.getTime() + t.dueOffsetDays * 24 * 60 * 60 * 1000)
+            .toISOString()
+            .slice(0, 10);
           newTasks.push({
             id: `t-${Date.now()}-${idx}-${taskIdx}`,
             title: `${t.title} (${newClient.company})`,
@@ -682,7 +749,9 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
     });
 
     // 6. Cria o primeiro registro de cobrança (mensalidade), vencimento em 30 dias
-    const vencimento30d = new Date(hoje.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const vencimento30d = new Date(hoje.getTime() + 30 * 24 * 60 * 60 * 1000)
+      .toISOString()
+      .slice(0, 10);
     const newFinanceEntry: FinanceEntry = {
       id: `f-${Date.now()}`,
       date: vencimento30d,
@@ -725,7 +794,9 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
       // 2. Verifica se todos os projetos de IMPLEMENTAÇÃO do cliente estão com checklist 100%.
       // Projetos de Gestão do Cliente não entram nessa conta — eles não têm "fim".
       if (!affectedClientId) return updated;
-      const implementacoes = updated.filter((p) => p.clientId === affectedClientId && p.fase === "implementacao");
+      const implementacoes = updated.filter(
+        (p) => p.clientId === affectedClientId && p.fase === "implementacao",
+      );
       const aindaNaoEntregues = implementacoes.filter((p) => p.status !== "entregue");
       const allDone =
         aindaNaoEntregues.length > 0 &&
@@ -755,7 +826,9 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
         }));
 
         updated = updated.map((p) =>
-          aindaNaoEntregues.some((ie) => ie.id === p.id) ? { ...p, status: "entregue" as const } : p,
+          aindaNaoEntregues.some((ie) => ie.id === p.id)
+            ? { ...p, status: "entregue" as const }
+            : p,
         );
 
         setClients((prevClients) => {
@@ -763,13 +836,18 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
           return prevClients.map((c) =>
             c.id === affectedClientId
               ? {
-                ...c,
-                status: "ativo" as const,
-                timeline: [
-                  { id: timelineId, time: "Agora", user: "Sistema", text: "Implementação concluída — cliente entrou na Gestão do Cliente" },
-                  ...(c.timeline ?? []),
-                ],
-              }
+                  ...c,
+                  status: "ativo" as const,
+                  timeline: [
+                    {
+                      id: timelineId,
+                      time: "Agora",
+                      user: "Sistema",
+                      text: "Implementação concluída — cliente entrou na Gestão do Cliente",
+                    },
+                    ...(c.timeline ?? []),
+                  ],
+                }
               : c,
           );
         });

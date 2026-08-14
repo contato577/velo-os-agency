@@ -48,7 +48,8 @@ export function LancamentoForm({
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
-  const categorias = tipo === "entrada" ? categoriasEntrada : tipo === "saida" ? categoriasSaida : [];
+  const categorias =
+    tipo === "entrada" ? categoriasEntrada : tipo === "saida" ? categoriasSaida : [];
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,7 +60,7 @@ export function LancamentoForm({
         date: data,
         description: descricao,
         category: categoria || (tipo === "entrada" ? "Mensalidade" : "Operacional"),
-        costCenter: tipo === "entrada" ? "Receita" : (categoria || "Operacional") as any,
+        costCenter: tipo === "entrada" ? "Receita" : ((categoria || "Operacional") as any),
         type: tipo,
         amount: Number(valor) || 0,
         client: contraparte || undefined,
@@ -81,9 +82,7 @@ export function LancamentoForm({
         <div className="text-sm font-semibold">
           {tipo === "entrada" ? "Entrada" : "Saída"} registrada
         </div>
-        <div className="text-[12px] text-muted-foreground">
-          Salva no sistema financeiro.
-        </div>
+        <div className="text-[12px] text-muted-foreground">Salva no sistema financeiro.</div>
       </div>
     );
   }
@@ -124,7 +123,10 @@ export function LancamentoForm({
         </p>
       )}
 
-      <fieldset disabled={!tipo} className={cn("space-y-3", !tipo && "opacity-50 pointer-events-none")}>
+      <fieldset
+        disabled={!tipo}
+        className={cn("space-y-3", !tipo && "opacity-50 pointer-events-none")}
+      >
         <F label="Descrição">
           <input
             required
@@ -136,7 +138,11 @@ export function LancamentoForm({
         </F>
         <div className="grid grid-cols-2 gap-3">
           <F label="Categoria">
-            <select className={inputCls} value={categoria} onChange={(e) => setCategoria(e.target.value)}>
+            <select
+              className={inputCls}
+              value={categoria}
+              onChange={(e) => setCategoria(e.target.value)}
+            >
               {categorias.map((c) => (
                 <option key={c}>{c}</option>
               ))}

@@ -28,12 +28,18 @@ import {
   Flame,
   CheckCircle2,
   Trash2,
-
 } from "lucide-react";
 
-
 import { AppShell } from "@/components/app-shell";
-import { stageOrder, stageLabels, formatBRL, type Lead, type LeadStage, type LeadPotential, type Client } from "@/lib/mock-data";
+import {
+  stageOrder,
+  stageLabels,
+  formatBRL,
+  type Lead,
+  type LeadStage,
+  type LeadPotential,
+  type Client,
+} from "@/lib/mock-data";
 import { useDataStore } from "@/lib/data-store";
 import { playSuccess } from "@/lib/sound";
 import { useQuickActions, NewTaskButton } from "@/components/quick-actions";
@@ -43,7 +49,10 @@ export const Route = createFileRoute("/comercial")({
   head: () => ({
     meta: [
       { title: "CRM · Veloce" },
-      { name: "description", content: "Pipeline comercial com Kanban drag-and-drop e fechamento automático." },
+      {
+        name: "description",
+        content: "Pipeline comercial com Kanban drag-and-drop e fechamento automático.",
+      },
     ],
   }),
   component: Comercial,
@@ -72,9 +81,17 @@ const stageBorderColors: Record<LeadStage, string> = {
 };
 
 const potencialStyles: Record<LeadPotential, { label: string; chip: string; dot: string }> = {
-  alto: { label: "Alto", chip: "bg-brand-deep/15 text-brand-deep border-brand-deep/30", dot: "bg-brand-deep" },
+  alto: {
+    label: "Alto",
+    chip: "bg-brand-deep/15 text-brand-deep border-brand-deep/30",
+    dot: "bg-brand-deep",
+  },
   medio: { label: "Médio", chip: "bg-info/15 text-info border-info/30", dot: "bg-info" },
-  baixo: { label: "Baixo", chip: "bg-muted text-muted-foreground border-border", dot: "bg-muted-foreground" },
+  baixo: {
+    label: "Baixo",
+    chip: "bg-muted text-muted-foreground border-border",
+    dot: "bg-muted-foreground",
+  },
 };
 
 function LeadCard({
@@ -96,9 +113,10 @@ function LeadCard({
     disabled: isOverlay,
   });
 
-  const style = transform && !isOverlay
-    ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`, zIndex: 40 }
-    : undefined;
+  const style =
+    transform && !isOverlay
+      ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`, zIndex: 40 }
+      : undefined;
 
   return (
     <div
@@ -116,8 +134,11 @@ function LeadCard({
         "group card-trello relative w-full cursor-grab border-l-4 p-3 text-left transition-all duration-200 active:cursor-grabbing",
         stageBorderColors[lead.stage],
         isDragging && !isOverlay && "opacity-30 border-dashed bg-accent/40 scale-[0.98]",
-        isOverlay && "shadow-2xl ring-2 ring-primary/60 scale-[1.03] opacity-95 bg-card z-50 cursor-grabbing",
-        justMoved && !isOverlay && "animate-in fade-in zoom-in-95 ring-2 ring-primary/70 duration-300 shadow-md",
+        isOverlay &&
+          "shadow-2xl ring-2 ring-primary/60 scale-[1.03] opacity-95 bg-card z-50 cursor-grabbing",
+        justMoved &&
+          !isOverlay &&
+          "animate-in fade-in zoom-in-95 ring-2 ring-primary/70 duration-300 shadow-md",
       )}
     >
       <div className="mb-1.5 flex items-start justify-between gap-2">
@@ -169,7 +190,9 @@ function LeadCard({
         <span className="truncate">{lead.origin}</span>
       </div>
       <div className="flex items-center justify-between gap-2">
-        <span className="font-mono text-[12px] font-semibold text-primary">{formatBRL(lead.value)}</span>
+        <span className="font-mono text-[12px] font-semibold text-primary">
+          {formatBRL(lead.value)}
+        </span>
         <div className="flex items-center gap-1.5">
           <span
             className={cn(
@@ -181,7 +204,11 @@ function LeadCard({
             {potencialStyles[lead.potencial].label}
           </span>
           <div className="flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/40 text-[9px] font-semibold text-primary-foreground">
-            {lead.owner.split(" ").map((n) => n[0]).join("").slice(0, 2)}
+            {lead.owner
+              .split(" ")
+              .map((n) => n[0])
+              .join("")
+              .slice(0, 2)}
           </div>
         </div>
       </div>
@@ -218,8 +245,12 @@ function StageColumn({
       <div className="flex items-center justify-between border-b px-3 py-2.5">
         <div className="flex min-w-0 items-center gap-2">
           <span className={cn("h-2 w-2 rounded-full", stageColors[stage])} />
-          <span className="truncate text-[12px] font-semibold uppercase tracking-wider">{stageLabels[stage]}</span>
-          <span className="rounded bg-accent px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">{leads.length}</span>
+          <span className="truncate text-[12px] font-semibold uppercase tracking-wider">
+            {stageLabels[stage]}
+          </span>
+          <span className="rounded bg-accent px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
+            {leads.length}
+          </span>
         </div>
       </div>
       <div className="border-b px-3 py-1.5 font-mono text-[10px] text-muted-foreground">
@@ -255,25 +286,39 @@ function LeadDetailPanel({ lead, onClose }: { lead: Lead; onClose: () => void })
         <div className="flex items-center justify-between border-b p-4">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/40 text-sm font-semibold text-primary-foreground">
-              {lead.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
+              {lead.name
+                .split(" ")
+                .map((n) => n[0])
+                .join("")
+                .slice(0, 2)}
             </div>
             <div className="min-w-0">
               <div className="truncate font-semibold">{lead.name}</div>
               <div className="truncate text-xs text-muted-foreground">{lead.company}</div>
             </div>
           </div>
-          <button onClick={onClose} className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground">
+          <button
+            onClick={onClose}
+            className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+          >
             <X className="h-4 w-4" />
           </button>
         </div>
 
         <div className="flex-1 overflow-y-auto p-4">
           <div className="flex flex-wrap items-center gap-2">
-            <span className={cn("flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-medium bg-opacity-15 text-foreground", stageColors[lead.stage])}>
+            <span
+              className={cn(
+                "flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-medium bg-opacity-15 text-foreground",
+                stageColors[lead.stage],
+              )}
+            >
               <span className={cn("h-1.5 w-1.5 rounded-full", stageColors[lead.stage])} />
               {stageLabels[lead.stage]}
             </span>
-            <span className="rounded-md bg-accent px-2 py-1 text-[11px] text-muted-foreground">{lead.origin}</span>
+            <span className="rounded-md bg-accent px-2 py-1 text-[11px] text-muted-foreground">
+              {lead.origin}
+            </span>
             <span
               className={cn(
                 "inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-[11px] font-medium",
@@ -285,8 +330,12 @@ function LeadDetailPanel({ lead, onClose }: { lead: Lead; onClose: () => void })
           </div>
 
           <div className="mt-4 rounded-lg border bg-surface p-3">
-            <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Valor da oportunidade</div>
-            <div className="font-mono text-2xl font-semibold text-primary">{formatBRL(lead.value)}</div>
+            <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+              Valor da oportunidade
+            </div>
+            <div className="font-mono text-2xl font-semibold text-primary">
+              {formatBRL(lead.value)}
+            </div>
           </div>
 
           <div className="mt-4 space-y-2 text-[13px]">
@@ -295,14 +344,22 @@ function LeadDetailPanel({ lead, onClose }: { lead: Lead; onClose: () => void })
             <InfoRow icon={Globe} label="Site" value={lead.site} />
             <InfoRow icon={MapPin} label="Cidade" value={lead.city} />
             <InfoRow icon={Building2} label="Responsável" value={lead.owner} />
-            <InfoRow icon={Clock} label="Criado em" value={new Date(lead.createdAt).toLocaleDateString("pt-BR")} />
+            <InfoRow
+              icon={Clock}
+              label="Criado em"
+              value={new Date(lead.createdAt).toLocaleDateString("pt-BR")}
+            />
           </div>
         </div>
 
         <div className="border-t p-3">
           <div className="flex gap-2">
             <NewTaskButton
-              defaultContext={{ type: "lead", id: lead.id, label: `${lead.name} (${lead.company})` }}
+              defaultContext={{
+                type: "lead",
+                id: lead.id,
+                label: `${lead.name} (${lead.company})`,
+              }}
               label="+ Nova tarefa"
               className="flex-1 justify-center"
             />
@@ -313,7 +370,15 @@ function LeadDetailPanel({ lead, onClose }: { lead: Lead; onClose: () => void })
   );
 }
 
-function InfoRow({ icon: Icon, label, value }: { icon: React.ComponentType<{ className?: string }>; label: string; value?: string }) {
+function InfoRow({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  value?: string;
+}) {
   if (!value) return null;
   return (
     <div className="flex items-start gap-2">
@@ -349,7 +414,7 @@ function VendaConfirmDialog({
   const toggle = (s: string) =>
     setServicos((prev) => (prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]));
 
-  const selectPlano = (p: typeof PLANOS_FIXOS[number]) => {
+  const selectPlano = (p: (typeof PLANOS_FIXOS)[number]) => {
     setPlano(p.label);
     setValor(p.value);
   };
@@ -364,7 +429,8 @@ function VendaConfirmDialog({
             <h3 className="text-sm font-semibold tracking-tight">Fechar venda — {lead.company}</h3>
           </div>
           <p className="mt-1 text-[11px] text-muted-foreground">
-            Cliente, projeto, checklist e cobrança serão criados automaticamente a partir dos templates.
+            Cliente, projeto, checklist e cobrança serão criados automaticamente a partir dos
+            templates.
           </p>
         </div>
         <div className="space-y-3.5 p-4 max-h-[75vh] overflow-y-auto">
@@ -388,7 +454,9 @@ function VendaConfirmDialog({
                     )}
                   >
                     <span className="text-[11px] font-semibold leading-tight">{p.label}</span>
-                    <span className="mt-1.5 font-mono text-xs font-bold text-primary">{formatBRL(p.value)}</span>
+                    <span className="mt-1.5 font-mono text-xs font-bold text-primary">
+                      {formatBRL(p.value)}
+                    </span>
                   </button>
                 );
               })}
@@ -421,7 +489,9 @@ function VendaConfirmDialog({
             />
             <p className="mt-1 text-[10px] text-muted-foreground">
               Renovação prevista para{" "}
-              {new Date(new Date().setMonth(new Date().getMonth() + contratoMeses)).toLocaleDateString("pt-BR")}
+              {new Date(
+                new Date().setMonth(new Date().getMonth() + contratoMeses),
+              ).toLocaleDateString("pt-BR")}
             </p>
           </div>
 
@@ -430,7 +500,12 @@ function VendaConfirmDialog({
               Serviços vendidos
             </div>
             <div className="grid grid-cols-2 gap-1.5 rounded-md border bg-surface/40 p-2 text-[12px]">
-              {["Gestão de Tráfego", "Landing Page", "Site Institucional", "Consultoria Estratégica"].map((s) => (
+              {[
+                "Gestão de Tráfego",
+                "Landing Page",
+                "Site Institucional",
+                "Consultoria Estratégica",
+              ].map((s) => (
                 <label key={s} className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"
@@ -445,7 +520,10 @@ function VendaConfirmDialog({
           </div>
         </div>
         <div className="flex justify-end gap-2 border-t bg-surface/40 px-4 py-3">
-          <button onClick={onCancel} className="rounded-md border bg-surface px-3 py-1.5 text-xs font-medium hover:bg-accent">
+          <button
+            onClick={onCancel}
+            className="rounded-md border bg-surface px-3 py-1.5 text-xs font-medium hover:bg-accent"
+          >
             Cancelar
           </button>
           <button
@@ -496,7 +574,8 @@ function Comercial() {
     () =>
       leads.filter((l) => {
         const q = query.toLowerCase().trim();
-        if (q && !l.name.toLowerCase().includes(q) && !l.company.toLowerCase().includes(q)) return false;
+        if (q && !l.name.toLowerCase().includes(q) && !l.company.toLowerCase().includes(q))
+          return false;
         if (potFilter.size > 0 && !potFilter.has(l.potencial)) return false;
         if (ownerFilter && l.owner !== ownerFilter) return false;
         return true;
@@ -544,7 +623,12 @@ function Comercial() {
     setTimeout(() => setJustMovedId(null), 1500);
   };
 
-  const confirmarVenda = (servicos: string[], plano: string, valor: number, contratoMeses: number) => {
+  const confirmarVenda = (
+    servicos: string[],
+    plano: string,
+    valor: number,
+    contratoMeses: number,
+  ) => {
     if (!pendingWin) return;
     const updatedLead = { ...pendingWin, value: valor };
 
@@ -568,7 +652,6 @@ function Comercial() {
       <div className="flex h-[calc(100vh-3.5rem)] flex-col">
         {/* Toolbar */}
         <div className="flex flex-wrap items-center gap-3 border-b px-4 py-3 md:px-6">
-
           <div className="hidden min-w-0 md:block">
             <p className="text-xs text-muted-foreground">
               {filteredLeads.length} de {leads.length} leads ·{" "}
@@ -590,7 +673,9 @@ function Comercial() {
                 onClick={() => setFilterOpen((v) => !v)}
                 className={cn(
                   "inline-flex h-8 items-center gap-1.5 rounded-md border px-2.5 text-xs font-medium hover:bg-accent",
-                  potFilter.size > 0 || ownerFilter ? "border-primary/50 bg-primary/10 text-primary" : "bg-surface",
+                  potFilter.size > 0 || ownerFilter
+                    ? "border-primary/50 bg-primary/10 text-primary"
+                    : "bg-surface",
                 )}
               >
                 <Filter className="h-3.5 w-3.5" /> Filtrar
@@ -604,16 +689,25 @@ function Comercial() {
                 <>
                   <div className="fixed inset-0 z-30" onClick={() => setFilterOpen(false)} />
                   <div className="absolute right-0 top-9 z-40 w-64 rounded-lg border bg-popover p-3 shadow-elegant">
-                    <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Potencial</div>
+                    <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                      Potencial
+                    </div>
                     <div className="mb-3 flex flex-col gap-1">
                       {(["alto", "medio", "baixo"] as LeadPotential[]).map((p) => (
                         <label key={p} className="flex items-center gap-2 text-[12px] capitalize">
-                          <input type="checkbox" checked={potFilter.has(p)} onChange={() => togglePot(p)} className="h-3 w-3" />
+                          <input
+                            type="checkbox"
+                            checked={potFilter.has(p)}
+                            onChange={() => togglePot(p)}
+                            className="h-3 w-3"
+                          />
                           {potencialStyles[p].label}
                         </label>
                       ))}
                     </div>
-                    <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Responsável</div>
+                    <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                      Responsável
+                    </div>
                     <select
                       value={ownerFilter}
                       onChange={(e) => setOwnerFilter(e.target.value)}
@@ -621,7 +715,9 @@ function Comercial() {
                     >
                       <option value="">Todos</option>
                       {owners.map((o) => (
-                        <option key={o} value={o}>{o}</option>
+                        <option key={o} value={o}>
+                          {o}
+                        </option>
                       ))}
                     </select>
                     <button
@@ -640,13 +736,14 @@ function Comercial() {
           </div>
         </div>
 
-
         {/* Content View */}
-
 
         <div className="flex items-center justify-between gap-2 border-t px-4 py-1.5 md:px-6">
           <span className="text-[10px] text-muted-foreground">
-            Fechado/Perdido mostrando: <b className="text-foreground">{periodoEncerrados === "todos" ? "tudo" : `últimos ${periodoEncerrados} dias`}</b>
+            Fechado/Perdido mostrando:{" "}
+            <b className="text-foreground">
+              {periodoEncerrados === "todos" ? "tudo" : `últimos ${periodoEncerrados} dias`}
+            </b>
           </span>
           <div className="flex items-center gap-1">
             {([30, 90, "todos"] as const).map((p) => (
@@ -655,7 +752,9 @@ function Comercial() {
                 onClick={() => setPeriodoEncerrados(p)}
                 className={cn(
                   "rounded px-2 py-0.5 text-[10px] font-medium transition-colors",
-                  periodoEncerrados === p ? "bg-primary/15 text-primary" : "text-muted-foreground hover:bg-accent",
+                  periodoEncerrados === p
+                    ? "bg-primary/15 text-primary"
+                    : "text-muted-foreground hover:bg-accent",
                 )}
               >
                 {p === "todos" ? "Tudo" : `${p}d`}
@@ -676,7 +775,9 @@ function Comercial() {
                 let stageLeads = filteredLeads.filter((l) => l.stage === stage);
                 if ((stage === "fechado" || stage === "perdido") && periodoEncerrados !== "todos") {
                   const limite = Date.now() - periodoEncerrados * 24 * 60 * 60 * 1000;
-                  stageLeads = stageLeads.filter((l) => new Date(l.lastActivity).getTime() >= limite);
+                  stageLeads = stageLeads.filter(
+                    (l) => new Date(l.lastActivity).getTime() >= limite,
+                  );
                 }
                 return (
                   <StageColumn
@@ -692,19 +793,20 @@ function Comercial() {
               })}
             </div>
           </div>
-          <DragOverlay dropAnimation={{ duration: 200, easing: "cubic-bezier(0.18, 0.67, 0.6, 1.22)" }}>
+          <DragOverlay
+            dropAnimation={{ duration: 200, easing: "cubic-bezier(0.18, 0.67, 0.6, 1.22)" }}
+          >
             {activeLead ? (
               <LeadCard
                 lead={activeLead}
-                onClick={() => { }}
-                onDelete={() => { }}
+                onClick={() => {}}
+                onDelete={() => {}}
                 justMoved={false}
                 isOverlay
               />
             ) : null}
           </DragOverlay>
         </DndContext>
-
 
         <div className="border-t bg-surface/30 px-4 py-2 text-[10px] text-muted-foreground md:px-6">
           Dados mantidos durante a sessão. Persistência real será ativada com o banco de dados.
@@ -746,5 +848,3 @@ function Comercial() {
     </AppShell>
   );
 }
-
-
