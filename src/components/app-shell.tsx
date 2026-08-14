@@ -58,7 +58,12 @@ export function AppShell({
     id: i.id,
     title: i.titulo,
     description: i.descricao,
-    type: i.prioridade === "critica" || i.prioridade === "alta" ? ("warning" as const) : i.prioridade === "media" ? ("info" as const) : ("success" as const),
+    type:
+      i.prioridade === "critica" || i.prioridade === "alta"
+        ? ("warning" as const)
+        : i.prioridade === "media"
+          ? ("info" as const)
+          : ("success" as const),
   }));
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
@@ -115,7 +120,11 @@ export function AppShell({
             className="ml-auto rounded-md p-1 text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground"
             aria-label="Toggle sidebar"
           >
-            {collapsed ? <ChevronsRight className="h-4 w-4" /> : <ChevronsLeft className="h-4 w-4" />}
+            {collapsed ? (
+              <ChevronsRight className="h-4 w-4" />
+            ) : (
+              <ChevronsLeft className="h-4 w-4" />
+            )}
           </button>
         </div>
 
@@ -192,7 +201,9 @@ export function AppShell({
         <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b bg-background/80 px-4 backdrop-blur-md md:px-6">
           <div className="flex min-w-0 flex-1 items-center gap-3">
             <div className="hidden min-w-0 flex-col leading-tight md:flex">
-              <h1 className="truncate text-sm font-semibold tracking-tight">{title === "Dashboard" ? "Comercial" : title}</h1>
+              <h1 className="truncate text-sm font-semibold tracking-tight">
+                {title === "Dashboard" ? "Comercial" : title}
+              </h1>
               {subtitle && <span className="truncate text-xs text-muted-foreground">{subtitle}</span>}
             </div>
           </div>
