@@ -81,12 +81,18 @@ function ClienteDetalhe() {
   const [confirmExcluir, setConfirmExcluir] = useState(false);
   const [excluirTexto, setExcluirTexto] = useState("");
 
+  // "Arquivado" só entra nas opções do dropdown quando o cliente já está
+  // cancelado (ou já arquivado) — assim o dropdown não pode pular o passo
+  // de cancelamento. A transição pra arquivado continua acontecendo pelo
+  // botão "Arquivar" abaixo, que é o fluxo oficial em 2 passos.
   const statusOptions: { value: Client["status"]; label: string }[] = [
     { value: "onboarding", label: "Onboarding" },
     { value: "ativo", label: "Ativo" },
     { value: "pausado", label: "Pausado" },
     { value: "cancelado", label: "Cancelado" },
-    { value: "arquivado", label: "Arquivado" },
+    ...(client.status === "cancelado" || client.status === "arquivado"
+      ? [{ value: "arquivado" as const, label: "Arquivado" }]
+      : []),
   ];
 
   return (

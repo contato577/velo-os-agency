@@ -28,6 +28,8 @@ import {
   Flame,
   CheckCircle2,
   Trash2,
+  XCircle,
+  Tag,
 } from "lucide-react";
 
 import { AppShell } from "@/components/app-shell";
@@ -189,10 +191,23 @@ function LeadCard({
         <span>·</span>
         <span className="truncate">{lead.origin}</span>
       </div>
-      <div className="flex items-center justify-between gap-2">
-        <span className="font-mono text-[12px] font-semibold text-primary">
-          {formatBRL(lead.value)}
-        </span>
+
+      {lead.tags && lead.tags.length > 0 && (
+        <div className="mb-2 flex flex-wrap gap-1">
+          {lead.tags.map((tag) => (
+            <span
+              key={tag}
+              className="inline-flex items-center gap-1 rounded bg-accent px-1.5 py-0.5 text-[9px] font-medium text-muted-foreground"
+            >
+              <Tag className="h-2 w-2" />
+              {tag}
+            </span>
+          ))}
+        </div>
+      )}
+
+      <div className="mt-2 flex items-center justify-between gap-2 border-t pt-2">
+        <span className="font-mono text-sm font-bold text-primary">{formatBRL(lead.value)}</span>
         <div className="flex items-center gap-1.5">
           <span
             className={cn(
@@ -337,6 +352,29 @@ function LeadDetailPanel({ lead, onClose }: { lead: Lead; onClose: () => void })
               {formatBRL(lead.value)}
             </div>
           </div>
+
+          {lead.stage === "perdido" && lead.motivoPerda && (
+            <div className="mt-3 rounded-lg border border-destructive/30 bg-destructive/5 p-3">
+              <div className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest text-destructive">
+                <XCircle className="h-3 w-3" /> Motivo da perda
+              </div>
+              <div className="text-[12px] text-foreground">{lead.motivoPerda}</div>
+            </div>
+          )}
+
+          {lead.tags && lead.tags.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {lead.tags.map((tag) => (
+                <span
+                  key={tag}
+                  className="inline-flex items-center gap-1 rounded-md bg-accent px-2 py-1 text-[11px] font-medium text-muted-foreground"
+                >
+                  <Tag className="h-3 w-3" />
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )}
 
           <div className="mt-4 space-y-2 text-[13px]">
             <InfoRow icon={Phone} label="Telefone" value={lead.phone} />
@@ -539,6 +577,110 @@ function VendaConfirmDialog({
   );
 }
 
+const MOTIVOS_PERDA = [
+  "Preço / sem orçamento",
+  "Fechou com concorrente",
+  "Timing errado",
+  "Sumiu / parou de responder",
+  "Não era o decisor",
+  "Não viu valor na proposta",
+  "Outro",
+];
+
+function MotivoPerdaDialog({
+  lead,
+  onConfirm,
+  onCancel,
+}: {
+  lead: Lead;
+  onConfirm: (motivo: string) => void;
+  onCancel: () => void;
+}) {
+  const [motivo, setMotivo] = useState<string>(MOTIVOS_PERDA[0]);
+  const [detalhe, setDetalhe] = useState("");
+
+  const motivoFinal = motivo === "Outro" ? detalhe.trim() : motivo;
+  const podeConfirmar = motivoFinal.length > 0;
+
+  return (
+    <>
+      <div className="fixed inset-0 z-50 bg-background/70 backdrop-blur-sm" onClick={onCancel} />
+      <div className="fixed left-1/2 top-1/2 z-50 w-[92vw] max-w-md -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-xl border bg-card shadow-elegant">
+        <div className="border-b px-4 py-3">
+          <div className="flex items-center gap-2">
+            <XCircle className="h-4 w-4 text-muted-foreground" />
+            <h3 className="text-sm font-semibold tracking-tight">
+              Marcar como perdido — {lead.company}
+            </h3>
+          </div>
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            Conta pra gente o motivo — isso ajuda a entender padrões de perda no funil.
+          </p>
+        </div>
+        <div className="space-y-3.5 p-4">
+          <div>
+            <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+              Motivo
+            </div>
+            <div className="flex flex-col gap-1.5">
+              {MOTIVOS_PERDA.map((m) => (
+                <label
+                  key={m}
+                  className={cn(
+                    "flex cursor-pointer items-center gap-2 rounded-md border px-2.5 py-1.5 text-[12px] transition-colors",
+                    motivo === m
+                      ? "border-primary bg-primary/10"
+                      : "border-border bg-surface/40 hover:border-primary/30",
+                  )}
+                >
+                  <input
+                    type="radio"
+                    name="motivo-perda"
+                    checked={motivo === m}
+                    onChange={() => setMotivo(m)}
+                    className="h-3 w-3 accent-primary"
+                  />
+                  {m}
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {motivo === "Outro" && (
+            <div>
+              <div className="mb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                Descreva o motivo
+              </div>
+              <textarea
+                value={detalhe}
+                onChange={(e) => setDetalhe(e.target.value)}
+                rows={2}
+                placeholder="Ex: cliente mudou de prioridade este trimestre"
+                className="w-full resize-none rounded-md border bg-background px-3 py-1.5 text-[12px] focus:border-primary/60 focus:outline-none"
+              />
+            </div>
+          )}
+        </div>
+        <div className="flex justify-end gap-2 border-t bg-surface/40 px-4 py-3">
+          <button
+            onClick={onCancel}
+            className="rounded-md border bg-surface px-3 py-1.5 text-xs font-medium hover:bg-accent"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={() => onConfirm(motivoFinal)}
+            disabled={!podeConfirmar}
+            className="rounded-md bg-muted-foreground px-3 py-1.5 text-xs font-medium text-background hover:opacity-90 disabled:opacity-50"
+          >
+            Confirmar perda
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
+
 function Comercial() {
   const { leads, updateLeadStage, deleteLead, criarClienteDeVenda } = useDataStore();
   const { openDialog } = useQuickActions();
@@ -555,6 +697,7 @@ function Comercial() {
   const [justMovedId, setJustMovedId] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [pendingWin, setPendingWin] = useState<Lead | null>(null);
+  const [pendingLoss, setPendingLoss] = useState<Lead | null>(null);
   const [createdClient, setCreatedClient] = useState<Client | null>(null);
 
   const sensors = useSensors(
@@ -618,8 +761,20 @@ function Comercial() {
       setPendingWin(lead);
       return;
     }
+    if (targetStage === "perdido") {
+      setPendingLoss(lead);
+      return;
+    }
     updateLeadStage(leadId, targetStage);
     setJustMovedId(leadId);
+    setTimeout(() => setJustMovedId(null), 1500);
+  };
+
+  const confirmarPerda = (motivo: string) => {
+    if (!pendingLoss) return;
+    updateLeadStage(pendingLoss.id, "perdido", motivo);
+    setJustMovedId(pendingLoss.id);
+    setPendingLoss(null);
     setTimeout(() => setJustMovedId(null), 1500);
   };
 
@@ -819,6 +974,13 @@ function Comercial() {
           lead={pendingWin}
           onConfirm={confirmarVenda}
           onCancel={() => setPendingWin(null)}
+        />
+      )}
+      {pendingLoss && (
+        <MotivoPerdaDialog
+          lead={pendingLoss}
+          onConfirm={confirmarPerda}
+          onCancel={() => setPendingLoss(null)}
         />
       )}
       {createdClient && (

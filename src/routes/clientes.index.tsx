@@ -21,6 +21,7 @@ const statusColor = {
   onboarding: "bg-info/15 text-info",
   pausado: "bg-warning/15 text-warning",
   cancelado: "bg-destructive/15 text-destructive",
+  arquivado: "bg-muted text-muted-foreground",
 };
 
 const SERVICOS = [
@@ -35,7 +36,7 @@ const SERVICOS = [
 function ClientesList() {
   const { clients, updateClientStatus, addClientManual } = useDataStore();
   const [query, setQuery] = useState("");
-  // Por padrão esconde clientes arquivados (status "cancelado") do dia a dia,
+  // Por padrão esconde clientes cancelados e arquivados do dia a dia,
   // mas o histórico continua ali — dá pra ver via filtro, útil pra remarketing/follow-up.
   const [statusFiltro, setStatusFiltro] = useState<"ativos" | "todos" | Client["status"]>("ativos");
   const [novoAberto, setNovoAberto] = useState(false);
@@ -50,7 +51,7 @@ function ClientesList() {
         statusFiltro === "todos"
           ? true
           : statusFiltro === "ativos"
-            ? c.status !== "cancelado"
+            ? c.status !== "cancelado" && c.status !== "arquivado"
             : c.status === statusFiltro;
       return bateBusca && bateStatus;
     });
@@ -83,7 +84,8 @@ function ClientesList() {
               <option value="onboarding">Onboarding</option>
               <option value="ativo">Ativo</option>
               <option value="pausado">Pausado</option>
-              <option value="cancelado">Arquivados / cancelados</option>
+              <option value="cancelado">Cancelados</option>
+              <option value="arquivado">Arquivados</option>
             </select>
             <Filter className="pointer-events-none absolute right-2 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
           </div>
@@ -181,7 +183,11 @@ function ClientesList() {
                       <option value="onboarding">Onboarding</option>
                       <option value="ativo">Ativo</option>
                       <option value="pausado">Pausado</option>
-                      <option value="cancelado">Cancelado / Arquivado</option>
+                      <option value="cancelado">Cancelado</option>
+                      {/* Só libera "Arquivado" depois que o cliente já está cancelado — fluxo em 2 passos. */}
+                      {(c.status === "cancelado" || c.status === "arquivado") && (
+                        <option value="arquivado">Arquivado</option>
+                      )}
                     </select>
                   </td>
                   <td className="px-4 py-3">
