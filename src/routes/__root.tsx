@@ -14,6 +14,7 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { ThemeProvider } from "../lib/theme";
 import { DataStoreProvider } from "../lib/data-store";
 import { QuickActionsProvider } from "../components/quick-actions";
+import { Toaster } from "../components/ui/sonner";
 
 function NotFoundComponent() {
   return (
@@ -144,6 +145,7 @@ function RootComponent() {
         <DataStoreProvider>
           <QuickActionsProvider>
             <Outlet />
+            <Toaster position="top-right" richColors closeButton />
           </QuickActionsProvider>
         </DataStoreProvider>
       </ThemeProvider>

@@ -85,3 +85,12 @@ export function playAlert() {
     { freq: 233.08, inicio: 0.12, duracao: 0.16, volume: 0.09 },
   ]);
 }
+
+/** Lead novo caiu no CRM (ex: veio do formulário do Instagram/TikTok) — precisa chamar bastante atenção */
+export function playNewLead() {
+  tocarNotas([
+    { freq: 880.0, inicio: 0, duracao: 0.13, volume: 0.16 },
+    { freq: 1318.51, inicio: 0.13, duracao: 0.16, volume: 0.16 },
+    { freq: 1046.5, inicio: 0.29, duracao: 0.22, volume: 0.14 },
+  ]);
+}

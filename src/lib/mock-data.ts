@@ -43,7 +43,7 @@ export interface Lead {
   instagram?: string;
   site?: string;
   city: string;
-  origin: "Instagram" | "Indicação" | "Google Ads" | "LinkedIn" | "Site" | "Outbound";
+  origin: "Instagram" | "TikTok" | "Indicação" | "Google Ads" | "LinkedIn" | "Site" | "Outbound";
   owner: string;
   stage: LeadStage;
   potencial: LeadPotential;
@@ -65,6 +65,7 @@ const cities = [
 ];
 const origins: Lead["origin"][] = [
   "Instagram",
+  "TikTok",
   "Indicação",
   "Google Ads",
   "LinkedIn",

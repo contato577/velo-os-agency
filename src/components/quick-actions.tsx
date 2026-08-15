@@ -538,7 +538,7 @@ export interface LeadFormData {
   instagram: string;
   city: string;
   owner: string;
-  origin: "Instagram" | "Indicação" | "Google Ads" | "LinkedIn" | "Site" | "Outbound";
+  origin: "Instagram" | "TikTok" | "Indicação" | "Google Ads" | "LinkedIn" | "Site" | "Outbound";
   value: string;
   potencial: LeadPotential;
 }
@@ -623,6 +623,7 @@ function LeadForm({
             onChange={(e) => set("origin", e.target.value as LeadFormData["origin"])}
           >
             <option>Instagram</option>
+            <option>TikTok</option>
             <option>Indicação</option>
             <option>Google Ads</option>
             <option>LinkedIn</option>
