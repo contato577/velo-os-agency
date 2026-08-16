@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { CheckCircle2, Loader2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Check, CheckCircle2, Loader2 } from "lucide-react";
 
 // ─── Formulário público de captura de leads ───────────────────────────────
 // Essa é a página que vai no link da bio do Instagram e do TikTok. Ela NÃO
@@ -35,8 +35,7 @@ export const Route = createFileRoute("/captura")({
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
         rel: "stylesheet",
-        // Montserrat fina (pro corpo do formulário) + Unbounded (pro wordmark exclusivo da marca)
-        href: "https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600&family=Unbounded:wght@600;800&display=swap",
+        href: "https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600&display=swap",
       },
     ],
   }),
@@ -81,6 +80,14 @@ function CapturaLead() {
 
   const podeEnviar = form.nome.trim().length > 1 && form.telefone.trim().length > 7 && !enviando;
 
+  // Barra de progresso viva — dá o empurrão de "já tô quase terminando" pra pessoa concluir.
+  const camposRastreados = [form.nome, form.empresa, form.telefone, form.cidade, form.nicho];
+  const preenchidos = camposRastreados.filter((v) => v.trim().length > 0).length;
+  const progresso = useMemo(
+    () => Math.round((preenchidos / camposRastreados.length) * 100),
+    [preenchidos],
+  );
+
   const enviar = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!podeEnviar) return;
@@ -118,7 +125,7 @@ function CapturaLead() {
       className="relative flex min-h-screen items-center justify-center overflow-hidden bg-black px-4 py-10"
       style={{ fontFamily: "'Montserrat', sans-serif" }}
     >
-      {/* Fundo dinâmico: verde escuro e forte, exclusivo dessa página — nada do verde genérico do sistema */}
+      {/* Fundo dinâmico: verde escuro e forte, exclusivo dessa página */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute -left-24 -top-24 h-80 w-80 animate-[float_10s_ease-in-out_infinite] rounded-full bg-[#0c3d24] opacity-60 blur-3xl" />
         <div className="absolute -bottom-28 -right-20 h-96 w-96 animate-[float_13s_ease-in-out_infinite_reverse] rounded-full bg-[#08291a] opacity-70 blur-3xl" />
@@ -130,7 +137,6 @@ function CapturaLead() {
         @keyframes float { 0%,100% { transform: translateY(0) translateX(0); } 50% { transform: translateY(-24px) translateX(14px); } }
         @keyframes subir { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .subir { animation: subir 0.5s ease-out both; }
-        .veloce-wordmark { font-family: 'Unbounded', sans-serif; }
       `}</style>
 
       <div className="relative z-10 w-full max-w-md">
@@ -140,20 +146,34 @@ function CapturaLead() {
             className="subir rounded-2xl border border-[#1c4a30] bg-[#070a08]/80 p-6 shadow-2xl shadow-black/60 backdrop-blur-xl sm:p-8"
           >
             <div className="mb-6 flex flex-col items-center text-center">
-              <div className="veloce-wordmark mb-3 bg-gradient-to-b from-[#4ade80] to-[#0f5132] bg-clip-text text-3xl font-extrabold tracking-wide text-transparent sm:text-4xl">
+              <div className="mb-4 text-2xl font-semibold tracking-[0.15em] text-white sm:text-3xl">
                 VELOCE
               </div>
-              <h1 className="text-lg font-medium uppercase tracking-wide text-white sm:text-xl">
-                Sua marca vendendo todos os dias
+              <h1 className="text-lg font-medium text-white sm:text-xl">
+                Conte sobre o seu negócio
               </h1>
-              <p className="mt-2 text-[12px] font-light uppercase leading-relaxed tracking-wide text-white/50">
-                Preencha agora e dê o primeiro passo para transformar seguidores em clientes de
-                verdade.
+              <p className="mt-2 text-[13px] font-light leading-relaxed text-white/70">
+                Preencha os dados abaixo. Nossa equipe analisa seu momento atual e retorna com
+                transparência sobre os próximos passos.
               </p>
             </div>
 
+            {/* Barra de progresso — some visualmente o quanto falta */}
+            <div className="mb-5">
+              <div className="mb-1.5 flex items-center justify-between text-[10px] font-medium text-white/50">
+                <span>Progresso</span>
+                <span>{progresso}%</span>
+              </div>
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/[0.07]">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-[#0f5132] to-[#4ade80] transition-all duration-500 ease-out"
+                  style={{ width: `${progresso}%` }}
+                />
+              </div>
+            </div>
+
             <div className="space-y-3.5">
-              <Campo label="Seu nome*">
+              <Campo label="Seu nome*" preenchido={form.nome.trim().length > 0}>
                 <input
                   required
                   autoFocus
@@ -164,7 +184,7 @@ function CapturaLead() {
                 />
               </Campo>
 
-              <Campo label="Empresa / marca">
+              <Campo label="Empresa / marca" preenchido={form.empresa.trim().length > 0}>
                 <input
                   placeholder="Nome do seu negócio"
                   className={inputCls}
@@ -174,7 +194,7 @@ function CapturaLead() {
               </Campo>
 
               <div className="grid grid-cols-2 gap-3">
-                <Campo label="WhatsApp*">
+                <Campo label="WhatsApp*" preenchido={form.telefone.trim().length > 0}>
                   <input
                     required
                     type="tel"
@@ -184,7 +204,7 @@ function CapturaLead() {
                     onChange={(e) => set("telefone", e.target.value)}
                   />
                 </Campo>
-                <Campo label="Cidade">
+                <Campo label="Cidade" preenchido={form.cidade.trim().length > 0}>
                   <input
                     placeholder="Sua cidade"
                     className={inputCls}
@@ -194,7 +214,7 @@ function CapturaLead() {
                 </Campo>
               </div>
 
-              <Campo label="Qual seu nicho?">
+              <Campo label="Qual seu nicho?" preenchido={form.nicho.trim().length > 0}>
                 <input
                   placeholder="Ex: estética, advocacia, moda…"
                   className={inputCls}
@@ -218,27 +238,23 @@ function CapturaLead() {
               </Campo>
             </div>
 
-            {erro && (
-              <p className="mt-3 text-[12px] font-light uppercase tracking-wide text-red-400">
-                {erro}
-              </p>
-            )}
+            {erro && <p className="mt-3 text-[12px] font-light text-red-400">{erro}</p>}
 
             <button
               type="submit"
               disabled={!podeEnviar}
-              className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#0f5132] to-[#1a7a4c] py-3 text-sm font-medium uppercase tracking-widest text-white shadow-lg shadow-[#0f5132]/30 transition-all hover:brightness-110 disabled:opacity-40"
+              className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#0f5132] to-[#1a7a4c] py-3 text-sm font-medium tracking-wide text-white shadow-lg shadow-[#0f5132]/30 transition-all hover:brightness-110 disabled:opacity-40"
             >
               {enviando ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" /> Enviando…
                 </>
               ) : (
-                "Quero vender mais"
+                "Enviar meus dados"
               )}
             </button>
 
-            <p className="mt-3 text-center text-[10px] font-light uppercase tracking-widest text-white/30">
+            <p className="mt-3 text-center text-[11px] font-light text-white/45">
               Seus dados ficam só com a gente, sem spam.
             </p>
           </form>
@@ -247,12 +263,10 @@ function CapturaLead() {
             <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#0f5132]/25">
               <CheckCircle2 className="h-8 w-8 text-[#4ade80]" />
             </div>
-            <h2 className="text-lg font-medium uppercase tracking-wide text-white">
-              Recebemos seu contato
-            </h2>
-            <p className="mt-2 text-[12px] font-light uppercase leading-relaxed tracking-wide text-white/50">
-              Em breve alguém da nossa equipe fala com você no WhatsApp que você deixou. Fica de
-              olho!
+            <h2 className="text-lg font-medium text-white">Recebemos seu contato</h2>
+            <p className="mt-2 text-[13px] font-light leading-relaxed text-white/70">
+              Um especialista vai analisar suas informações e retornar pelo WhatsApp que você
+              deixou, com transparência sobre os próximos passos.
             </p>
           </div>
         )}
@@ -262,13 +276,22 @@ function CapturaLead() {
 }
 
 const inputCls =
-  "w-full rounded-lg border border-[#1c4a30] bg-white/[0.03] px-3.5 py-2.5 text-sm font-light uppercase tracking-wide text-white placeholder:text-white/25 placeholder:normal-case outline-none transition-colors focus:border-[#4ade80]/70 focus:bg-white/[0.06]";
+  "w-full rounded-lg border border-[#1c4a30] bg-white/[0.03] px-3.5 py-2.5 text-sm font-normal text-white placeholder:text-white/35 outline-none transition-colors focus:border-[#4ade80]/70 focus:bg-white/[0.06]";
 
-function Campo({ label, children }: { label: string; children: React.ReactNode }) {
+function Campo({
+  label,
+  children,
+  preenchido,
+}: {
+  label: string;
+  children: React.ReactNode;
+  preenchido?: boolean;
+}) {
   return (
     <div>
-      <div className="mb-1.5 text-[10px] font-light uppercase tracking-widest text-white/40">
+      <div className="mb-1.5 flex items-center gap-1 text-[11px] font-medium uppercase tracking-wider text-white/55">
         {label}
+        {preenchido && <Check className="h-3 w-3 text-[#4ade80]" />}
       </div>
       {children}
     </div>
