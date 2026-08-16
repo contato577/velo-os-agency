@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { CheckCircle2, Instagram, Loader2, Rocket, Sparkles } from "lucide-react";
-import veloceLogo from "@/assets/veloce-logo.jpg.asset.json";
+import { CheckCircle2, Loader2 } from "lucide-react";
 
 // ─── Formulário público de captura de leads ───────────────────────────────
 // Essa é a página que vai no link da bio do Instagram e do TikTok. Ela NÃO
@@ -30,6 +29,15 @@ export const Route = createFileRoute("/captura")({
         content: "Conta pra gente sobre o seu negócio e alguém da nossa equipe te chama.",
       },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
+    ],
+    links: [
+      { rel: "preconnect", href: "https://fonts.googleapis.com" },
+      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
+      {
+        rel: "stylesheet",
+        // Montserrat fina (pro corpo do formulário) + Unbounded (pro wordmark exclusivo da marca)
+        href: "https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600&family=Unbounded:wght@600;800&display=swap",
+      },
     ],
   }),
   component: CapturaLead,
@@ -106,41 +114,41 @@ function CapturaLead() {
   };
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#0b0d10] px-4 py-10">
-      {/* Fundo dinâmico: blobs de gradiente flutuando devagar, só efeito visual */}
+    <div
+      className="relative flex min-h-screen items-center justify-center overflow-hidden bg-black px-4 py-10"
+      style={{ fontFamily: "'Montserrat', sans-serif" }}
+    >
+      {/* Fundo dinâmico: verde escuro e forte, exclusivo dessa página — nada do verde genérico do sistema */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute -left-24 -top-24 h-72 w-72 animate-[float_9s_ease-in-out_infinite] rounded-full bg-primary/25 blur-3xl" />
-        <div className="absolute -bottom-24 -right-16 h-80 w-80 animate-[float_11s_ease-in-out_infinite_reverse] rounded-full bg-fuchsia-500/15 blur-3xl" />
-        <div className="absolute left-1/2 top-1/3 h-56 w-56 -translate-x-1/2 animate-[float_13s_ease-in-out_infinite] rounded-full bg-sky-500/10 blur-3xl" />
+        <div className="absolute -left-24 -top-24 h-80 w-80 animate-[float_10s_ease-in-out_infinite] rounded-full bg-[#0c3d24] opacity-60 blur-3xl" />
+        <div className="absolute -bottom-28 -right-20 h-96 w-96 animate-[float_13s_ease-in-out_infinite_reverse] rounded-full bg-[#08291a] opacity-70 blur-3xl" />
+        <div className="absolute left-1/2 top-1/4 h-64 w-64 -translate-x-1/2 animate-[float_15s_ease-in-out_infinite] rounded-full bg-[#0f5132] opacity-30 blur-3xl" />
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/40 to-black" />
       </div>
 
       <style>{`
         @keyframes float { 0%,100% { transform: translateY(0) translateX(0); } 50% { transform: translateY(-24px) translateX(14px); } }
         @keyframes subir { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .subir { animation: subir 0.5s ease-out both; }
+        .veloce-wordmark { font-family: 'Unbounded', sans-serif; }
       `}</style>
 
       <div className="relative z-10 w-full max-w-md">
         {!enviado ? (
           <form
             onSubmit={enviar}
-            className="subir rounded-2xl border border-white/10 bg-white/[0.04] p-6 shadow-2xl backdrop-blur-xl sm:p-8"
+            className="subir rounded-2xl border border-[#1c4a30] bg-[#070a08]/80 p-6 shadow-2xl shadow-black/60 backdrop-blur-xl sm:p-8"
           >
             <div className="mb-6 flex flex-col items-center text-center">
-              <img
-                src={veloceLogo.url}
-                alt="Veloce"
-                className="mb-3 h-12 w-12 rounded-xl object-cover shadow-lg"
-              />
-              <div className="mb-1 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-widest text-primary">
-                <Sparkles className="h-3 w-3" />
-                {origem === "TikTok" ? "Vim do TikTok" : "Vim do Instagram"}
+              <div className="veloce-wordmark mb-3 bg-gradient-to-b from-[#4ade80] to-[#0f5132] bg-clip-text text-3xl font-extrabold tracking-wide text-transparent sm:text-4xl">
+                VELOCE
               </div>
-              <h1 className="text-xl font-bold tracking-tight text-white sm:text-2xl">
-                Vamos turbinar o seu negócio
+              <h1 className="text-lg font-medium uppercase tracking-wide text-white sm:text-xl">
+                Sua marca vendendo todos os dias
               </h1>
-              <p className="mt-1.5 text-[13px] leading-relaxed text-white/60">
-                Preenche rapidinho e nossa equipe te chama no WhatsApp em breve.
+              <p className="mt-2 text-[12px] font-light uppercase leading-relaxed tracking-wide text-white/50">
+                Preencha agora e dê o primeiro passo para transformar seguidores em clientes de
+                verdade.
               </p>
             </div>
 
@@ -210,35 +218,39 @@ function CapturaLead() {
               </Campo>
             </div>
 
-            {erro && <p className="mt-3 text-[12px] text-destructive">{erro}</p>}
+            {erro && (
+              <p className="mt-3 text-[12px] font-light uppercase tracking-wide text-red-400">
+                {erro}
+              </p>
+            )}
 
             <button
               type="submit"
               disabled={!podeEnviar}
-              className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:brightness-110 disabled:opacity-40"
+              className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#0f5132] to-[#1a7a4c] py-3 text-sm font-medium uppercase tracking-widest text-white shadow-lg shadow-[#0f5132]/30 transition-all hover:brightness-110 disabled:opacity-40"
             >
               {enviando ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" /> Enviando…
                 </>
               ) : (
-                <>
-                  <Rocket className="h-4 w-4" /> Quero falar com a equipe
-                </>
+                "Quero vender mais"
               )}
             </button>
 
-            <p className="mt-3 flex items-center justify-center gap-1 text-center text-[10px] text-white/35">
-              <Instagram className="h-3 w-3" /> Seus dados ficam só com a gente, sem spam.
+            <p className="mt-3 text-center text-[10px] font-light uppercase tracking-widest text-white/30">
+              Seus dados ficam só com a gente, sem spam.
             </p>
           </form>
         ) : (
-          <div className="subir flex flex-col items-center rounded-2xl border border-white/10 bg-white/[0.04] p-8 text-center shadow-2xl backdrop-blur-xl">
-            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/15">
-              <CheckCircle2 className="h-8 w-8 text-primary" />
+          <div className="subir flex flex-col items-center rounded-2xl border border-[#1c4a30] bg-[#070a08]/80 p-8 text-center shadow-2xl shadow-black/60 backdrop-blur-xl">
+            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#0f5132]/25">
+              <CheckCircle2 className="h-8 w-8 text-[#4ade80]" />
             </div>
-            <h2 className="text-xl font-bold text-white">Recebemos seu contato! 🎉</h2>
-            <p className="mt-2 text-[13px] leading-relaxed text-white/60">
+            <h2 className="text-lg font-medium uppercase tracking-wide text-white">
+              Recebemos seu contato
+            </h2>
+            <p className="mt-2 text-[12px] font-light uppercase leading-relaxed tracking-wide text-white/50">
               Em breve alguém da nossa equipe fala com você no WhatsApp que você deixou. Fica de
               olho!
             </p>
@@ -250,12 +262,14 @@ function CapturaLead() {
 }
 
 const inputCls =
-  "w-full rounded-lg border border-white/10 bg-white/[0.06] px-3.5 py-2.5 text-sm text-white placeholder:text-white/30 outline-none transition-colors focus:border-primary/60 focus:bg-white/[0.09]";
+  "w-full rounded-lg border border-[#1c4a30] bg-white/[0.03] px-3.5 py-2.5 text-sm font-light uppercase tracking-wide text-white placeholder:text-white/25 placeholder:normal-case outline-none transition-colors focus:border-[#4ade80]/70 focus:bg-white/[0.06]";
 
 function Campo({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <div className="mb-1.5 text-[11px] font-medium text-white/50">{label}</div>
+      <div className="mb-1.5 text-[10px] font-light uppercase tracking-widest text-white/40">
+        {label}
+      </div>
       {children}
     </div>
   );
