@@ -15,7 +15,7 @@ import {
 } from "recharts";
 import { ArrowUpRight, ArrowDownRight, TrendingUp, Brain, ArrowRight, Plus, X } from "lucide-react";
 import { AppShell, PageHeader } from "@/components/app-shell";
-import { formatBRL, monthlyRevenue } from "@/lib/mock-data";
+import { formatBRL } from "@/lib/mock-data";
 import { useDataStore } from "@/lib/data-store";
 import { LancamentoForm } from "@/components/lancamento-form";
 import { cn } from "@/lib/utils";
@@ -37,17 +37,17 @@ function DRE() {
   const { insights: aiInsights, expenses, clients } = useDataStore();
   const [openNew, setOpenNew] = useState(false);
 
-  // Mês de referência = o mês ATUAL do calendário, se houver algum lançamento nele.
-  // (antes pegava sempre "o lançamento mais recente" — mas cobranças futuras, como a mensalidade
-  // gerada 30 dias à frente ao fechar uma venda, tinham data mais distante e "sequestravam" a tela
-  // inteira pro mês seguinte, fazendo lançamentos reais do mês atual sumirem dos cards.)
-  // Só cai pro mês mais recente com dado como alternativa quando o mês atual está totalmente vazio
-  // (ex: ambiente de demonstração, antes de qualquer lançamento real).
+  // Mês de referência = o mês ATUAL do calendário por padrão, mas agora dá pra
+  // trocar manualmente — sem isso, lançamentos de teste espalhados em meses
+  // diferentes faziam a tela parecer "quebrada" (só mostrava o que caísse no
+  // mês corrente, escondendo o resto sem explicação nenhuma).
   const hojeMesISO = new Date().toISOString().slice(0, 7);
   const mesesComDados = [...new Set(expenses.map((f) => f.date.slice(0, 7)))].sort();
-  const mesRef = mesesComDados.includes(hojeMesISO)
+  const mesPadrao = mesesComDados.includes(hojeMesISO)
     ? hojeMesISO
     : (mesesComDados[mesesComDados.length - 1] ?? hojeMesISO);
+  const [mesSelecionado, setMesSelecionado] = useState<string | null>(null);
+  const mesRef = mesSelecionado ?? mesPadrao;
   const mesRefIdx = mesesComDados.indexOf(mesRef);
   const mesAnteriorRef = mesRefIdx > 0 ? mesesComDados[mesRefIdx - 1] : null;
 
@@ -193,11 +193,16 @@ function DRE() {
   const fluxoProjetado = fluxoReal;
   const temHistoricoSuficiente = fluxoReal.length >= 2;
 
-  // Margem histórica por mês — dado de exemplo (ilustrativo) até existir histórico real de vários meses
-  const margemHistorica = monthlyRevenue.map((m, i) => ({
-    month: m.month,
-    margem: 18 + Math.sin(i) * 3 + i * 0.6,
+  // Margem por mês — agora calculada de verdade a partir do fluxo real
+  // (antes era uma fórmula fake com Math.sin, só pra "parecer" um gráfico).
+  const margemHistorica = fluxoReal.map((f) => ({
+    month: f.mes,
+    margem: f.entrada > 0 ? ((f.entrada - f.saida) / f.entrada) * 100 : 0,
   }));
+
+  // Evolução de receita — mesma fonte real do fluxo de caixa, sem meta fictícia
+  // (antes vinha de mock-data estático, sempre os mesmos 7 meses de exemplo).
+  const evolucaoReceita = fluxoReal.map((f) => ({ month: f.mes, receita: f.entrada }));
 
   // Insights de IA vindos da mesma engine central, filtrados por Financeiro
   // ── Churn, CAC e LTV — calculados com dados reais, no MESMO mês de referência do resto da tela ──
@@ -267,6 +272,29 @@ function DRE() {
           title={`DRE · ${nomeMesRef}`}
           subtitle="Calculado automaticamente a partir do financeiro"
         >
+          {/* Seletor de mês — sem isso, lançamentos em meses diferentes do atual
+              ficavam invisíveis sem nenhuma explicação. */}
+          <div className="relative">
+            <select
+              value={mesRef}
+              onChange={(e) => setMesSelecionado(e.target.value)}
+              className="h-8 appearance-none rounded-md border bg-surface px-2.5 pr-7 text-xs font-medium focus:border-primary/60 focus:outline-none"
+            >
+              {mesesComDados.length === 0 && <option value={hojeMesISO}>{nomeMesRef}</option>}
+              {mesesComDados.map((m) => {
+                const [a, n] = m.split("-").map(Number);
+                const label = new Date(a, n - 1, 1).toLocaleDateString("pt-BR", {
+                  month: "long",
+                  year: "numeric",
+                });
+                return (
+                  <option key={m} value={m}>
+                    {label}
+                  </option>
+                );
+              })}
+            </select>
+          </div>
           <button
             onClick={() => setOpenNew(true)}
             className="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary/90"
@@ -405,12 +433,7 @@ function DRE() {
             <div className="mb-3 flex items-center justify-between">
               <div>
                 <h3 className="text-sm font-semibold tracking-tight">Evolução anual</h3>
-                <p className="text-[11px] text-muted-foreground">
-                  Receita e meta nos últimos 7 meses{" "}
-                  <span className="rounded bg-warning/15 px-1.5 py-0.5 text-warning">
-                    dado de exemplo
-                  </span>
-                </p>
+                <p className="text-[11px] text-muted-foreground">Receita mensal — dados reais</p>
               </div>
               {deltaReceita !== undefined ? (
                 <div
@@ -432,7 +455,7 @@ function DRE() {
             </div>
             <div className="h-[240px]">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={monthlyRevenue}>
+                <BarChart data={evolucaoReceita}>
                   <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.22 0.010 155)" />
                   <XAxis
                     dataKey="month"
@@ -458,7 +481,6 @@ function DRE() {
                     formatter={(v: unknown) => formatBRL(Number(v))}
                   />
                   <Bar dataKey="receita" fill="oklch(0.66 0.15 150)" radius={[6, 6, 0, 0]} />
-                  <Bar dataKey="meta" fill="oklch(0.35 0.03 155)" radius={[6, 6, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -467,12 +489,7 @@ function DRE() {
           <div className="rounded-lg border bg-card p-4">
             <div className="mb-3">
               <h3 className="text-sm font-semibold tracking-tight">Margem por mês</h3>
-              <p className="text-[11px] text-muted-foreground">
-                Margem líquida (%) — evolução{" "}
-                <span className="rounded bg-warning/15 px-1.5 py-0.5 text-warning">
-                  dado de exemplo
-                </span>
-              </p>
+              <p className="text-[11px] text-muted-foreground">Margem líquida (%) — dados reais</p>
             </div>
             <div className="h-[240px]">
               <ResponsiveContainer width="100%" height="100%">

@@ -847,35 +847,9 @@ interface DocItem {
   addedAt: string;
 }
 
-const seedDocs: DocItem[] = [
-  {
-    id: "d1",
-    title: "Ata reunião kickoff.pdf",
-    category: "Atas",
-    type: "file",
-    size: "420 KB",
-    addedBy: "Rafael Souza",
-    addedAt: "2026-06-01",
-  },
-  {
-    id: "d2",
-    title: "Relatório Junho 2026.pdf",
-    category: "Relatórios",
-    type: "file",
-    size: "1.2 MB",
-    addedBy: "Camila Torres",
-    addedAt: "2026-07-01",
-  },
-  {
-    id: "d3",
-    title: "Plano estratégico Q3",
-    category: "Estratégia",
-    type: "link",
-    url: "https://miro.com/app/board/exemplo",
-    addedBy: "Rafael Souza",
-    addedAt: "2026-06-15",
-  },
-];
+// Antes tinha 3 documentos de exemplo aqui, aparecendo em TODO cliente novo,
+// mesmo sem nenhum documento real ter sido enviado. Agora começa vazio de verdade.
+const seedDocs: DocItem[] = [];
 
 const categoryMeta: Record<DocCategory, { icon: typeof FolderOpen; color: string; bg: string }> = {
   Atas: { icon: ClipboardList, color: "text-info", bg: "bg-info/10" },
@@ -1711,10 +1685,9 @@ function TabOperacao({ clientId }: { clientId: string }) {
   const clientProjects = projects.filter((p) => p.clientId === clientId);
   const clientTasks = tasks.filter((t) => t.clientId === clientId);
 
-  const [arquivos, setArquivos] = useState<ArquivoItem[]>([
-    { id: "f1", name: "Briefing_kickoff.pdf", size: "1.2 MB" },
-    { id: "f2", name: "Criativos_Julho.zip", size: "12.4 MB" },
-  ]);
+  // Antes vinha com 2 arquivos de exemplo sempre presentes, em qualquer cliente.
+  // Começa vazio agora — só aparece o que for enviado de verdade.
+  const [arquivos, setArquivos] = useState<ArquivoItem[]>([]);
   const [confirmDeleteArquivoId, setConfirmDeleteArquivoId] = useState<string | null>(null);
 
   const handleUpload = (files: FileList | null) => {

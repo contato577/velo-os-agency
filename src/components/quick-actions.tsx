@@ -50,28 +50,28 @@ const items: {
   hint: string;
   shortcut: string;
 }[] = [
-  {
-    key: "lead",
-    label: "Novo Lead",
-    icon: UserPlus,
-    hint: "Adicionar oportunidade ao CRM",
-    shortcut: "L",
-  },
-  {
-    key: "tarefa",
-    label: "Nova Tarefa",
-    icon: CheckSquare,
-    hint: "Criar tarefa rápida",
-    shortcut: "T",
-  },
-  {
-    key: "despesa",
-    label: "Nova Despesa",
-    icon: Receipt,
-    hint: "Lançar despesa no financeiro",
-    shortcut: "D",
-  },
-];
+    {
+      key: "lead",
+      label: "Novo Lead",
+      icon: UserPlus,
+      hint: "Adicionar oportunidade ao CRM",
+      shortcut: "L",
+    },
+    {
+      key: "tarefa",
+      label: "Nova Tarefa",
+      icon: CheckSquare,
+      hint: "Criar tarefa rápida",
+      shortcut: "T",
+    },
+    {
+      key: "despesa",
+      label: "Nova Despesa",
+      icon: Receipt,
+      hint: "Lançar despesa no financeiro",
+      shortcut: "D",
+    },
+  ];
 
 // ─── Main Component ──────────────────────────────────────────────────────────
 
@@ -380,7 +380,8 @@ function QuickDialog({
   defaultStage?: LeadStage;
   defaultDate?: string;
 }) {
-  const { addLead, addTask, addExpense, clients: realClients } = useDataStore();
+  const { addLead, addTask, addExpense, clients: realClients, teamMembers } = useDataStore();
+  const responsavelPadrao = teamMembers[0] ?? "Você";
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const meta = kindMeta[kind];
@@ -413,7 +414,7 @@ function QuickDialog({
       addTask({
         title: tarefaData.title,
         description: tarefaData.description || undefined,
-        owner: owners[0],
+        owner: responsavelPadrao,
         priority: tarefaData.priority,
         status: "backlog",
         dueDate: tarefaData.dueDate,
@@ -538,7 +539,7 @@ export interface LeadFormData {
   instagram: string;
   city: string;
   owner: string;
-  origin: "Instagram" | "TikTok" | "Indicação" | "Google Ads" | "LinkedIn" | "Site" | "Outbound";
+  origin: "Instagram" | "Indicação" | "Google Ads" | "LinkedIn" | "Site" | "Outbound";
   value: string;
   potencial: LeadPotential;
 }
@@ -549,7 +550,7 @@ export const emptyLeadForm: LeadFormData = {
   phone: "",
   instagram: "",
   city: "",
-  owner: owners[0],
+  owner: "",
   origin: "Instagram",
   value: "",
   potencial: "medio",
@@ -564,8 +565,20 @@ function LeadForm({
   onChange: (data: LeadFormData) => void;
   defaultStage?: LeadStage;
 }) {
+  const { teamMembers } = useDataStore();
+  // Equipe real do sistema (quem tem conta cadastrada). Enquanto a lista carrega
+  // ou se ainda não tiver ninguém além de você, mostra só um campo neutro.
+  const responsaveis = teamMembers.length > 0 ? teamMembers : ["Você"];
   const set = <K extends keyof LeadFormData>(key: K, value: LeadFormData[K]) =>
     onChange({ ...data, [key]: value });
+
+  // Preenche o responsável assim que a lista real chegar, se ainda estiver vazio
+  useEffect(() => {
+    if (!data.owner && responsaveis[0]) {
+      onChange({ ...data, owner: responsaveis[0] });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [responsaveis[0]]);
 
   return (
     <>
@@ -623,7 +636,6 @@ function LeadForm({
             onChange={(e) => set("origin", e.target.value as LeadFormData["origin"])}
           >
             <option>Instagram</option>
-            <option>TikTok</option>
             <option>Indicação</option>
             <option>Google Ads</option>
             <option>LinkedIn</option>
@@ -657,7 +669,7 @@ function LeadForm({
       </Row2>
       <F label="Responsável">
         <select className={cls} value={data.owner} onChange={(e) => set("owner", e.target.value)}>
-          {owners.map((o) => (
+          {responsaveis.map((o) => (
             <option key={o}>{o}</option>
           ))}
         </select>
@@ -679,13 +691,13 @@ function LeadForm({
 export interface DespesaFormData {
   description: string;
   costCenter:
-    | "Marketing"
-    | "Ferramentas"
-    | "Equipe"
-    | "Impostos"
-    | "Operacional"
-    | "Administrativo"
-    | "Investimentos";
+  | "Marketing"
+  | "Ferramentas"
+  | "Equipe"
+  | "Impostos"
+  | "Operacional"
+  | "Administrativo"
+  | "Investimentos";
   fornecedor: string;
   amount: string;
   date: string;
@@ -939,10 +951,10 @@ export function EditTaskDialog({ task, onClose }: { task: Task; onClose: () => v
 
   const lockedContext: TarefaDefaultContext | undefined = task.leadId
     ? {
-        type: "lead",
-        id: task.leadId,
-        label: realLeads.find((l) => l.id === task.leadId)?.name ?? "Lead",
-      }
+      type: "lead",
+      id: task.leadId,
+      label: realLeads.find((l) => l.id === task.leadId)?.name ?? "Lead",
+    }
     : task.projectId
       ? { type: "projeto", id: task.projectId, label: "Projeto vinculado" }
       : undefined;

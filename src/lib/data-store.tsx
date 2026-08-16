@@ -1,7 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { toast } from "sonner";
 import { supabase } from "./supabase";
-import { playNewLead } from "./sound";
 import {
   leads as seedLeads,
   stageLabels,
@@ -226,8 +224,103 @@ function clientToDb(client: Client) {
   };
 }
 
+// ─── Conversão banco ↔ sistema — Projetos, Checklist, Tarefas, Financeiro ────
+function projectFromDb(row: Record<string, unknown>): Project {
+  const checklistRows = (row.checklist_items as Record<string, unknown>[] | undefined) ?? [];
+  return {
+    id: row.id as string,
+    clientId: row.client_id as string,
+    clientName: (row.client_name as string) ?? "",
+    name: row.name as string,
+    type: row.type as Project["type"],
+    status: row.status as Project["status"],
+    fase: row.fase as Project["fase"],
+    progress: 0,
+    deadline: (row.deadline as string) ?? "",
+    owner: row.owner as string,
+    checklist: checklistRows
+      .sort((a, b) => (Number(a.ordem ?? 0) - Number(b.ordem ?? 0)))
+      .map((c) => ({ id: c.id as string, text: c.text as string, done: Boolean(c.done) })),
+  };
+}
+
+function projectToDb(project: Project) {
+  return {
+    id: project.id,
+    client_id: project.clientId,
+    name: project.name,
+    type: project.type,
+    status: project.status,
+    fase: project.fase,
+    deadline: project.deadline || null,
+    owner: project.owner,
+  };
+}
+
+function taskFromDb(row: Record<string, unknown>): Task {
+  return {
+    id: row.id as string,
+    title: row.title as string,
+    description: (row.description as string) ?? undefined,
+    owner: row.owner as string,
+    priority: row.priority as Task["priority"],
+    status: row.status as Task["status"],
+    dueDate: row.due_date as string,
+    clientId: (row.client_id as string) ?? undefined,
+    projectId: (row.project_id as string) ?? undefined,
+    leadId: (row.lead_id as string) ?? undefined,
+    labels: (row.labels as string[]) ?? [],
+  };
+}
+
+function taskToDb(task: Task) {
+  return {
+    id: task.id,
+    title: task.title,
+    description: task.description,
+    owner: task.owner,
+    priority: task.priority,
+    status: task.status,
+    due_date: task.dueDate,
+    client_id: task.clientId ?? null,
+    project_id: task.projectId ?? null,
+    lead_id: task.leadId ?? null,
+    labels: task.labels ?? [],
+  };
+}
+
+function expenseFromDb(row: Record<string, unknown>): FinanceEntry {
+  return {
+    id: row.id as string,
+    date: row.date as string,
+    description: (row.description as string) ?? "",
+    category: (row.category as string) ?? "",
+    costCenter: row.cost_center as FinanceEntry["costCenter"],
+    type: row.type as FinanceEntry["type"],
+    amount: Number(row.amount ?? 0),
+    client: (row.client_name as string) ?? undefined,
+    recurring: Boolean(row.recurring),
+  };
+}
+
+function expenseToDb(entry: FinanceEntry) {
+  return {
+    id: entry.id,
+    date: entry.date,
+    description: entry.description,
+    category: entry.category,
+    cost_center: entry.costCenter,
+    type: entry.type,
+    amount: entry.amount,
+    client_name: entry.client,
+    recurring: entry.recurring ?? false,
+  };
+}
+
+
 interface DataStoreContextValue {
   leads: Lead[];
+  teamMembers: string[];
   tasks: Task[];
   clients: Client[];
   expenses: FinanceEntry[];
@@ -276,6 +369,7 @@ const DataStoreContext = createContext<DataStoreContextValue | null>(null);
 
 export function DataStoreProvider({ children }: { children: ReactNode }) {
   const [leads, setLeads] = useState<Lead[]>([]);
+  const [teamMembers, setTeamMembers] = useState<string[]>([]);
   const [tasks, setTasks] = useState<Task[]>(seedTasks);
   const [clients, setClients] = useState<Client[]>([]);
   const [expenses, setExpenses] = useState<FinanceEntry[]>(seedExpenses);
@@ -315,33 +409,58 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
         }
         setClients((data ?? []).map(clientFromDb));
       });
-  }, []);
 
-  // Escuta em tempo real a tabela "leads" no Supabase. Isso é o que faz um
-  // lead que chega de fora (ex: formulário do Instagram/TikTok via N8N)
-  // aparecer na hora no quadro do Comercial, com som e aviso na tela — sem
-  // precisar dar F5. Leads criados pela própria tela (addLead) já entram
-  // direto no estado, então aqui a gente ignora o eco do que a gente mesmo inseriu.
-  useEffect(() => {
-    const channel = supabase
-      .channel("leads-tempo-real")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "leads" }, (payload) => {
-        const leadNovo = leadFromDb(payload.new as Record<string, unknown>);
-        setLeads((prev) => {
-          if (prev.some((l) => l.id === leadNovo.id)) return prev;
-          playNewLead();
-          toast.success(`🎯 Novo lead: ${leadNovo.name}`, {
-            description: `${leadNovo.company || "Sem empresa"} · ${leadNovo.city || "-"} · via ${leadNovo.origin}`,
-            duration: 8000,
-          });
-          return [leadNovo, ...prev];
-        });
-      })
-      .subscribe();
+    supabase
+      .from("projects")
+      .select("*, checklist_items(*)")
+      .order("created_at", { ascending: false })
+      .then(({ data, error }) => {
+        if (error) {
+          console.error("Erro ao carregar projetos do Supabase:", error.message);
+          setProjects(seedProjects);
+          return;
+        }
+        setProjects((data ?? []).map(projectFromDb));
+      });
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    supabase
+      .from("tasks")
+      .select("*")
+      .order("due_date", { ascending: true })
+      .then(({ data, error }) => {
+        if (error) {
+          console.error("Erro ao carregar tarefas do Supabase:", error.message);
+          setTasks(seedTasks);
+          return;
+        }
+        setTasks((data ?? []).map(taskFromDb));
+      });
+
+    supabase
+      .from("finance_entries")
+      .select("*")
+      .order("date", { ascending: false })
+      .then(({ data, error }) => {
+        if (error) {
+          console.error("Erro ao carregar financeiro do Supabase:", error.message);
+          setExpenses(seedExpenses);
+          return;
+        }
+        setExpenses((data ?? []).map(expenseFromDb));
+      });
+
+    // Time real — antes os formulários usavam uma lista fixa de 4 nomes fictícios
+    // pra "Responsável". Agora busca quem realmente tem conta no sistema.
+    supabase
+      .from("profiles")
+      .select("name")
+      .then(({ data, error }) => {
+        if (error) {
+          console.error("Erro ao carregar equipe do Supabase:", error.message);
+          return;
+        }
+        setTeamMembers((data ?? []).map((p) => p.name as string).filter(Boolean));
+      });
   }, []);
 
   const mesAtual = mesAtualISO();
@@ -508,31 +627,78 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
   };
 
   const addTask: DataStoreContextValue["addTask"] = (partial) => {
-    const task: Task = { id: `t-${Date.now()}`, ...partial };
+    const task: Task = { id: crypto.randomUUID(), ...partial };
     setTasks((prev) => [task, ...prev]);
+    supabase
+      .from("tasks")
+      .insert(taskToDb(task))
+      .then(({ error }) => {
+        if (error) console.error("Erro ao salvar tarefa no Supabase:", error.message);
+      });
     return task;
   };
 
   const updateTask: DataStoreContextValue["updateTask"] = (id, partial) => {
     setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, ...partial } : t)));
+    const dbPartial: Record<string, unknown> = {};
+    if ("title" in partial) dbPartial.title = partial.title;
+    if ("description" in partial) dbPartial.description = partial.description;
+    if ("owner" in partial) dbPartial.owner = partial.owner;
+    if ("priority" in partial) dbPartial.priority = partial.priority;
+    if ("status" in partial) dbPartial.status = partial.status;
+    if ("dueDate" in partial) dbPartial.due_date = partial.dueDate;
+    if ("clientId" in partial) dbPartial.client_id = partial.clientId;
+    if ("projectId" in partial) dbPartial.project_id = partial.projectId;
+    if ("leadId" in partial) dbPartial.lead_id = partial.leadId;
+    if ("labels" in partial) dbPartial.labels = partial.labels;
+    supabase
+      .from("tasks")
+      .update(dbPartial)
+      .eq("id", id)
+      .then(({ error }) => {
+        if (error) console.error("Erro ao atualizar tarefa no Supabase:", error.message);
+      });
   };
 
   const deleteTask: DataStoreContextValue["deleteTask"] = (id) => {
     setTasks((prev) => prev.filter((t) => t.id !== id));
+    supabase
+      .from("tasks")
+      .delete()
+      .eq("id", id)
+      .then(({ error }) => {
+        if (error) console.error("Erro ao excluir tarefa no Supabase:", error.message);
+      });
   };
 
   const addExpense: DataStoreContextValue["addExpense"] = (partial) => {
-    const entry: FinanceEntry = { id: `fe-${Date.now()}`, ...partial };
+    const entry: FinanceEntry = { id: crypto.randomUUID(), ...partial };
     setExpenses((prev) => [entry, ...prev]);
+    supabase
+      .from("finance_entries")
+      .insert(expenseToDb(entry))
+      .then(({ error }) => {
+        if (error) console.error("Erro ao salvar lançamento financeiro no Supabase:", error.message);
+      });
     return entry;
   };
 
   const toggleTaskDone: DataStoreContextValue["toggleTaskDone"] = (taskId) => {
+    let novoStatus: Task["status"] = "hoje";
     setTasks((prev) =>
-      prev.map((t) =>
-        t.id === taskId ? { ...t, status: t.status === "concluida" ? "hoje" : "concluida" } : t,
-      ),
+      prev.map((t) => {
+        if (t.id !== taskId) return t;
+        novoStatus = t.status === "concluida" ? "hoje" : "concluida";
+        return { ...t, status: novoStatus };
+      }),
     );
+    supabase
+      .from("tasks")
+      .update({ status: novoStatus })
+      .eq("id", taskId)
+      .then(({ error }) => {
+        if (error) console.error("Erro ao atualizar status da tarefa no Supabase:", error.message);
+      });
   };
 
   const updateClientStatus: DataStoreContextValue["updateClientStatus"] = (clientId, status) => {
@@ -712,8 +878,8 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
     };
 
     // Salva o cliente no Supabase em segundo plano (a tela já reflete na hora).
-    // Projetos, checklist, tarefas e a cobrança inicial ainda são só locais por
-    // enquanto — entram no banco na próxima etapa.
+    // Projetos, checklist, tarefas e a cobrança inicial são salvos logo abaixo,
+    // depois que o cliente e os projetos já têm um ID real pra referenciar.
     supabase
       .from("clients")
       .insert(clientToDb(newClient))
@@ -731,7 +897,7 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
       const projDeadline = new Date(hoje.getTime() + deadlineDays * 24 * 60 * 60 * 1000)
         .toISOString()
         .slice(0, 10);
-      const projId = `p-${Date.now()}-${idx}`;
+      const projId = crypto.randomUUID();
 
       let type: Project["type"] = "Tráfego";
       const sLower = s.toLowerCase();
@@ -753,17 +919,17 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
         deadline: projDeadline,
         owner: lead.owner,
         checklist: tpl?.checklist
-          ? tpl.checklist.map((item, i) => ({ id: `chk-${projId}-${i}`, text: item, done: false }))
+          ? tpl.checklist.map((item) => ({ id: crypto.randomUUID(), text: item, done: false }))
           : [],
       });
 
       if (tpl?.tasks) {
-        tpl.tasks.forEach((t, taskIdx) => {
+        tpl.tasks.forEach((t) => {
           const taskDue = new Date(hoje.getTime() + t.dueOffsetDays * 24 * 60 * 60 * 1000)
             .toISOString()
             .slice(0, 10);
           newTasks.push({
-            id: `t-${Date.now()}-${idx}-${taskIdx}`,
+            id: crypto.randomUUID(),
             title: `${t.title} (${newClient.company})`,
             owner: lead.owner,
             priority: t.priority,
@@ -782,7 +948,7 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
       .toISOString()
       .slice(0, 10);
     const newFinanceEntry: FinanceEntry = {
-      id: `f-${Date.now()}`,
+      id: crypto.randomUUID(),
       date: vencimento30d,
       description: `Primeira Mensalidade — ${lead.company}`,
       category: "Mensalidade",
@@ -799,6 +965,51 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
     if (newTasks.length > 0) setTasks((prev) => [...newTasks, ...prev]);
     setExpenses((prev) => [newFinanceEntry, ...prev]);
 
+    // Salva tudo no Supabase em segundo plano — projetos primeiro, depois o
+    // checklist de cada um (precisa do project_id já existente), tarefas e
+    // a cobrança inicial. Cada bloco é independente: se um falhar, os outros
+    // continuam tentando salvar normalmente.
+    if (newProjects.length > 0) {
+      supabase
+        .from("projects")
+        .insert(newProjects.map(projectToDb))
+        .then(({ error }) => {
+          if (error) console.error("Erro ao salvar projetos no Supabase:", error.message);
+        });
+
+      const allChecklistItems = newProjects.flatMap((p) =>
+        (p.checklist ?? []).map((item, i) => ({
+          id: item.id,
+          project_id: p.id,
+          text: item.text,
+          done: item.done,
+          ordem: i,
+        })),
+      );
+      if (allChecklistItems.length > 0) {
+        supabase
+          .from("checklist_items")
+          .insert(allChecklistItems)
+          .then(({ error }) => {
+            if (error) console.error("Erro ao salvar checklist no Supabase:", error.message);
+          });
+      }
+    }
+    if (newTasks.length > 0) {
+      supabase
+        .from("tasks")
+        .insert(newTasks.map(taskToDb))
+        .then(({ error }) => {
+          if (error) console.error("Erro ao salvar tarefas de onboarding no Supabase:", error.message);
+        });
+    }
+    supabase
+      .from("finance_entries")
+      .insert(expenseToDb(newFinanceEntry))
+      .then(({ error }) => {
+        if (error) console.error("Erro ao salvar cobrança inicial no Supabase:", error.message);
+      });
+
     // 8. Retorna o cliente criado
     return newClient;
   };
@@ -807,6 +1018,18 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
     // 1. Inverte o done do item e captura o clientId do projeto
     let affectedClientId: string | null = null;
     let novosProjetosOperacao: Project[] = [];
+    const itemAtual = projects
+      .find((p) => p.id === projectId)
+      ?.checklist?.find((i) => i.id === itemId);
+    const novoDone = !(itemAtual?.done ?? false);
+
+    supabase
+      .from("checklist_items")
+      .update({ done: novoDone })
+      .eq("id", itemId)
+      .then(({ error }) => {
+        if (error) console.error("Erro ao atualizar checklist no Supabase:", error.message);
+      });
 
     setProjects((prevProjects) => {
       let updated = prevProjects.map((p) => {
@@ -841,8 +1064,8 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
         const hoje = new Date();
         const hojeISO = hoje.toISOString().slice(0, 10);
         const renewal = clients.find((c) => c.id === affectedClientId)?.renewalDate ?? hojeISO;
-        novosProjetosOperacao = aindaNaoEntregues.map((p, i) => ({
-          id: `p-op-${Date.now()}-${i}`,
+        novosProjetosOperacao = aindaNaoEntregues.map((p) => ({
+          id: crypto.randomUUID(),
           clientId: p.clientId,
           clientName: p.clientName,
           name: `Gestão do Cliente — ${p.type} — ${p.clientName}`,
@@ -854,29 +1077,52 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
           owner: p.owner,
         }));
 
+        // Salva os projetos de Gestão do Cliente + marca os de implementação como entregues no Supabase
+        supabase
+          .from("projects")
+          .insert(novosProjetosOperacao.map(projectToDb))
+          .then(({ error }) => {
+            if (error) console.error("Erro ao salvar projeto de Gestão do Cliente no Supabase:", error.message);
+          });
+        supabase
+          .from("projects")
+          .update({ status: "entregue" })
+          .in("id", aindaNaoEntregues.map((p) => p.id))
+          .then(({ error }) => {
+            if (error) console.error("Erro ao marcar projeto como entregue no Supabase:", error.message);
+          });
+
         updated = updated.map((p) =>
           aindaNaoEntregues.some((ie) => ie.id === p.id)
             ? { ...p, status: "entregue" as const }
             : p,
         );
 
+        supabase
+          .from("clients")
+          .update({ status: "ativo" })
+          .eq("id", affectedClientId)
+          .then(({ error }) => {
+            if (error) console.error("Erro ao atualizar status do cliente no Supabase:", error.message);
+          });
+
         setClients((prevClients) => {
           const timelineId = `tl-${Date.now()}`;
           return prevClients.map((c) =>
             c.id === affectedClientId
               ? {
-                  ...c,
-                  status: "ativo" as const,
-                  timeline: [
-                    {
-                      id: timelineId,
-                      time: "Agora",
-                      user: "Sistema",
-                      text: "Implementação concluída — cliente entrou na Gestão do Cliente",
-                    },
-                    ...(c.timeline ?? []),
-                  ],
-                }
+                ...c,
+                status: "ativo" as const,
+                timeline: [
+                  {
+                    id: timelineId,
+                    time: "Agora",
+                    user: "Sistema",
+                    text: "Implementação concluída — cliente entrou na Gestão do Cliente",
+                  },
+                  ...(c.timeline ?? []),
+                ],
+              }
               : c,
           );
         });
@@ -890,6 +1136,7 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
     <DataStoreContext.Provider
       value={{
         leads,
+        teamMembers,
         tasks,
         clients,
         expenses,
