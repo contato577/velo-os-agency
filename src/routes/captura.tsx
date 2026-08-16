@@ -133,67 +133,59 @@ function CapturaLead() {
 
   return (
     <div
-      className="relative flex min-h-screen items-center justify-center overflow-hidden bg-black px-4 py-10"
+      className="relative flex min-h-screen items-center justify-center bg-black px-4 py-10"
       style={{ fontFamily: "'Montserrat', sans-serif" }}
     >
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute -left-24 -top-24 h-80 w-80 animate-[float_10s_ease-in-out_infinite] rounded-full bg-[#0c3d24] opacity-50 blur-3xl" />
-        <div className="absolute -bottom-28 -right-20 h-96 w-96 animate-[float_13s_ease-in-out_infinite_reverse] rounded-full bg-[#08291a] opacity-60 blur-3xl" />
-        <div className="absolute left-1/2 top-1/4 h-64 w-64 -translate-x-1/2 animate-[float_15s_ease-in-out_infinite] rounded-full bg-[#0f5132] opacity-25 blur-3xl" />
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/40 to-black" />
-      </div>
-
       <style>{`
-        @keyframes float { 0%,100% { transform: translateY(0) translateX(0); } 50% { transform: translateY(-24px) translateX(14px); } }
         @keyframes subir { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .subir { animation: subir 0.5s ease-out both; }
+        @keyframes pulseGlow {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(163,230,53,0.55); }
+          70% { box-shadow: 0 0 0 14px rgba(163,230,53,0); }
+        }
+        .pulse-btn { animation: pulseGlow 2.2s ease-out infinite; }
       `}</style>
 
       <div className="relative z-10 w-full max-w-md">
         {!enviado ? (
           <form
             onSubmit={enviar}
-            className="subir rounded-3xl border border-white/10 bg-white/[0.03] p-6 shadow-2xl shadow-black/60 backdrop-blur-xl sm:p-8"
+            className="subir rounded-3xl border border-white/[0.06] bg-white/[0.015] p-6 shadow-2xl shadow-black/60 backdrop-blur-xl sm:p-8"
           >
             <div className="mb-5 flex flex-col items-center text-center">
-              <div className="mb-4 text-xl font-semibold tracking-[0.15em] text-white">VELOCE</div>
-
-              <span className="mb-4 inline-flex items-center rounded-full border border-white/15 px-3 py-1 text-[10px] font-medium uppercase tracking-widest text-[#4ade80]">
-                Avaliação gratuita
-              </span>
-
+              <div className="mb-4 text-xl font-semibold tracking-[0.1em] text-white">Veloce</div>
               <h1 className="text-2xl font-semibold leading-tight text-white">
-                Vamos acelerar o seu negócio
+                Vamos acelerar o seu negócio?
               </h1>
-              <p className="mt-2 text-[13px] font-light text-white/60">
+              <p className="mt-2 text-[13px] font-light text-white">
                 O próximo passo leva apenas um minuto.
               </p>
             </div>
 
-            <div className="mb-6 rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+            <div className="mb-6 rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4">
               <p className="mb-3 text-[13px] font-medium text-white">
                 Receba uma avaliação estrutural gratuita
               </p>
               <div className="space-y-2.5">
                 {BENEFICIOS.map(({ icon: Icon, texto }) => (
                   <div key={texto} className="flex items-start gap-2.5">
-                    <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#0f5132]/40">
-                      <Icon className="h-3 w-3 text-[#4ade80]" />
+                    <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#a3e635]">
+                      <Icon className="h-3 w-3 text-black" />
                     </div>
-                    <p className="text-[12px] font-light leading-snug text-white/70">{texto}</p>
+                    <p className="text-[12px] font-light leading-snug text-white">{texto}</p>
                   </div>
                 ))}
               </div>
             </div>
 
             <div className="mb-5">
-              <div className="mb-1.5 flex items-center justify-between text-[10px] font-medium text-white/45">
+              <div className="mb-1.5 flex items-center justify-between text-[10px] font-medium text-white">
                 <span>Progresso</span>
                 <span>{progresso}%</span>
               </div>
               <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/[0.07]">
                 <div
-                  className="h-full rounded-full bg-gradient-to-r from-[#0f5132] to-[#4ade80] transition-all duration-500 ease-out"
+                  className="h-full rounded-full bg-[#a3e635] transition-all duration-500 ease-out"
                   style={{ width: `${progresso}%` }}
                 />
               </div>
@@ -279,7 +271,7 @@ function CapturaLead() {
             <button
               type="submit"
               disabled={!podeEnviar}
-              className="mt-6 flex w-full items-center justify-center gap-2 rounded-full bg-[#4ade80] py-3 text-sm font-semibold text-black shadow-lg shadow-[#4ade80]/20 transition-all hover:brightness-105 disabled:opacity-40"
+              className="pulse-btn mt-6 flex w-full items-center justify-center gap-2 rounded-full bg-[#a3e635] py-3 text-sm font-semibold text-black transition-all hover:brightness-105 disabled:opacity-40"
             >
               {enviando ? (
                 <>
@@ -293,12 +285,12 @@ function CapturaLead() {
             </button>
           </form>
         ) : (
-          <div className="subir flex flex-col items-center rounded-3xl border border-white/10 bg-white/[0.03] p-8 text-center shadow-2xl shadow-black/60 backdrop-blur-xl">
-            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#0f5132]/25">
-              <CheckCircle2 className="h-8 w-8 text-[#4ade80]" />
+          <div className="subir flex flex-col items-center rounded-3xl border border-white/[0.06] bg-white/[0.015] p-8 text-center shadow-2xl shadow-black/60 backdrop-blur-xl">
+            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#a3e635]/20">
+              <CheckCircle2 className="h-8 w-8 text-[#a3e635]" />
             </div>
             <h2 className="text-lg font-medium text-white">Recebemos seu contato</h2>
-            <p className="mt-2 text-[13px] font-light leading-relaxed text-white/65">
+            <p className="mt-2 text-[13px] font-light leading-relaxed text-white">
               Em breve nossa equipe fala com você pelo WhatsApp. Fica de olho!
             </p>
           </div>
@@ -309,7 +301,7 @@ function CapturaLead() {
 }
 
 const inputCls =
-  "w-full rounded-lg border border-white/15 bg-white/[0.03] px-3.5 py-2.5 text-sm font-normal text-white placeholder:text-white/35 outline-none transition-colors focus:border-[#4ade80]/50 focus:bg-white/[0.06]";
+  "w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-3.5 py-2.5 text-sm font-normal text-white placeholder:text-white/35 outline-none transition-colors focus:border-[#a3e635]/60 focus:bg-white/[0.05]";
 
 function Campo({
   label,
@@ -322,9 +314,9 @@ function Campo({
 }) {
   return (
     <div>
-      <div className="mb-1.5 flex items-center gap-1 text-[11px] font-medium uppercase tracking-wider text-white/55">
+      <div className="mb-1.5 flex items-center gap-1 text-[11px] font-medium uppercase tracking-wider text-white">
         {label}
-        {preenchido && <Check className="h-3 w-3 text-[#4ade80]" />}
+        {preenchido && <Check className="h-3 w-3 text-[#a3e635]" />}
       </div>
       {children}
     </div>
