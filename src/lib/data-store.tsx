@@ -20,6 +20,7 @@ import {
   type LeadStage,
   type DocItem,
   type RecurringConfirmation,
+  type SystemNotification,
 } from "./mock-data";
 import { serviceTemplates as seedTemplates, type ServiceTemplate } from "./service-templates";
 import { gerarInsights, type Insight } from "./ai-engine";
@@ -436,6 +437,8 @@ interface DataStoreContextValue {
 
   recurringConfirmations: RecurringConfirmation[];
   confirmRecurring: (entryId: string, mes: string, status: RecurringConfirmation["status"]) => void;
+
+  systemNotifications: SystemNotification[];
 }
 
 const DataStoreContext = createContext<DataStoreContextValue | null>(null);
@@ -451,6 +454,7 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
   const [pontosControle, setPontosControle] = useState<PontoControle[]>(() => loadPontos());
   const [clientDocuments, setClientDocuments] = useState<DocItem[]>([]);
   const [recurringConfirmations, setRecurringConfirmations] = useState<RecurringConfirmation[]>([]);
+  const [systemNotifications, setSystemNotifications] = useState<SystemNotification[]>([]);
   const [metasFallback, setMetasFallback] = useState<MetasMensais>({
     metaComercial: 50000,
   });
@@ -590,6 +594,30 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
         }
         setRecurringConfirmations((data ?? []).map(confirmFromDb));
       });
+
+    // Notificações persistentes (ex: "lead novo chegou") — ficam guardadas mesmo
+    // que ninguém estivesse com o sistema aberto no momento em que aconteceram.
+    supabase
+      .from("system_notifications")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(30)
+      .then(({ data, error }) => {
+        if (error) {
+          console.error("Erro ao carregar notificações do Supabase:", error.message);
+          return;
+        }
+        setSystemNotifications(
+          (data ?? []).map((row) => ({
+            id: row.id as string,
+            title: row.title as string,
+            description: row.description as string,
+            to: row.to_path as string,
+            search: (row.search as Record<string, string>) ?? undefined,
+            createdAt: row.created_at as string,
+          })),
+        );
+      });
   }, []);
 
   // Escuta em tempo real a tabela "leads" no Supabase. Isso é o que faz um
@@ -612,6 +640,39 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
           return [leadNovo, ...prev];
         });
       })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  // Escuta em tempo real a tabela "system_notifications". Quem grava essas
+  // notificações é o próprio N8N (roda o tempo todo, sem depender de alguém
+  // estar com o sistema aberto) — aqui a gente só reflete na tela assim que
+  // uma notificação nova é gravada, pra quem já estiver com o sistema aberto
+  // ver aparecer no sininho na hora, sem precisar recarregar.
+  useEffect(() => {
+    const channel = supabase
+      .channel("notificacoes-tempo-real")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "system_notifications" },
+        (payload) => {
+          const row = payload.new as Record<string, unknown>;
+          const notif: SystemNotification = {
+            id: row.id as string,
+            title: row.title as string,
+            description: (row.description as string) ?? "",
+            to: row.to_path as string,
+            search: (row.search as Record<string, string>) ?? undefined,
+            createdAt: row.created_at as string,
+          };
+          setSystemNotifications((prev) =>
+            prev.some((n) => n.id === notif.id) ? prev : [notif, ...prev],
+          );
+        },
+      )
       .subscribe();
 
     return () => {
@@ -1553,6 +1614,8 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
 
         recurringConfirmations,
         confirmRecurring,
+
+        systemNotifications,
       }}
     >
       {children}

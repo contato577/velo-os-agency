@@ -152,6 +152,19 @@ export interface RecurringConfirmation {
   confirmedAt: string;
 }
 
+// Notificações "de verdade" do sistema — diferente dos Insights (que são
+// diagnósticos calculados na hora), essas ficam gravadas no banco, então
+// continuam lá esperando você mesmo se o sistema não estiver aberto quando
+// o evento acontecer (ex: um lead novo chegando pelo formulário à noite).
+export interface SystemNotification {
+  id: string;
+  title: string;
+  description: string;
+  to: string;
+  search?: Record<string, string>;
+  createdAt: string;
+}
+
 export interface Client {
   id: string;
   name: string;

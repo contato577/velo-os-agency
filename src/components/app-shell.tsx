@@ -51,7 +51,7 @@ export function AppShell({
   const [userOpen, setUserOpen] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
   const [ready, setReady] = useState(false);
-  const { insights } = useDataStore();
+  const { insights, systemNotifications } = useDataStore();
 
   // Notificações dispensadas ficam salvas no navegador — assim, ao clicar no X,
   // a notificação some de verdade e não volta a cada recarregamento da página,
@@ -72,13 +72,20 @@ export function AppShell({
     });
   };
 
-  // Notificações agora vêm dos diagnósticos reais do sistema (mesma fonte da
-  // Central de IA) — antes era uma lista fixa, sempre igual, sem relação com o
-  // que estava acontecendo de verdade na operação.
-  const notifications = insights
-    .filter((i) => !dispensadas.includes(i.id))
-    .slice(0, 8)
-    .map((i) => ({
+  // Notificações agora vêm de duas fontes: eventos reais do sistema (ex: "lead
+  // novo chegou", que ficam gravados e não somem) + diagnósticos da IA (mesma
+  // fonte da Central de IA). Eventos reais aparecem primeiro, por serem mais
+  // recentes/urgentes que um diagnóstico calculado.
+  const notifications = [
+    ...systemNotifications.map((n) => ({
+      id: n.id,
+      title: n.title,
+      description: n.description,
+      to: n.to,
+      search: n.search,
+      type: "success" as const,
+    })),
+    ...insights.map((i) => ({
       id: i.id,
       title: i.titulo,
       description: i.descricao,
@@ -90,7 +97,10 @@ export function AppShell({
           : i.prioridade === "media"
             ? ("info" as const)
             : ("success" as const),
-    }));
+    })),
+  ]
+    .filter((n) => !dispensadas.includes(n.id))
+    .slice(0, 12);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
 
