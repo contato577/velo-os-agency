@@ -30,6 +30,8 @@ import {
   Trash2,
   XCircle,
   Tag,
+  Pencil,
+  Check,
 } from "lucide-react";
 
 import { AppShell } from "@/components/app-shell";
@@ -294,6 +296,18 @@ function StageColumn({
 }
 
 function LeadDetailPanel({ lead, onClose }: { lead: Lead; onClose: () => void }) {
+  const { updateLeadValue } = useDataStore();
+  const [editandoValor, setEditandoValor] = useState(false);
+  const [valorInput, setValorInput] = useState(String(lead.value || ""));
+
+  const salvarValor = () => {
+    const num = Number(valorInput.replace(/\./g, "").replace(",", "."));
+    if (!Number.isNaN(num) && num >= 0) {
+      updateLeadValue(lead.id, num);
+    }
+    setEditandoValor(false);
+  };
+
   return (
     <>
       <div className="fixed inset-0 z-40 bg-background/60 backdrop-blur-sm" onClick={onClose} />
@@ -345,12 +359,53 @@ function LeadDetailPanel({ lead, onClose }: { lead: Lead; onClose: () => void })
           </div>
 
           <div className="mt-4 rounded-lg border bg-surface p-3">
-            <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-              Valor da oportunidade
+            <div className="mb-2 flex items-center justify-between">
+              <div className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                Valor da oportunidade
+              </div>
+              {!editandoValor && (
+                <button
+                  onClick={() => {
+                    setValorInput(String(lead.value || ""));
+                    setEditandoValor(true);
+                  }}
+                  className="text-muted-foreground hover:text-primary"
+                  title="Editar valor"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </button>
+              )}
             </div>
-            <div className="font-mono text-2xl font-semibold text-primary">
-              {formatBRL(lead.value)}
-            </div>
+            {editandoValor ? (
+              <div className="flex items-center gap-1.5">
+                <span className="font-mono text-lg text-muted-foreground">R$</span>
+                <input
+                  autoFocus
+                  type="text"
+                  inputMode="decimal"
+                  value={valorInput}
+                  onChange={(e) => setValorInput(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && salvarValor()}
+                  className="w-full rounded-md border bg-background px-2 py-1 font-mono text-xl font-semibold focus:border-primary/60 focus:outline-none"
+                />
+                <button
+                  onClick={salvarValor}
+                  className="rounded-md bg-primary p-1.5 text-primary-foreground hover:bg-primary/90"
+                >
+                  <Check className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={() => setEditandoValor(false)}
+                  className="rounded-md border p-1.5 hover:bg-accent"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            ) : (
+              <div className="font-mono text-2xl font-semibold text-primary">
+                {formatBRL(lead.value)}
+              </div>
+            )}
           </div>
 
           {lead.stage === "perdido" && lead.motivoPerda && (

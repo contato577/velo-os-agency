@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Area,
   AreaChart,
@@ -13,7 +13,20 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { ArrowUpRight, ArrowDownRight, TrendingUp, Brain, ArrowRight, Plus, X } from "lucide-react";
+import {
+  ArrowUpRight,
+  ArrowDownRight,
+  TrendingUp,
+  Brain,
+  ArrowRight,
+  Plus,
+  X,
+  Trash2,
+  BellRing,
+  Check,
+  Ban,
+} from "lucide-react";
+import { toast } from "sonner";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { formatBRL } from "@/lib/mock-data";
 import { useDataStore } from "@/lib/data-store";
@@ -34,14 +47,23 @@ export const Route = createFileRoute("/dre")({
 });
 
 function DRE() {
-  const { insights: aiInsights, expenses, clients } = useDataStore();
+  const {
+    insights: aiInsights,
+    expenses,
+    clients,
+    deleteExpense,
+    recurringConfirmations,
+    confirmRecurring,
+  } = useDataStore();
   const [openNew, setOpenNew] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   // Mês de referência = o mês ATUAL do calendário por padrão, mas agora dá pra
   // trocar manualmente — sem isso, lançamentos de teste espalhados em meses
   // diferentes faziam a tela parecer "quebrada" (só mostrava o que caísse no
   // mês corrente, escondendo o resto sem explicação nenhuma).
   const hojeMesISO = new Date().toISOString().slice(0, 7);
+  const diaHoje = new Date().getDate();
   const mesesComDados = [...new Set(expenses.map((f) => f.date.slice(0, 7)))].sort();
   const mesPadrao = mesesComDados.includes(hojeMesISO)
     ? hojeMesISO
@@ -51,10 +73,44 @@ function DRE() {
   const mesRefIdx = mesesComDados.indexOf(mesRef);
   const mesAnteriorRef = mesRefIdx > 0 ? mesesComDados[mesRefIdx - 1] : null;
 
+  // Lançamentos recorrentes que ainda não têm confirmação nenhuma pro mês atual,
+  // e cujo dia de cobrança já chegou — precisam de confirmação antes de contar
+  // de verdade no DRE (entrada/saída real, não só "deveria acontecer").
+  const pendentesConfirmacao = useMemo(() => {
+    return expenses.filter((f) => {
+      if (!f.recurring) return false;
+      const mesOrigem = f.date.slice(0, 7);
+      if (mesOrigem >= hojeMesISO) return false;
+      const diaCobranca = Number(f.date.slice(8, 10));
+      if (diaHoje < diaCobranca) return false;
+      const jaConfirmado = recurringConfirmations.some(
+        (c) => c.entryId === f.id && c.mes === hojeMesISO,
+      );
+      return !jaConfirmado;
+    });
+  }, [expenses, recurringConfirmations, hojeMesISO, diaHoje]);
+
+  useEffect(() => {
+    if (pendentesConfirmacao.length === 0) return;
+    toast.warning(
+      `${pendentesConfirmacao.length} lançamento(s) recorrente(s) aguardando confirmação`,
+      { description: "Confirme se a entrada/saída deste mês realmente aconteceu.", duration: 7000 },
+    );
+    // Só na primeira renderização com pendências — não fica repetindo o aviso a cada re-render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Lançamentos recorrentes contam em TODOS os meses a partir do mês em que foram criados —
-  // não só no mês exato do lançamento original.
+  // mas só depois de confirmados (ou se já passaram, sem marcação de "não recebido").
   const entriesForMonth = (mes: string) =>
-    expenses.filter((f) => f.date.startsWith(mes) || (f.recurring && f.date.slice(0, 7) < mes));
+    expenses.filter((f) => {
+      const mesOrigem = f.date.slice(0, 7);
+      if (mesOrigem === mes) return true;
+      if (!f.recurring || mesOrigem >= mes) return false;
+      const confirmacao = recurringConfirmations.find((c) => c.entryId === f.id && c.mes === mes);
+      if (confirmacao) return confirmacao.status === "confirmado";
+      return mes < hojeMesISO; // mês já encerrado sem marcação — assume que aconteceu
+    });
 
   const referencia = entriesForMonth(mesRef);
   const [refAno, refMesNum] = mesRef.split("-").map(Number);
@@ -304,6 +360,48 @@ function DRE() {
         </PageHeader>
 
         {openNew && <NovoLancamentoDialog onClose={() => setOpenNew(false)} />}
+
+        {/* Confirmações pendentes de lançamentos recorrentes */}
+        {pendentesConfirmacao.length > 0 && (
+          <div className="mb-4 rounded-xl border border-warning/40 bg-warning/5 p-4">
+            <div className="mb-3 flex items-center gap-2">
+              <BellRing className="h-4 w-4 text-warning" />
+              <h3 className="text-sm font-semibold tracking-tight">
+                {pendentesConfirmacao.length} confirmação(ões) pendente(s) este mês
+              </h3>
+            </div>
+            <div className="space-y-2">
+              {pendentesConfirmacao.map((f) => (
+                <div
+                  key={f.id}
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-card px-3 py-2"
+                >
+                  <div className="min-w-0">
+                    <div className="text-[13px] font-medium">{f.description}</div>
+                    <div className="text-[11px] text-muted-foreground">
+                      {f.client ?? f.category} · dia {f.date.slice(8, 10)} · {formatBRL(f.amount)}
+                    </div>
+                  </div>
+                  <div className="flex gap-1.5">
+                    <button
+                      onClick={() => confirmRecurring(f.id, hojeMesISO, "confirmado")}
+                      className="inline-flex items-center gap-1 rounded-md bg-success/15 px-2.5 py-1.5 text-[11px] font-medium text-success hover:bg-success/25"
+                    >
+                      <Check className="h-3 w-3" /> Confirmar{" "}
+                      {f.type === "entrada" ? "recebimento" : "pagamento"}
+                    </button>
+                    <button
+                      onClick={() => confirmRecurring(f.id, hojeMesISO, "nao_recebido")}
+                      className="inline-flex items-center gap-1 rounded-md bg-destructive/15 px-2.5 py-1.5 text-[11px] font-medium text-destructive hover:bg-destructive/25"
+                    >
+                      <Ban className="h-3 w-3" /> Não aconteceu
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Indicadores */}
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-8">
@@ -713,22 +811,50 @@ function DRE() {
                 .map((e) => (
                   <div
                     key={e.id}
-                    className="flex items-center justify-between rounded-md border bg-surface/40 px-3 py-2 text-[12px]"
+                    className="flex items-center justify-between gap-2 rounded-md border bg-surface/40 px-3 py-2 text-[12px]"
                   >
                     <div className="min-w-0 flex-1">
                       <div className="truncate font-medium">{e.description}</div>
                       <div className="text-[10px] text-muted-foreground">
                         {e.category} {e.client ? `· ${e.client}` : ""} {e.date ? `· ${e.date}` : ""}
+                        {e.recurring ? " · recorrente" : ""}
                       </div>
                     </div>
                     <span
                       className={cn(
-                        "font-mono",
+                        "shrink-0 font-mono",
                         e.type === "entrada" ? "text-success" : "text-destructive",
                       )}
                     >
                       {e.type === "entrada" ? "+" : "−"} {formatBRL(e.amount)}
                     </span>
+                    {confirmDeleteId === e.id ? (
+                      <div className="flex shrink-0 items-center gap-1">
+                        <button
+                          onClick={() => {
+                            deleteExpense(e.id);
+                            setConfirmDeleteId(null);
+                          }}
+                          className="rounded-md bg-destructive px-2 py-1 text-[10px] font-medium text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          Excluir
+                        </button>
+                        <button
+                          onClick={() => setConfirmDeleteId(null)}
+                          className="rounded-md border px-2 py-1 text-[10px] hover:bg-accent"
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setConfirmDeleteId(e.id)}
+                        title="Excluir lançamento"
+                        className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    )}
                   </div>
                 ))}
             </div>

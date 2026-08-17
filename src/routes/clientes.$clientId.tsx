@@ -41,8 +41,9 @@ import {
 } from "lucide-react";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { NewTaskButton } from "@/components/quick-actions";
-import { formatBRL, type Client } from "@/lib/mock-data";
+import { formatBRL, type Client, type DocCategory, type DocItem } from "@/lib/mock-data";
 import { useDataStore } from "@/lib/data-store";
+import { toast } from "sonner";
 import { gerarResumoCliente, exportarRelatorioPDF, linkWhatsApp } from "@/lib/client-report";
 import { cn } from "@/lib/utils";
 
@@ -268,7 +269,7 @@ function ClienteDetalhe() {
         {tab === "performance" && <TabPerformance client={client} />}
         {tab === "operacao" && <TabOperacao clientId={client.id} />}
         {tab === "financeiro" && <TabFinanceiro client={client} />}
-        {tab === "documentos" && <TabDocumentos />}
+        {tab === "documentos" && <TabDocumentos clientId={client.id} />}
         {tab === "historico" && <TabHistorico client={client} />}
       </div>
     </AppShell>
@@ -835,22 +836,6 @@ function TabPerformance({ client }: { client: Client }) {
 }
 
 // ─── DOCUMENTOS ─────────────────────────────────────────────────────────────
-type DocCategory = "Atas" | "Relatórios" | "Estratégia" | "Outros";
-interface DocItem {
-  id: string;
-  title: string;
-  category: DocCategory;
-  type: "file" | "link";
-  url?: string;
-  size?: string;
-  addedBy: string;
-  addedAt: string;
-}
-
-// Antes tinha 3 documentos de exemplo aqui, aparecendo em TODO cliente novo,
-// mesmo sem nenhum documento real ter sido enviado. Agora começa vazio de verdade.
-const seedDocs: DocItem[] = [];
-
 const categoryMeta: Record<DocCategory, { icon: typeof FolderOpen; color: string; bg: string }> = {
   Atas: { icon: ClipboardList, color: "text-info", bg: "bg-info/10" },
   Relatórios: { icon: BarChart2, color: "text-primary", bg: "bg-primary/10" },
@@ -858,54 +843,50 @@ const categoryMeta: Record<DocCategory, { icon: typeof FolderOpen; color: string
   Outros: { icon: FolderOpen, color: "text-muted-foreground", bg: "bg-surface" },
 };
 
-function TabDocumentos() {
-  const [docs, setDocs] = useState<DocItem[]>(seedDocs);
+function TabDocumentos({ clientId }: { clientId: string }) {
+  const { clientDocuments, addClientDocumentFile, addClientDocumentLink, deleteClientDocument } =
+    useDataStore();
+  const docs = useMemo(
+    () => clientDocuments.filter((d) => d.clientId === clientId),
+    [clientDocuments, clientId],
+  );
   const [query, setQuery] = useState("");
   const [openCategory, setOpenCategory] = useState<DocCategory | null>(null);
   const [addingIn, setAddingIn] = useState<DocCategory | null>(null);
   const [linkTitle, setLinkTitle] = useState("");
   const [linkUrl, setLinkUrl] = useState("");
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [enviando, setEnviando] = useState(false);
 
   const categories: DocCategory[] = ["Atas", "Relatórios", "Estratégia", "Outros"];
   const filtered = docs.filter((d) => d.title.toLowerCase().includes(query.toLowerCase()));
 
-  const addFile = (category: DocCategory, files: FileList | null) => {
+  const addFile = async (category: DocCategory, files: FileList | null) => {
     if (!files || files.length === 0) return;
-    const now = new Date().toISOString().slice(0, 10);
-    const items: DocItem[] = Array.from(files).map((f, i) => ({
-      id: `d-${Date.now()}-${i}`,
-      title: f.name,
-      category,
-      type: "file",
-      size: `${Math.max(1, Math.round(f.size / 1024))} KB`,
-      addedBy: "Rafael Souza",
-      addedAt: now,
-    }));
-    setDocs((prev) => [...items, ...prev]);
+    setEnviando(true);
+    try {
+      for (const file of Array.from(files)) {
+        // eslint-disable-next-line no-await-in-loop
+        await addClientDocumentFile(clientId, category, file);
+      }
+      toast.success(files.length > 1 ? "Arquivos enviados" : "Arquivo enviado");
+    } catch {
+      toast.error("Não foi possível enviar o arquivo. Tenta de novo em alguns segundos.");
+    } finally {
+      setEnviando(false);
+    }
   };
 
   const addLink = (category: DocCategory) => {
     if (!linkTitle || !linkUrl) return;
-    setDocs((prev) => [
-      {
-        id: `d-${Date.now()}`,
-        title: linkTitle,
-        category,
-        type: "link",
-        url: linkUrl,
-        addedBy: "Rafael Souza",
-        addedAt: new Date().toISOString().slice(0, 10),
-      },
-      ...prev,
-    ]);
+    addClientDocumentLink(clientId, category, linkTitle, linkUrl);
     setLinkTitle("");
     setLinkUrl("");
     setAddingIn(null);
   };
 
   const deleteDoc = (id: string) => {
-    setDocs((prev) => prev.filter((d) => d.id !== id));
+    deleteClientDocument(id);
     setConfirmDeleteId(null);
   };
 
@@ -1026,11 +1007,17 @@ function TabDocumentos() {
           {catItems.length}
         </span>
         <div className="ml-auto flex gap-2">
-          <label className="inline-flex cursor-pointer items-center gap-1 rounded-md border bg-surface px-2.5 py-1.5 text-[11px] hover:bg-accent">
-            <FileUp className="h-3 w-3" /> Arquivo
+          <label
+            className={cn(
+              "inline-flex cursor-pointer items-center gap-1 rounded-md border bg-surface px-2.5 py-1.5 text-[11px] hover:bg-accent",
+              enviando && "pointer-events-none opacity-60",
+            )}
+          >
+            <FileUp className="h-3 w-3" /> {enviando ? "Enviando…" : "Arquivo"}
             <input
               type="file"
               multiple
+              disabled={enviando}
               className="hidden"
               onChange={(e) => addFile(openCategory, e.target.files)}
             />

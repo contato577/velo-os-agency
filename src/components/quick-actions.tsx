@@ -50,28 +50,28 @@ const items: {
   hint: string;
   shortcut: string;
 }[] = [
-    {
-      key: "lead",
-      label: "Novo Lead",
-      icon: UserPlus,
-      hint: "Adicionar oportunidade ao CRM",
-      shortcut: "L",
-    },
-    {
-      key: "tarefa",
-      label: "Nova Tarefa",
-      icon: CheckSquare,
-      hint: "Criar tarefa rápida",
-      shortcut: "T",
-    },
-    {
-      key: "despesa",
-      label: "Nova Despesa",
-      icon: Receipt,
-      hint: "Lançar despesa no financeiro",
-      shortcut: "D",
-    },
-  ];
+  {
+    key: "lead",
+    label: "Novo Lead",
+    icon: UserPlus,
+    hint: "Adicionar oportunidade ao CRM",
+    shortcut: "L",
+  },
+  {
+    key: "tarefa",
+    label: "Nova Tarefa",
+    icon: CheckSquare,
+    hint: "Criar tarefa rápida",
+    shortcut: "T",
+  },
+  {
+    key: "despesa",
+    label: "Nova Despesa",
+    icon: Receipt,
+    hint: "Lançar despesa no financeiro",
+    shortcut: "D",
+  },
+];
 
 // ─── Main Component ──────────────────────────────────────────────────────────
 
@@ -691,13 +691,13 @@ function LeadForm({
 export interface DespesaFormData {
   description: string;
   costCenter:
-  | "Marketing"
-  | "Ferramentas"
-  | "Equipe"
-  | "Impostos"
-  | "Operacional"
-  | "Administrativo"
-  | "Investimentos";
+    | "Marketing"
+    | "Ferramentas"
+    | "Equipe"
+    | "Impostos"
+    | "Operacional"
+    | "Administrativo"
+    | "Investimentos";
   fornecedor: string;
   amount: string;
   date: string;
@@ -951,10 +951,10 @@ export function EditTaskDialog({ task, onClose }: { task: Task; onClose: () => v
 
   const lockedContext: TarefaDefaultContext | undefined = task.leadId
     ? {
-      type: "lead",
-      id: task.leadId,
-      label: realLeads.find((l) => l.id === task.leadId)?.name ?? "Lead",
-    }
+        type: "lead",
+        id: task.leadId,
+        label: realLeads.find((l) => l.id === task.leadId)?.name ?? "Lead",
+      }
     : task.projectId
       ? { type: "projeto", id: task.projectId, label: "Projeto vinculado" }
       : undefined;

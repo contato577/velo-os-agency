@@ -126,6 +126,32 @@ export interface ClientComentario {
   data: string;
 }
 
+export type DocCategory = "Atas" | "Relatórios" | "Estratégia" | "Outros";
+
+export interface DocItem {
+  id: string;
+  clientId: string;
+  title: string;
+  category: DocCategory;
+  type: "file" | "link";
+  url?: string;
+  storagePath?: string;
+  size?: string;
+  addedBy: string;
+  addedAt: string;
+}
+
+// Um lançamento recorrente (ex: mensalidade) só entra de fato no DRE de cada
+// mês seguinte depois que alguém confirma que a entrada/saída realmente
+// aconteceu naquele mês — evita contar receita que não foi confirmada.
+export interface RecurringConfirmation {
+  id: string;
+  entryId: string;
+  mes: string; // "2026-09"
+  status: "confirmado" | "nao_recebido";
+  confirmedAt: string;
+}
+
 export interface Client {
   id: string;
   name: string;

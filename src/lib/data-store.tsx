@@ -1,5 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { toast } from "sonner";
 import { supabase } from "./supabase";
+import { playNewLead } from "./sound";
 import {
   leads as seedLeads,
   stageLabels,
@@ -16,6 +18,8 @@ import {
   type FinanceEntry,
   type Project,
   type LeadStage,
+  type DocItem,
+  type RecurringConfirmation,
 } from "./mock-data";
 import { serviceTemplates as seedTemplates, type ServiceTemplate } from "./service-templates";
 import { gerarInsights, type Insight } from "./ai-engine";
@@ -239,7 +243,7 @@ function projectFromDb(row: Record<string, unknown>): Project {
     deadline: (row.deadline as string) ?? "",
     owner: row.owner as string,
     checklist: checklistRows
-      .sort((a, b) => (Number(a.ordem ?? 0) - Number(b.ordem ?? 0)))
+      .sort((a, b) => Number(a.ordem ?? 0) - Number(b.ordem ?? 0))
       .map((c) => ({ id: c.id as string, text: c.text as string, done: Boolean(c.done) })),
   };
 }
@@ -317,6 +321,55 @@ function expenseToDb(entry: FinanceEntry) {
   };
 }
 
+function docFromDb(row: Record<string, unknown>): DocItem {
+  return {
+    id: row.id as string,
+    clientId: row.client_id as string,
+    title: row.title as string,
+    category: row.category as DocItem["category"],
+    type: row.type as DocItem["type"],
+    url: (row.url as string) ?? undefined,
+    storagePath: (row.storage_path as string) ?? undefined,
+    size: (row.size as string) ?? undefined,
+    addedBy: (row.added_by as string) ?? "—",
+    addedAt: (row.added_at as string) ?? new Date().toISOString().slice(0, 10),
+  };
+}
+
+function docToDb(doc: DocItem) {
+  return {
+    id: doc.id,
+    client_id: doc.clientId,
+    title: doc.title,
+    category: doc.category,
+    type: doc.type,
+    url: doc.url ?? null,
+    storage_path: doc.storagePath ?? null,
+    size: doc.size ?? null,
+    added_by: doc.addedBy,
+    added_at: doc.addedAt,
+  };
+}
+
+function confirmFromDb(row: Record<string, unknown>): RecurringConfirmation {
+  return {
+    id: row.id as string,
+    entryId: row.entry_id as string,
+    mes: row.mes as string,
+    status: row.status as RecurringConfirmation["status"],
+    confirmedAt: (row.confirmed_at as string) ?? new Date().toISOString(),
+  };
+}
+
+function confirmToDb(c: RecurringConfirmation) {
+  return {
+    id: c.id,
+    entry_id: c.entryId,
+    mes: c.mes,
+    status: c.status,
+    confirmed_at: c.confirmedAt,
+  };
+}
 
 interface DataStoreContextValue {
   leads: Lead[];
@@ -336,11 +389,13 @@ interface DataStoreContextValue {
     partial: Omit<Lead, "id" | "createdAt" | "lastActivity"> & { stage?: LeadStage },
   ) => Lead;
   updateLeadStage: (id: string, stage: LeadStage, motivoPerda?: string) => void;
+  updateLeadValue: (id: string, value: number) => void;
   deleteLead: (id: string) => void;
   addTask: (partial: Omit<Task, "id">) => Task;
   updateTask: (id: string, partial: Partial<Omit<Task, "id">>) => void;
   deleteTask: (id: string) => void;
   addExpense: (partial: Omit<FinanceEntry, "id">) => FinanceEntry;
+  deleteExpense: (id: string) => void;
   toggleTaskDone: (taskId: string) => void;
   updateClientStatus: (clientId: string, status: Client["status"]) => void;
   deleteClient: (clientId: string) => void;
@@ -354,6 +409,7 @@ interface DataStoreContextValue {
   ) => Client;
   addComentario: (clientId: string, texto: string, autor: string) => void;
   removeComentario: (clientId: string, comentarioId: string) => void;
+  addTimelineEntry: (clientId: string, text: string, user?: string) => void;
   criarClienteDeVenda: (
     lead: Lead,
     servicos: string[],
@@ -363,6 +419,23 @@ interface DataStoreContextValue {
   serviceTemplates: ServiceTemplate[];
   updateServiceTemplate: (id: string, partial: Partial<Omit<ServiceTemplate, "id">>) => void;
   toggleChecklistItem: (projectId: string, itemId: string) => void;
+
+  clientDocuments: DocItem[];
+  addClientDocumentFile: (
+    clientId: string,
+    category: DocItem["category"],
+    file: File,
+  ) => Promise<void>;
+  addClientDocumentLink: (
+    clientId: string,
+    category: DocItem["category"],
+    title: string,
+    url: string,
+  ) => void;
+  deleteClientDocument: (id: string) => void;
+
+  recurringConfirmations: RecurringConfirmation[];
+  confirmRecurring: (entryId: string, mes: string, status: RecurringConfirmation["status"]) => void;
 }
 
 const DataStoreContext = createContext<DataStoreContextValue | null>(null);
@@ -376,6 +449,8 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
   const [projects, setProjects] = useState<Project[]>(seedProjects);
   const [serviceTemplates, setServiceTemplates] = useState<ServiceTemplate[]>(seedTemplates);
   const [pontosControle, setPontosControle] = useState<PontoControle[]>(() => loadPontos());
+  const [clientDocuments, setClientDocuments] = useState<DocItem[]>([]);
+  const [recurringConfirmations, setRecurringConfirmations] = useState<RecurringConfirmation[]>([]);
   const [metasFallback, setMetasFallback] = useState<MetasMensais>({
     metaComercial: 50000,
   });
@@ -461,6 +536,87 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
         }
         setTeamMembers((data ?? []).map((p) => p.name as string).filter(Boolean));
       });
+
+    // Documentos dos clientes — antes ficavam só na memória da tela e sumiam ao recarregar.
+    supabase
+      .from("client_documents")
+      .select("*")
+      .order("added_at", { ascending: false })
+      .then(({ data, error }) => {
+        if (error) {
+          console.error("Erro ao carregar documentos do Supabase:", error.message);
+          return;
+        }
+        setClientDocuments((data ?? []).map(docFromDb));
+      });
+
+    // Histórico/timeline dos clientes — antes também era só local, some ao recarregar.
+    supabase
+      .from("client_timeline")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .then(({ data, error }) => {
+        if (error) {
+          console.error("Erro ao carregar histórico do Supabase:", error.message);
+          return;
+        }
+        const porCliente: Record<
+          string,
+          { id: string; time: string; user: string; text: string }[]
+        > = {};
+        (data ?? []).forEach((row) => {
+          const cid = row.client_id as string;
+          const item = {
+            id: row.id as string,
+            time: new Date(row.created_at as string).toLocaleString("pt-BR"),
+            user: (row.user_name as string) ?? "Sistema",
+            text: row.text as string,
+          };
+          porCliente[cid] = porCliente[cid] ? [...porCliente[cid], item] : [item];
+        });
+        setClients((prev) =>
+          prev.map((c) => (porCliente[c.id] ? { ...c, timeline: porCliente[c.id] } : c)),
+        );
+      });
+
+    // Confirmações de lançamentos recorrentes (mensalidades que já foram confirmadas mês a mês).
+    supabase
+      .from("recurring_confirmations")
+      .select("*")
+      .then(({ data, error }) => {
+        if (error) {
+          console.error("Erro ao carregar confirmações recorrentes do Supabase:", error.message);
+          return;
+        }
+        setRecurringConfirmations((data ?? []).map(confirmFromDb));
+      });
+  }, []);
+
+  // Escuta em tempo real a tabela "leads" no Supabase. Isso é o que faz um
+  // lead que chega de fora (ex: formulário do Instagram/TikTok via N8N)
+  // aparecer na hora no quadro do Comercial, com som e aviso na tela — sem
+  // precisar dar F5. Leads criados pela própria tela (addLead) já entram
+  // direto no estado, então aqui a gente ignora o eco do que a gente mesmo inseriu.
+  useEffect(() => {
+    const channel = supabase
+      .channel("leads-tempo-real")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "leads" }, (payload) => {
+        const leadNovo = leadFromDb(payload.new as Record<string, unknown>);
+        setLeads((prev) => {
+          if (prev.some((l) => l.id === leadNovo.id)) return prev;
+          playNewLead();
+          toast.success(`🎯 Novo lead: ${leadNovo.name}`, {
+            description: `${leadNovo.company || "Sem empresa"} · ${leadNovo.city || "-"} · via ${leadNovo.origin}`,
+            duration: 8000,
+          });
+          return [leadNovo, ...prev];
+        });
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const mesAtual = mesAtualISO();
@@ -612,6 +768,17 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const updateLeadValue: DataStoreContextValue["updateLeadValue"] = (id, value) => {
+    setLeads((prev) => prev.map((l) => (l.id === id ? { ...l, value } : l)));
+    supabase
+      .from("leads")
+      .update({ value })
+      .eq("id", id)
+      .then(({ error }) => {
+        if (error) console.error("Erro ao atualizar valor do lead no Supabase:", error.message);
+      });
+  };
+
   const deleteLead: DataStoreContextValue["deleteLead"] = (id) => {
     setLeads((prev) => prev.filter((l) => l.id !== id));
     // Remove também tarefas soltas que ficaram ligadas a esse lead, pra não
@@ -678,9 +845,54 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
       .from("finance_entries")
       .insert(expenseToDb(entry))
       .then(({ error }) => {
-        if (error) console.error("Erro ao salvar lançamento financeiro no Supabase:", error.message);
+        if (error)
+          console.error("Erro ao salvar lançamento financeiro no Supabase:", error.message);
       });
     return entry;
+  };
+
+  const deleteExpense: DataStoreContextValue["deleteExpense"] = (id) => {
+    setExpenses((prev) => prev.filter((e) => e.id !== id));
+    // Se o lançamento excluído tiver alguma confirmação recorrente associada, some com elas junto,
+    // pra não deixar confirmação "órfã" apontando pra um lançamento que não existe mais.
+    setRecurringConfirmations((prev) => prev.filter((c) => c.entryId !== id));
+    supabase
+      .from("finance_entries")
+      .delete()
+      .eq("id", id)
+      .then(({ error }) => {
+        if (error)
+          console.error("Erro ao excluir lançamento financeiro no Supabase:", error.message);
+      });
+    supabase
+      .from("recurring_confirmations")
+      .delete()
+      .eq("entry_id", id)
+      .then(({ error }) => {
+        if (error)
+          console.error("Erro ao excluir confirmações associadas no Supabase:", error.message);
+      });
+  };
+
+  const confirmRecurring: DataStoreContextValue["confirmRecurring"] = (entryId, mes, status) => {
+    const nova: RecurringConfirmation = {
+      id: crypto.randomUUID(),
+      entryId,
+      mes,
+      status,
+      confirmedAt: new Date().toISOString(),
+    };
+    setRecurringConfirmations((prev) => [
+      ...prev.filter((c) => !(c.entryId === entryId && c.mes === mes)),
+      nova,
+    ]);
+    supabase
+      .from("recurring_confirmations")
+      .upsert(confirmToDb(nova), { onConflict: "entry_id,mes" })
+      .then(({ error }) => {
+        if (error)
+          console.error("Erro ao salvar confirmação recorrente no Supabase:", error.message);
+      });
   };
 
   const toggleTaskDone: DataStoreContextValue["toggleTaskDone"] = (taskId) => {
@@ -807,6 +1019,130 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
     );
   };
 
+  // Registra um evento na timeline do cliente (ex: "Contrato assinado", "Documento
+  // anexado", "Implementação concluída"...) e salva de verdade no Supabase, pra
+  // não sumir mais ao recarregar a página.
+  const addTimelineEntry: DataStoreContextValue["addTimelineEntry"] = (
+    clientId,
+    text,
+    user = "Sistema",
+  ) => {
+    const id = crypto.randomUUID();
+    const agora = new Date();
+    setClients((prev) =>
+      prev.map((c) =>
+        c.id === clientId
+          ? {
+              ...c,
+              timeline: [
+                { id, time: agora.toLocaleString("pt-BR"), user, text },
+                ...(c.timeline ?? []),
+              ],
+            }
+          : c,
+      ),
+    );
+    supabase
+      .from("client_timeline")
+      .insert({ id, client_id: clientId, user_name: user, text, created_at: agora.toISOString() })
+      .then(({ error }) => {
+        if (error) console.error("Erro ao salvar histórico do cliente no Supabase:", error.message);
+      });
+  };
+
+  // Envia o arquivo de verdade pro Supabase Storage (bucket "documentos-clientes")
+  // e só depois salva a referência (nome, categoria, link) na tabela — antes o
+  // arquivo em si nunca era enviado a lugar nenhum, só o nome ficava na memória
+  // da tela, por isso nunca dava pra abrir/baixar depois.
+  const addClientDocumentFile: DataStoreContextValue["addClientDocumentFile"] = async (
+    clientId,
+    category,
+    file,
+  ) => {
+    const id = crypto.randomUUID();
+    const now = new Date().toISOString().slice(0, 10);
+    const path = `${clientId}/${Date.now()}-${file.name}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("documentos-clientes")
+      .upload(path, file, { upsert: false });
+
+    if (uploadError) {
+      console.error("Erro ao enviar arquivo para o Supabase Storage:", uploadError.message);
+      throw uploadError;
+    }
+
+    const { data: publicUrlData } = supabase.storage.from("documentos-clientes").getPublicUrl(path);
+
+    const doc: DocItem = {
+      id,
+      clientId,
+      title: file.name,
+      category,
+      type: "file",
+      url: publicUrlData.publicUrl,
+      storagePath: path,
+      size: `${Math.max(1, Math.round(file.size / 1024))} KB`,
+      addedBy: "Você",
+      addedAt: now,
+    };
+
+    setClientDocuments((prev) => [doc, ...prev]);
+    supabase
+      .from("client_documents")
+      .insert(docToDb(doc))
+      .then(({ error }) => {
+        if (error) console.error("Erro ao salvar documento no Supabase:", error.message);
+      });
+    addTimelineEntry(clientId, `Documento adicionado: ${file.name}`, "Você");
+  };
+
+  const addClientDocumentLink: DataStoreContextValue["addClientDocumentLink"] = (
+    clientId,
+    category,
+    title,
+    url,
+  ) => {
+    const doc: DocItem = {
+      id: crypto.randomUUID(),
+      clientId,
+      title,
+      category,
+      type: "link",
+      url,
+      addedBy: "Você",
+      addedAt: new Date().toISOString().slice(0, 10),
+    };
+    setClientDocuments((prev) => [doc, ...prev]);
+    supabase
+      .from("client_documents")
+      .insert(docToDb(doc))
+      .then(({ error }) => {
+        if (error) console.error("Erro ao salvar link no Supabase:", error.message);
+      });
+    addTimelineEntry(clientId, `Link adicionado: ${title}`, "Você");
+  };
+
+  const deleteClientDocument: DataStoreContextValue["deleteClientDocument"] = (id) => {
+    const doc = clientDocuments.find((d) => d.id === id);
+    setClientDocuments((prev) => prev.filter((d) => d.id !== id));
+    supabase
+      .from("client_documents")
+      .delete()
+      .eq("id", id)
+      .then(({ error }) => {
+        if (error) console.error("Erro ao excluir documento no Supabase:", error.message);
+      });
+    if (doc?.storagePath) {
+      supabase.storage
+        .from("documentos-clientes")
+        .remove([doc.storagePath])
+        .then(({ error }) => {
+          if (error) console.error("Erro ao excluir arquivo do Storage:", error.message);
+        });
+    }
+  };
+
   const updateServiceTemplate: DataStoreContextValue["updateServiceTemplate"] = (id, partial) => {
     setServiceTemplates((prev) => prev.map((t) => (t.id === id ? { ...t, ...partial } : t)));
   };
@@ -881,6 +1217,20 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
     // Projetos, checklist, tarefas e a cobrança inicial são salvos logo abaixo,
     // depois que o cliente e os projetos já têm um ID real pra referenciar.
     supabase
+      .from("client_timeline")
+      .insert({
+        id: timelineEntry.id,
+        client_id: clientId,
+        user_name: timelineEntry.user,
+        text: timelineEntry.text,
+        created_at: hoje.toISOString(),
+      })
+      .then(({ error }) => {
+        if (error)
+          console.error("Erro ao salvar histórico inicial do cliente no Supabase:", error.message);
+      });
+
+    supabase
       .from("clients")
       .insert(clientToDb(newClient))
       .then(({ error }) => {
@@ -943,14 +1293,17 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    // 6. Cria o primeiro registro de cobrança (mensalidade), vencimento em 30 dias
-    const vencimento30d = new Date(hoje.getTime() + 30 * 24 * 60 * 60 * 1000)
-      .toISOString()
-      .slice(0, 10);
+    // 6. Cria o primeiro registro de cobrança (mensalidade) — contabilizado
+    // HOJE, no dia real em que o contrato foi assinado/pago. Antes isso
+    // aparecia 30 dias no futuro, o que fazia a mensalidade "sumir" do mês
+    // em que o cliente realmente entrou. Sendo "recurring: true", o DRE já
+    // repete esse valor automaticamente todo mês seguinte (contanto que o
+    // cliente continue ativo e a cobrança daquele mês seja confirmada).
+    const dataAssinatura = hoje.toISOString().slice(0, 10);
     const newFinanceEntry: FinanceEntry = {
       id: crypto.randomUUID(),
-      date: vencimento30d,
-      description: `Primeira Mensalidade — ${lead.company}`,
+      date: dataAssinatura,
+      description: `Mensalidade — ${lead.company}`,
       category: "Mensalidade",
       costCenter: "Receita",
       type: "entrada",
@@ -1000,7 +1353,8 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
         .from("tasks")
         .insert(newTasks.map(taskToDb))
         .then(({ error }) => {
-          if (error) console.error("Erro ao salvar tarefas de onboarding no Supabase:", error.message);
+          if (error)
+            console.error("Erro ao salvar tarefas de onboarding no Supabase:", error.message);
         });
     }
     supabase
@@ -1082,14 +1436,22 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
           .from("projects")
           .insert(novosProjetosOperacao.map(projectToDb))
           .then(({ error }) => {
-            if (error) console.error("Erro ao salvar projeto de Gestão do Cliente no Supabase:", error.message);
+            if (error)
+              console.error(
+                "Erro ao salvar projeto de Gestão do Cliente no Supabase:",
+                error.message,
+              );
           });
         supabase
           .from("projects")
           .update({ status: "entregue" })
-          .in("id", aindaNaoEntregues.map((p) => p.id))
+          .in(
+            "id",
+            aindaNaoEntregues.map((p) => p.id),
+          )
           .then(({ error }) => {
-            if (error) console.error("Erro ao marcar projeto como entregue no Supabase:", error.message);
+            if (error)
+              console.error("Erro ao marcar projeto como entregue no Supabase:", error.message);
           });
 
         updated = updated.map((p) =>
@@ -1103,26 +1465,40 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
           .update({ status: "ativo" })
           .eq("id", affectedClientId)
           .then(({ error }) => {
-            if (error) console.error("Erro ao atualizar status do cliente no Supabase:", error.message);
+            if (error)
+              console.error("Erro ao atualizar status do cliente no Supabase:", error.message);
           });
 
         setClients((prevClients) => {
           const timelineId = `tl-${Date.now()}`;
+          supabase
+            .from("client_timeline")
+            .insert({
+              id: timelineId,
+              client_id: affectedClientId,
+              user_name: "Sistema",
+              text: "Implementação concluída — cliente entrou na Gestão do Cliente",
+              created_at: new Date().toISOString(),
+            })
+            .then(({ error }) => {
+              if (error)
+                console.error("Erro ao salvar histórico do cliente no Supabase:", error.message);
+            });
           return prevClients.map((c) =>
             c.id === affectedClientId
               ? {
-                ...c,
-                status: "ativo" as const,
-                timeline: [
-                  {
-                    id: timelineId,
-                    time: "Agora",
-                    user: "Sistema",
-                    text: "Implementação concluída — cliente entrou na Gestão do Cliente",
-                  },
-                  ...(c.timeline ?? []),
-                ],
-              }
+                  ...c,
+                  status: "ativo" as const,
+                  timeline: [
+                    {
+                      id: timelineId,
+                      time: "Agora",
+                      user: "Sistema",
+                      text: "Implementação concluída — cliente entrou na Gestão do Cliente",
+                    },
+                    ...(c.timeline ?? []),
+                  ],
+                }
               : c,
           );
         });
@@ -1150,11 +1526,13 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
 
         addLead,
         updateLeadStage,
+        updateLeadValue,
         deleteLead,
         addTask,
         updateTask,
         deleteTask,
         addExpense,
+        deleteExpense,
         toggleTaskDone,
         updateClientStatus,
         deleteClient,
@@ -1162,10 +1540,19 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
         addClientManual,
         addComentario,
         removeComentario,
+        addTimelineEntry,
         criarClienteDeVenda,
         serviceTemplates,
         updateServiceTemplate,
         toggleChecklistItem,
+
+        clientDocuments,
+        addClientDocumentFile,
+        addClientDocumentLink,
+        deleteClientDocument,
+
+        recurringConfirmations,
+        confirmRecurring,
       }}
     >
       {children}
