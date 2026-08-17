@@ -1,4 +1,5 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
+import { Drawer, DrawerTrigger, DrawerContent, DrawerOverlay } from "@/components/ui/drawer";
 import { useEffect, useState, type ReactNode } from "react";
 import {
   LayoutDashboard,
@@ -135,11 +136,101 @@ export function AppShell({
 
   return (
     <div className="flex min-h-screen w-full bg-background text-foreground">
-      {/* Sidebar */}
+      <Drawer>
+        <DrawerTrigger asChild>
+          <button
+            className="md:hidden mr-2 rounded-md p-2 text-muted-foreground hover:bg-sidebar-accent"
+            aria-label="Open menu"
+          >
+            <LayoutDashboard className="h-5 w-5" />
+          </button>
+        </DrawerTrigger>
+        <DrawerContent className="max-w-xs">
+          <DrawerOverlay />
+          <div className="flex h-full flex-col bg-sidebar text-sidebar-foreground">
+            <div className="flex h-14 items-center gap-2 border-b px-3">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-md bg-sidebar-accent ring-1 ring-primary/40">
+                <img src={veloceLogo.url} alt="Veloce" className="h-8 w-8 object-cover" />
+              </div>
+              <span className="truncate text-sm font-semibold tracking-tight">Veloce</span>
+              <button
+                onClick={() => setCollapsed((c) => !c)}
+                className="ml-auto rounded-md p-1 text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+                aria-label="Toggle sidebar"
+              >
+                {collapsed ? (
+                  <ChevronsRight className="h-4 w-4" />
+                ) : (
+                  <ChevronsLeft className="h-4 w-4" />
+                )}
+              </button>
+            </div>
+            <nav className="flex flex-col gap-0.5 p-2">
+              {nav.map((item) => {
+                const active = item.to === "/" ? pathname === "/" : pathname.startsWith(item.to);
+                const Icon = item.icon;
+                return (
+                  <Link
+                    key={item.to}
+                    to={item.to}
+                    className={cn(
+                      "group relative flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[13px] font-medium transition-colors",
+                      active
+                        ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                        : "text-sidebar-foreground/75 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground",
+                    )}
+                    title={item.label}
+                  >
+                    {active && (
+                      <span className="absolute left-0 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-r bg-brand-deep" />
+                    )}
+                    <Icon className={cn("h-4 w-4 shrink-0", active ? "text-primary" : "")} />
+                    <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                    {"badge" in item && item.badge ? (
+                      <span className="rounded bg-sidebar-accent px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
+                        {item.badge}
+                      </span>
+                    ) : null}
+                  </Link>
+                );
+              })}
+            </nav>
+            <div className="absolute inset-x-2 bottom-2">
+              <button
+                onClick={() => setUserOpen((v) => !v)}
+                className="flex w-full items-center gap-2 rounded-md border bg-sidebar-accent/40 p-2.5 text-left transition-colors hover:bg-sidebar-accent/70"
+              >
+                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/50 text-[11px] font-semibold text-primary-foreground">
+                  {session.initials}
+                </div>
+                <div className="min-w-0 flex-1 leading-tight">
+                  <div className="truncate text-xs font-medium">{session.name}</div>
+                  <div className="truncate text-[10px] text-muted-foreground">{session.email}</div>
+                </div>
+              </button>
+              {userOpen && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setUserOpen(false)} />
+                  <div className="absolute bottom-14 left-0 right-0 z-50 overflow-hidden rounded-md border bg-popover shadow-elegant">
+                    <button
+                      onClick={handleSignOut}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-destructive hover:bg-destructive/10"
+                    >
+                      <LogOut className="h-3.5 w-3.5" /> Sair
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </DrawerContent>
+      </Drawer>
+
       <aside
         className={cn(
           "sticky top-0 h-screen shrink-0 border-r bg-sidebar text-sidebar-foreground transition-[width] duration-200",
           collapsed ? "w-[64px]" : "w-[236px]",
+          "hidden md:block",
         )}
       >
         <div className="flex h-14 items-center gap-2 border-b px-3">
@@ -163,7 +254,6 @@ export function AppShell({
             )}
           </button>
         </div>
-
         <nav className="flex flex-col gap-0.5 p-2">
           {nav.map((item) => {
             const active = item.to === "/" ? pathname === "/" : pathname.startsWith(item.to);
@@ -198,8 +288,6 @@ export function AppShell({
             );
           })}
         </nav>
-
-        {/* User card + menu */}
         {!collapsed && (
           <div className="absolute inset-x-2 bottom-2">
             <button
@@ -220,7 +308,7 @@ export function AppShell({
                 <div className="absolute bottom-14 left-0 right-0 z-50 overflow-hidden rounded-md border bg-popover shadow-elegant">
                   <button
                     onClick={handleSignOut}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-destructive transition-colors hover:bg-destructive/10"
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-destructive hover:bg-destructive/10"
                   >
                     <LogOut className="h-3.5 w-3.5" /> Sair
                   </button>

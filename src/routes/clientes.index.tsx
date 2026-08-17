@@ -70,14 +70,14 @@ function ClientesList() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Buscar cliente…"
-              className="h-8 w-52 rounded-md border bg-surface pl-7 pr-2 text-xs focus:border-primary/60 focus:outline-none"
+              className="h-8 w-52 min-h-[44px] rounded-md border bg-surface pl-7 pr-2 text-xs focus:border-primary/60 focus:outline-none"
             />
           </div>
           <div className="relative">
             <select
               value={statusFiltro}
               onChange={(e) => setStatusFiltro(e.target.value as typeof statusFiltro)}
-              className="h-8 appearance-none rounded-md border bg-surface pl-2.5 pr-7 text-xs font-medium focus:border-primary/60 focus:outline-none"
+              className="h-8 min-h-[44px] appearance-none rounded-md border bg-surface pl-2.5 pr-7 text-xs font-medium focus:border-primary/60 focus:outline-none"
             >
               <option value="ativos">Ativos (padrão)</option>
               <option value="todos">Todos, incl. arquivados</option>
@@ -91,13 +91,13 @@ function ClientesList() {
           </div>
           <button
             onClick={() => setNovoAberto(true)}
-            className="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+            className="inline-flex h-8 min-h-[44px] items-center gap-1.5 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary/90"
           >
             <Plus className="h-3.5 w-3.5" /> Novo Cliente
           </button>
         </PageHeader>
 
-        <div className="overflow-hidden rounded-lg border bg-card">
+        <div className="overflow-x-auto rounded-lg border bg-card">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-surface/50 text-left text-[11px] uppercase tracking-wider text-muted-foreground">
