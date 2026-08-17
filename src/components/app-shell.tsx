@@ -15,6 +15,7 @@ import {
   Brain,
   LogOut,
   Target,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDataStore } from "@/lib/data-store";
@@ -51,20 +52,45 @@ export function AppShell({
   const [session, setSession] = useState<Session | null>(null);
   const [ready, setReady] = useState(false);
   const { insights } = useDataStore();
+
+  // Notificações dispensadas ficam salvas no navegador — assim, ao clicar no X,
+  // a notificação some de verdade e não volta a cada recarregamento da página,
+  // a não ser que a situação mude e um novo alerta seja gerado.
+  const [dispensadas, setDispensadas] = useState<string[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      return JSON.parse(localStorage.getItem("veloce-notif-dispensadas") ?? "[]");
+    } catch {
+      return [];
+    }
+  });
+  const dispensarNotificacao = (id: string) => {
+    setDispensadas((prev) => {
+      const nova = [...prev, id];
+      localStorage.setItem("veloce-notif-dispensadas", JSON.stringify(nova));
+      return nova;
+    });
+  };
+
   // Notificações agora vêm dos diagnósticos reais do sistema (mesma fonte da
   // Central de IA) — antes era uma lista fixa, sempre igual, sem relação com o
   // que estava acontecendo de verdade na operação.
-  const notifications = insights.slice(0, 8).map((i) => ({
-    id: i.id,
-    title: i.titulo,
-    description: i.descricao,
-    type:
-      i.prioridade === "critica" || i.prioridade === "alta"
-        ? ("warning" as const)
-        : i.prioridade === "media"
-          ? ("info" as const)
-          : ("success" as const),
-  }));
+  const notifications = insights
+    .filter((i) => !dispensadas.includes(i.id))
+    .slice(0, 8)
+    .map((i) => ({
+      id: i.id,
+      title: i.titulo,
+      description: i.descricao,
+      to: i.to,
+      search: i.search,
+      type:
+        i.prioridade === "critica" || i.prioridade === "alta"
+          ? ("warning" as const)
+          : i.prioridade === "media"
+            ? ("info" as const)
+            : ("success" as const),
+    }));
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
 
@@ -235,7 +261,9 @@ export function AppShell({
                 aria-label="Notificações"
               >
                 <Bell className="h-4 w-4" />
-                <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-primary ring-2 ring-background" />
+                {notifications.length > 0 && (
+                  <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-primary ring-2 ring-background" />
+                )}
               </button>
               {notifOpen && (
                 <>
@@ -256,22 +284,40 @@ export function AppShell({
                       {notifications.map((n) => (
                         <div
                           key={n.id}
-                          className="flex items-start gap-2 rounded-md p-2 hover:bg-accent"
+                          className="group flex items-start gap-2 rounded-md p-2 hover:bg-accent"
                         >
-                          <span
-                            className={cn(
-                              "mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full",
-                              n.type === "success" && "bg-success",
-                              n.type === "warning" && "bg-warning",
-                              n.type === "info" && "bg-info",
-                            )}
-                          />
-                          <div className="min-w-0 flex-1">
-                            <div className="truncate text-[12px] font-medium">{n.title}</div>
-                            <div className="truncate text-[11px] text-muted-foreground">
-                              {n.description}
+                          <button
+                            onClick={() => {
+                              setNotifOpen(false);
+                              navigate({ to: n.to, search: n.search });
+                            }}
+                            className="flex min-w-0 flex-1 items-start gap-2 text-left"
+                          >
+                            <span
+                              className={cn(
+                                "mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full",
+                                n.type === "success" && "bg-success",
+                                n.type === "warning" && "bg-warning",
+                                n.type === "info" && "bg-info",
+                              )}
+                            />
+                            <div className="min-w-0 flex-1">
+                              <div className="truncate text-[12px] font-medium">{n.title}</div>
+                              <div className="truncate text-[11px] text-muted-foreground">
+                                {n.description}
+                              </div>
                             </div>
-                          </div>
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              dispensarNotificacao(n.id);
+                            }}
+                            title="Dispensar"
+                            className="shrink-0 rounded p-1 text-muted-foreground opacity-0 hover:bg-background hover:text-foreground group-hover:opacity-100"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
                         </div>
                       ))}
                     </div>
