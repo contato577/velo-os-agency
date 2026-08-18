@@ -45,14 +45,14 @@ const sugestoes = [
 type ChatMessage =
   | { id: string; kind: "text"; role: "user" | "assistant"; text: string; hora: string }
   | {
-    id: string;
-    kind: "relatorio";
-    role: "assistant";
-    relatorio: RelatorioCliente;
-    sentimento: ReturnType<typeof classificarSentimento>;
-    clientPhone?: string;
-    hora: string;
-  };
+      id: string;
+      kind: "relatorio";
+      role: "assistant";
+      relatorio: RelatorioCliente;
+      sentimento: ReturnType<typeof classificarSentimento>;
+      clientPhone?: string;
+      hora: string;
+    };
 
 const horaAgora = () =>
   new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
@@ -291,7 +291,9 @@ function CentralIA() {
             >
               <Menu className="h-3 w-3" />
               Perguntas sugeridas
-              <ChevronDown className={cn("h-3 w-3 transition-transform", !sugestoesVisiveis && "-rotate-90")} />
+              <ChevronDown
+                className={cn("h-3 w-3 transition-transform", !sugestoesVisiveis && "-rotate-90")}
+              />
             </button>
             {sugestoesVisiveis && (
               <div className="flex flex-wrap gap-1.5">

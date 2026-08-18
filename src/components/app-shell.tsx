@@ -209,7 +209,12 @@ export function AppShell({
                 {active && (
                   <span className="absolute left-0 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-r bg-brand-deep" />
                 )}
-                <Icon className={cn("h-[18px] w-[18px] shrink-0 md:h-4 md:w-4", active ? "text-primary" : "")} />
+                <Icon
+                  className={cn(
+                    "h-[18px] w-[18px] shrink-0 md:h-4 md:w-4",
+                    active ? "text-primary" : "",
+                  )}
+                />
                 {(!collapsed || mobileNavOpen) && (
                   <>
                     <span className="min-w-0 flex-1 truncate">{item.label}</span>

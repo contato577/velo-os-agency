@@ -86,43 +86,43 @@ function Dashboard() {
     tone: PulseTone;
     to: string;
   }[] = [
-      { label: "Leads novos", value: leadsNovos, icon: Sparkles, tone: "primary", to: "/comercial" },
-      {
-        label: "Aguardando contato",
-        value: leadsAguardando,
-        icon: Users2,
-        tone: "info",
-        to: "/comercial",
-      },
-      {
-        label: "Follow-ups pendentes",
-        value: followupsPendentes,
-        icon: Clock4,
-        tone: "warning",
-        to: "/comercial",
-      },
-      {
-        label: "Reuniões hoje",
-        value: reunioesHoje,
-        icon: Calendar,
-        tone: "primary",
-        to: "/operacao",
-      },
-      {
-        label: "Tarefas atrasadas",
-        value: tarefasAtrasadas,
-        icon: AlertTriangle,
-        tone: "destructive",
-        to: "/operacao",
-      },
-      {
-        label: "Cobranças pendentes",
-        value: cobrancasPendentes,
-        icon: Wallet,
-        tone: "warning",
-        to: "/dre",
-      },
-    ];
+    { label: "Leads novos", value: leadsNovos, icon: Sparkles, tone: "primary", to: "/comercial" },
+    {
+      label: "Aguardando contato",
+      value: leadsAguardando,
+      icon: Users2,
+      tone: "info",
+      to: "/comercial",
+    },
+    {
+      label: "Follow-ups pendentes",
+      value: followupsPendentes,
+      icon: Clock4,
+      tone: "warning",
+      to: "/comercial",
+    },
+    {
+      label: "Reuniões hoje",
+      value: reunioesHoje,
+      icon: Calendar,
+      tone: "primary",
+      to: "/operacao",
+    },
+    {
+      label: "Tarefas atrasadas",
+      value: tarefasAtrasadas,
+      icon: AlertTriangle,
+      tone: "destructive",
+      to: "/operacao",
+    },
+    {
+      label: "Cobranças pendentes",
+      value: cobrancasPendentes,
+      icon: Wallet,
+      tone: "warning",
+      to: "/dre",
+    },
+  ];
 
   const proximasAcoes = sortByPriority(insights)
     .slice(0, 5)

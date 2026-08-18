@@ -719,23 +719,19 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const channel = supabase
       .channel("tarefas-tempo-real")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "tasks" },
-        (payload) => {
-          if (payload.eventType === "DELETE") {
-            const idRemovido = (payload.old as Record<string, unknown>).id as string;
-            setTasks((prev) => prev.filter((t) => t.id !== idRemovido));
-            return;
-          }
-          const tarefa = taskFromDb(payload.new as Record<string, unknown>);
-          setTasks((prev) =>
-            prev.some((t) => t.id === tarefa.id)
-              ? prev.map((t) => (t.id === tarefa.id ? tarefa : t))
-              : [tarefa, ...prev],
-          );
-        },
-      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "tasks" }, (payload) => {
+        if (payload.eventType === "DELETE") {
+          const idRemovido = (payload.old as Record<string, unknown>).id as string;
+          setTasks((prev) => prev.filter((t) => t.id !== idRemovido));
+          return;
+        }
+        const tarefa = taskFromDb(payload.new as Record<string, unknown>);
+        setTasks((prev) =>
+          prev.some((t) => t.id === tarefa.id)
+            ? prev.map((t) => (t.id === tarefa.id ? tarefa : t))
+            : [tarefa, ...prev],
+        );
+      })
       .subscribe();
 
     return () => {
@@ -783,8 +779,7 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
     (l) => l.stage === "fechado" && l.lastActivity.startsWith(mesCorrente),
   );
   const vendasMesReal = leadsFechadosMes.reduce((s, l) => s + l.value, 0);
-  const ticketMedioReal =
-    leadsFechadosMes.length > 0 ? vendasMesReal / leadsFechadosMes.length : 0;
+  const ticketMedioReal = leadsFechadosMes.length > 0 ? vendasMesReal / leadsFechadosMes.length : 0;
 
   const insights = useMemo(
     () =>
@@ -1167,12 +1162,12 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
       prev.map((c) =>
         c.id === clientId
           ? {
-            ...c,
-            timeline: [
-              { id, time: agora.toLocaleString("pt-BR"), user, text },
-              ...(c.timeline ?? []),
-            ],
-          }
+              ...c,
+              timeline: [
+                { id, time: agora.toLocaleString("pt-BR"), user, text },
+                ...(c.timeline ?? []),
+              ],
+            }
           : c,
       ),
     );
@@ -1621,18 +1616,18 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
           return prevClients.map((c) =>
             c.id === affectedClientId
               ? {
-                ...c,
-                status: "ativo" as const,
-                timeline: [
-                  {
-                    id: timelineId,
-                    time: "Agora",
-                    user: "Sistema",
-                    text: "Implementação concluída — cliente entrou na Gestão do Cliente",
-                  },
-                  ...(c.timeline ?? []),
-                ],
-              }
+                  ...c,
+                  status: "ativo" as const,
+                  timeline: [
+                    {
+                      id: timelineId,
+                      time: "Agora",
+                      user: "Sistema",
+                      text: "Implementação concluída — cliente entrou na Gestão do Cliente",
+                    },
+                    ...(c.timeline ?? []),
+                  ],
+                }
               : c,
           );
         });
