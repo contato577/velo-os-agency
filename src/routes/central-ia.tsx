@@ -9,6 +9,7 @@ import {
   ChevronDown,
   CircleCheck,
   CircleAlert,
+  Menu,
 } from "lucide-react";
 import { useState, useRef, useEffect, useMemo } from "react";
 import { AppShell, PageHeader } from "@/components/app-shell";
@@ -44,14 +45,14 @@ const sugestoes = [
 type ChatMessage =
   | { id: string; kind: "text"; role: "user" | "assistant"; text: string; hora: string }
   | {
-      id: string;
-      kind: "relatorio";
-      role: "assistant";
-      relatorio: RelatorioCliente;
-      sentimento: ReturnType<typeof classificarSentimento>;
-      clientPhone?: string;
-      hora: string;
-    };
+    id: string;
+    kind: "relatorio";
+    role: "assistant";
+    relatorio: RelatorioCliente;
+    sentimento: ReturnType<typeof classificarSentimento>;
+    clientPhone?: string;
+    hora: string;
+  };
 
 const horaAgora = () =>
   new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
@@ -72,6 +73,19 @@ function CentralIA() {
   const [digitando, setDigitando] = useState(false);
   const [clienteSelecionado, setClienteSelecionado] = useState(clients[0]?.id ?? "");
   const [mostrarSeletorRelatorio, setMostrarSeletorRelatorio] = useState(false);
+  // Lembra se a pessoa preferiu esconder as sugestões, pra não voltar a
+  // poluir a tela toda vez que ela reabrir a Central de IA.
+  const [sugestoesVisiveis, setSugestoesVisiveis] = useState(() => {
+    if (typeof window === "undefined") return true;
+    return localStorage.getItem("veloce-ia-sugestoes-visiveis") !== "false";
+  });
+  const alternarSugestoes = () => {
+    setSugestoesVisiveis((v) => {
+      const novo = !v;
+      localStorage.setItem("veloce-ia-sugestoes-visiveis", String(novo));
+      return novo;
+    });
+  };
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -270,20 +284,28 @@ function CentralIA() {
 
           {/* Sugestões rápidas — bloco próprio, separado das ações */}
           <div className="border-t bg-surface/40 px-5 py-3">
-            <div className="mb-2 text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+            <button
+              onClick={alternarSugestoes}
+              className="mb-2 flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-widest text-muted-foreground hover:text-foreground"
+              title={sugestoesVisiveis ? "Esconder sugestões" : "Mostrar sugestões"}
+            >
+              <Menu className="h-3 w-3" />
               Perguntas sugeridas
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {sugestoes.map((s) => (
-                <button
-                  key={s}
-                  onClick={() => enviarMensagem(s)}
-                  className="inline-flex items-center gap-1 rounded-full border border-primary/25 bg-primary/5 px-2.5 py-1 text-[11px] text-primary transition-colors hover:bg-primary/15"
-                >
-                  <Sparkles className="h-2.5 w-2.5" /> {s}
-                </button>
-              ))}
-            </div>
+              <ChevronDown className={cn("h-3 w-3 transition-transform", !sugestoesVisiveis && "-rotate-90")} />
+            </button>
+            {sugestoesVisiveis && (
+              <div className="flex flex-wrap gap-1.5">
+                {sugestoes.map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => enviarMensagem(s)}
+                    className="inline-flex items-center gap-1 rounded-full border border-primary/25 bg-primary/5 px-2.5 py-1 text-[11px] text-primary transition-colors hover:bg-primary/15"
+                  >
+                    <Sparkles className="h-2.5 w-2.5" /> {s}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Campo de digitação */}

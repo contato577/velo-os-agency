@@ -10,7 +10,6 @@ import {
   financeEntries as seedExpenses,
   projects as seedProjects,
   agendaEvents as seedAgenda,
-  dashboardKPIs,
   type Lead,
   type Task,
   type Client,
@@ -446,10 +445,10 @@ const DataStoreContext = createContext<DataStoreContextValue | null>(null);
 export function DataStoreProvider({ children }: { children: ReactNode }) {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [teamMembers, setTeamMembers] = useState<string[]>([]);
-  const [tasks, setTasks] = useState<Task[]>(seedTasks);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
-  const [expenses, setExpenses] = useState<FinanceEntry[]>(seedExpenses);
-  const [projects, setProjects] = useState<Project[]>(seedProjects);
+  const [expenses, setExpenses] = useState<FinanceEntry[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [serviceTemplates, setServiceTemplates] = useState<ServiceTemplate[]>(seedTemplates);
   const [pontosControle, setPontosControle] = useState<PontoControle[]>(() => loadPontos());
   const [clientDocuments, setClientDocuments] = useState<DocItem[]>([]);
@@ -459,10 +458,12 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
     metaComercial: 50000,
   });
 
-  // Busca leads e clientes reais do Supabase ao abrir o sistema.
-  // Se der erro (sem internet, chave errada etc.), cai pros dados de exemplo,
-  // pra tela nunca ficar em branco — e avisa no console pra facilitar o diagnóstico.
-  useEffect(() => {
+  // Busca leads e clientes reais do Supabase ao abrir o sistema. Se der erro
+  // (sem internet, sessão expirada etc.), NUNCA mais mascaramos isso com
+  // dados de demonstração — isso só confundia, fazendo parecer que o sistema
+  // estava "conectado" quando na verdade estava mostrando números fictícios.
+  // Agora avisamos de verdade, com botão de tentar de novo.
+  const carregarLeads = () => {
     supabase
       .from("leads")
       .select("*")
@@ -470,12 +471,17 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
       .then(({ data, error }) => {
         if (error) {
           console.error("Erro ao carregar leads do Supabase:", error.message);
-          setLeads(seedLeads);
+          toast.error("Não foi possível carregar os leads.", {
+            description: "Verifique sua conexão e tente de novo.",
+            action: { label: "Tentar de novo", onClick: carregarLeads },
+          });
           return;
         }
         setLeads((data ?? []).map(leadFromDb));
       });
+  };
 
+  const carregarClientes = () => {
     supabase
       .from("clients")
       .select("*")
@@ -483,12 +489,17 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
       .then(({ data, error }) => {
         if (error) {
           console.error("Erro ao carregar clientes do Supabase:", error.message);
-          setClients(seedClients);
+          toast.error("Não foi possível carregar os clientes.", {
+            description: "Verifique sua conexão e tente de novo.",
+            action: { label: "Tentar de novo", onClick: carregarClientes },
+          });
           return;
         }
         setClients((data ?? []).map(clientFromDb));
       });
+  };
 
+  const carregarProjetos = () => {
     supabase
       .from("projects")
       .select("*, checklist_items(*)")
@@ -496,12 +507,17 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
       .then(({ data, error }) => {
         if (error) {
           console.error("Erro ao carregar projetos do Supabase:", error.message);
-          setProjects(seedProjects);
+          toast.error("Não foi possível carregar os projetos/operação.", {
+            description: "Verifique sua conexão e tente de novo.",
+            action: { label: "Tentar de novo", onClick: carregarProjetos },
+          });
           return;
         }
         setProjects((data ?? []).map(projectFromDb));
       });
+  };
 
+  const carregarTarefas = () => {
     supabase
       .from("tasks")
       .select("*")
@@ -509,12 +525,17 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
       .then(({ data, error }) => {
         if (error) {
           console.error("Erro ao carregar tarefas do Supabase:", error.message);
-          setTasks(seedTasks);
+          toast.error("Não foi possível carregar as tarefas.", {
+            description: "Verifique sua conexão e tente de novo.",
+            action: { label: "Tentar de novo", onClick: carregarTarefas },
+          });
           return;
         }
         setTasks((data ?? []).map(taskFromDb));
       });
+  };
 
+  const carregarFinanceiro = () => {
     supabase
       .from("finance_entries")
       .select("*")
@@ -522,11 +543,22 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
       .then(({ data, error }) => {
         if (error) {
           console.error("Erro ao carregar financeiro do Supabase:", error.message);
-          setExpenses(seedExpenses);
+          toast.error("Não foi possível carregar o financeiro.", {
+            description: "Verifique sua conexão e tente de novo.",
+            action: { label: "Tentar de novo", onClick: carregarFinanceiro },
+          });
           return;
         }
         setExpenses((data ?? []).map(expenseFromDb));
       });
+  };
+
+  useEffect(() => {
+    carregarLeads();
+    carregarClientes();
+    carregarProjetos();
+    carregarTarefas();
+    carregarFinanceiro();
 
     // Time real — antes os formulários usavam uma lista fixa de 4 nomes fictícios
     // pra "Responsável". Agora busca quem realmente tem conta no sistema.
@@ -680,7 +712,36 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const mesAtual = mesAtualISO();
+  // Escuta em tempo real a tabela "tasks". Antes, uma tarefa criada/movida/
+  // concluída em um aparelho só aparecia nos outros depois de recarregar a
+  // página inteira — agora reflete na hora em qualquer tela aberta (Operação,
+  // Minha Semana, Cliente > Operação).
+  useEffect(() => {
+    const channel = supabase
+      .channel("tarefas-tempo-real")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "tasks" },
+        (payload) => {
+          if (payload.eventType === "DELETE") {
+            const idRemovido = (payload.old as Record<string, unknown>).id as string;
+            setTasks((prev) => prev.filter((t) => t.id !== idRemovido));
+            return;
+          }
+          const tarefa = taskFromDb(payload.new as Record<string, unknown>);
+          setTasks((prev) =>
+            prev.some((t) => t.id === tarefa.id)
+              ? prev.map((t) => (t.id === tarefa.id ? tarefa : t))
+              : [tarefa, ...prev],
+          );
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
   const pontoControleAtual = useMemo(
     () => pontosControle.find((p) => p.mes === mesAtual) ?? null,
     [pontosControle, mesAtual],
@@ -713,6 +774,18 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
     return registro;
   };
 
+  // Antes esses 3 números vinham fixos do mock (nunca mudavam, mesmo com
+  // vendas novas de verdade) — o que fazia a Central de IA gerar alertas de
+  // "meta" sempre iguais, sem relação com a operação real. Agora calculam
+  // de dados reais: vendas fechadas neste mês + a meta que você configurou.
+  const mesCorrente = mesAtualISO();
+  const leadsFechadosMes = leads.filter(
+    (l) => l.stage === "fechado" && l.lastActivity.startsWith(mesCorrente),
+  );
+  const vendasMesReal = leadsFechadosMes.reduce((s, l) => s + l.value, 0);
+  const ticketMedioReal =
+    leadsFechadosMes.length > 0 ? vendasMesReal / leadsFechadosMes.length : 0;
+
   const insights = useMemo(
     () =>
       gerarInsights({
@@ -722,12 +795,12 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
         expenses,
         agenda: seedAgenda,
         kpis: {
-          vendasMes: dashboardKPIs.vendasMes,
-          metaMes: dashboardKPIs.metaMes,
-          ticketMedio: dashboardKPIs.ticketMedio,
+          vendasMes: vendasMesReal,
+          metaMes: metasMensais.metaComercial,
+          ticketMedio: ticketMedioReal,
         },
       }),
-    [leads, tasks, clients, expenses],
+    [leads, tasks, clients, expenses, vendasMesReal, metasMensais.metaComercial, ticketMedioReal],
   );
 
   const addLead: DataStoreContextValue["addLead"] = (partial) => {
@@ -1094,12 +1167,12 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
       prev.map((c) =>
         c.id === clientId
           ? {
-              ...c,
-              timeline: [
-                { id, time: agora.toLocaleString("pt-BR"), user, text },
-                ...(c.timeline ?? []),
-              ],
-            }
+            ...c,
+            timeline: [
+              { id, time: agora.toLocaleString("pt-BR"), user, text },
+              ...(c.timeline ?? []),
+            ],
+          }
           : c,
       ),
     );
@@ -1548,18 +1621,18 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
           return prevClients.map((c) =>
             c.id === affectedClientId
               ? {
-                  ...c,
-                  status: "ativo" as const,
-                  timeline: [
-                    {
-                      id: timelineId,
-                      time: "Agora",
-                      user: "Sistema",
-                      text: "Implementação concluída — cliente entrou na Gestão do Cliente",
-                    },
-                    ...(c.timeline ?? []),
-                  ],
-                }
+                ...c,
+                status: "ativo" as const,
+                timeline: [
+                  {
+                    id: timelineId,
+                    time: "Agora",
+                    user: "Sistema",
+                    text: "Implementação concluída — cliente entrou na Gestão do Cliente",
+                  },
+                  ...(c.timeline ?? []),
+                ],
+              }
               : c,
           );
         });

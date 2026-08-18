@@ -199,7 +199,7 @@ export function AppShell({
                 to={item.to}
                 onClick={() => setMobileNavOpen(false)}
                 className={cn(
-                  "group relative flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[13px] font-medium transition-colors",
+                  "group relative flex items-center gap-2.5 rounded-md px-2.5 py-2.5 text-[15px] font-medium transition-colors md:py-1.5 md:text-[13px]",
                   active
                     ? "bg-sidebar-accent text-sidebar-accent-foreground"
                     : "text-sidebar-foreground/75 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground",
@@ -209,7 +209,7 @@ export function AppShell({
                 {active && (
                   <span className="absolute left-0 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-r bg-brand-deep" />
                 )}
-                <Icon className={cn("h-4 w-4 shrink-0", active ? "text-primary" : "")} />
+                <Icon className={cn("h-[18px] w-[18px] shrink-0 md:h-4 md:w-4", active ? "text-primary" : "")} />
                 {(!collapsed || mobileNavOpen) && (
                   <>
                     <span className="min-w-0 flex-1 truncate">{item.label}</span>

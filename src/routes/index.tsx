@@ -14,7 +14,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { AppShell, PageHeader } from "@/components/app-shell";
-import { dashboardKPIs, formatBRL, agendaEvents } from "@/lib/mock-data";
+import { formatBRL, agendaEvents } from "@/lib/mock-data";
 import { useDataStore } from "@/lib/data-store";
 import { sortByPriority } from "@/lib/ai-engine";
 import { cn } from "@/lib/utils";
@@ -38,7 +38,14 @@ function Dashboard() {
   const { leads, tasks, clients, insights, metasMensais, pontoControleAtual } = useDataStore();
   const leadsNovos = leads.filter((l) => l.stage === "novo").length;
   const leadsAguardando = leads.filter((l) => l.stage === "contato").length;
-  const followupsPendentes = dashboardKPIs.followupsPendentes;
+  // Antes vinha de um número fixo no mock (sempre "7", nunca mudava). Agora
+  // conta de verdade: leads em estágio inicial parados há mais de 48h —
+  // mesma regra que a Central de IA usa pra gerar o alerta de follow-up.
+  const followupsPendentes = leads.filter(
+    (l) =>
+      ["novo", "contato"].includes(l.stage) &&
+      Date.now() - new Date(l.lastActivity).getTime() > 48 * 3600000,
+  ).length;
   const hoje = new Date();
   const hojeISO = hoje.toISOString().slice(0, 10);
   const diaAtual = hoje.getDate();
@@ -79,43 +86,43 @@ function Dashboard() {
     tone: PulseTone;
     to: string;
   }[] = [
-    { label: "Leads novos", value: leadsNovos, icon: Sparkles, tone: "primary", to: "/comercial" },
-    {
-      label: "Aguardando contato",
-      value: leadsAguardando,
-      icon: Users2,
-      tone: "info",
-      to: "/comercial",
-    },
-    {
-      label: "Follow-ups pendentes",
-      value: followupsPendentes,
-      icon: Clock4,
-      tone: "warning",
-      to: "/comercial",
-    },
-    {
-      label: "Reuniões hoje",
-      value: reunioesHoje,
-      icon: Calendar,
-      tone: "primary",
-      to: "/operacao",
-    },
-    {
-      label: "Tarefas atrasadas",
-      value: tarefasAtrasadas,
-      icon: AlertTriangle,
-      tone: "destructive",
-      to: "/operacao",
-    },
-    {
-      label: "Cobranças pendentes",
-      value: cobrancasPendentes,
-      icon: Wallet,
-      tone: "warning",
-      to: "/dre",
-    },
-  ];
+      { label: "Leads novos", value: leadsNovos, icon: Sparkles, tone: "primary", to: "/comercial" },
+      {
+        label: "Aguardando contato",
+        value: leadsAguardando,
+        icon: Users2,
+        tone: "info",
+        to: "/comercial",
+      },
+      {
+        label: "Follow-ups pendentes",
+        value: followupsPendentes,
+        icon: Clock4,
+        tone: "warning",
+        to: "/comercial",
+      },
+      {
+        label: "Reuniões hoje",
+        value: reunioesHoje,
+        icon: Calendar,
+        tone: "primary",
+        to: "/operacao",
+      },
+      {
+        label: "Tarefas atrasadas",
+        value: tarefasAtrasadas,
+        icon: AlertTriangle,
+        tone: "destructive",
+        to: "/operacao",
+      },
+      {
+        label: "Cobranças pendentes",
+        value: cobrancasPendentes,
+        icon: Wallet,
+        tone: "warning",
+        to: "/dre",
+      },
+    ];
 
   const proximasAcoes = sortByPriority(insights)
     .slice(0, 5)
