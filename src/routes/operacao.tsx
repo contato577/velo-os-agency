@@ -4,6 +4,8 @@ import { createPortal } from "react-dom";
 import {
   DndContext,
   PointerSensor,
+  MouseSensor,
+  TouchSensor,
   useSensor,
   useSensors,
   useDraggable,
@@ -360,8 +362,14 @@ function TaskCard({
   });
   const dragStyle =
     draggable && transform
-      ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`, zIndex: 40 }
-      : undefined;
+      ? {
+          transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
+          zIndex: 40,
+          touchAction: "none" as const,
+        }
+      : draggable
+        ? ({ touchAction: "none" as const } satisfies React.CSSProperties)
+        : undefined;
   const priorityLabel = { urgente: "Urgente", alta: "Alta", media: "Média", baixa: "Baixa" }[
     task.priority
   ];
@@ -497,7 +505,11 @@ function SemanaPanel() {
   const { tasks, clients, leads, toggleTaskDone, updateTask, deleteTask } = useDataStore();
   const [view, setView] = useState<"dia" | "cliente">("dia");
   const weekDays = getWeekDays(HOJE);
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
+  const sensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } }),
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+  );
 
   const atrasadas = tasks.filter((t) => t.status !== "concluida" && t.dueDate < weekDays[0]);
   const daSemana = tasks.filter((t) => weekDays.includes(t.dueDate));

@@ -119,8 +119,12 @@ function LeadCard({
 
   const style =
     transform && !isOverlay
-      ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`, zIndex: 40 }
-      : undefined;
+      ? {
+          transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
+          zIndex: 40,
+          touchAction: "none" as const,
+        }
+      : ({ touchAction: "none" as const } satisfies React.CSSProperties);
 
   return (
     <div
@@ -1017,10 +1021,6 @@ function Comercial() {
             ) : null}
           </DragOverlay>
         </DndContext>
-
-        <div className="border-t bg-surface/30 px-4 py-2 text-[10px] text-muted-foreground md:px-6">
-          Dados mantidos durante a sessão. Persistência real será ativada com o banco de dados.
-        </div>
       </div>
 
       {selected && <LeadDetailPanel lead={selected} onClose={() => setSelected(null)} />}

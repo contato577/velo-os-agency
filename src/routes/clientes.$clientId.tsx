@@ -870,8 +870,17 @@ function TabDocumentos({ clientId }: { clientId: string }) {
         await addClientDocumentFile(clientId, category, file);
       }
       toast.success(files.length > 1 ? "Arquivos enviados" : "Arquivo enviado");
-    } catch {
-      toast.error("Não foi possível enviar o arquivo. Tenta de novo em alguns segundos.");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "";
+      if (/bucket.*not.*found|not.*found.*bucket/i.test(msg)) {
+        toast.error("O espaço de armazenamento ainda não foi criado no Supabase.", {
+          description:
+            'Vá em Storage > New bucket, crie um bucket público chamado exatamente "documentos-clientes" e tente enviar de novo.',
+          duration: 12000,
+        });
+      } else {
+        toast.error("Não foi possível enviar o arquivo. Tenta de novo em alguns segundos.");
+      }
     } finally {
       setEnviando(false);
     }
@@ -1667,7 +1676,7 @@ function ProjectCard({ project }: { project: import("@/lib/mock-data").Project }
 }
 
 function TabOperacao({ clientId }: { clientId: string }) {
-  const { clients, projects, tasks } = useDataStore();
+  const { clients, projects, tasks, toggleTaskDone } = useDataStore();
   const client = clients.find((c) => c.id === clientId) ?? clients[0];
   const clientProjects = projects.filter((p) => p.clientId === clientId);
   const clientTasks = tasks.filter((t) => t.clientId === clientId);
@@ -1764,26 +1773,48 @@ function TabOperacao({ clientId }: { clientId: string }) {
                     />
                   </li>
                 )}
-                {clientTasks.map((t) => (
-                  <li
-                    key={t.id}
-                    className="flex items-center gap-2.5 rounded-md border bg-surface/50 px-2.5 py-2"
-                  >
-                    <span
-                      className={cn(
-                        "h-1.5 w-1.5 rounded-full",
-                        t.priority === "urgente" && "bg-destructive",
-                        t.priority === "alta" && "bg-warning",
-                        t.priority === "media" && "bg-info",
-                        t.priority === "baixa" && "bg-muted-foreground",
-                      )}
-                    />
-                    <span className="min-w-0 flex-1 truncate text-[13px]">{t.title}</span>
-                    <span className="text-[10px] text-muted-foreground">
-                      {t.owner.split(" ")[0]}
-                    </span>
-                  </li>
-                ))}
+                {clientTasks.map((t) => {
+                  const done = t.status === "concluida";
+                  return (
+                    <li
+                      key={t.id}
+                      className="flex items-center gap-2.5 rounded-md border bg-surface/50 px-2.5 py-2"
+                    >
+                      <button
+                        onClick={() => toggleTaskDone(t.id)}
+                        className={cn(
+                          "flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors",
+                          done
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-muted-foreground/40 hover:border-primary",
+                        )}
+                        title={done ? "Marcar como não concluída" : "Marcar como concluída"}
+                      >
+                        {done && <Check className="h-3 w-3" />}
+                      </button>
+                      <span
+                        className={cn(
+                          "h-1.5 w-1.5 shrink-0 rounded-full",
+                          t.priority === "urgente" && "bg-destructive",
+                          t.priority === "alta" && "bg-warning",
+                          t.priority === "media" && "bg-info",
+                          t.priority === "baixa" && "bg-muted-foreground",
+                        )}
+                      />
+                      <span
+                        className={cn(
+                          "min-w-0 flex-1 truncate text-[13px]",
+                          done && "text-muted-foreground line-through",
+                        )}
+                      >
+                        {t.title}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground">
+                        {t.owner.split(" ")[0]}
+                      </span>
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           </>

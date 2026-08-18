@@ -1,5 +1,4 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
-import { Drawer, DrawerTrigger, DrawerContent, DrawerOverlay } from "@/components/ui/drawer";
 import { useEffect, useState, type ReactNode } from "react";
 import {
   LayoutDashboard,
@@ -17,6 +16,7 @@ import {
   LogOut,
   Target,
   X,
+  Menu,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDataStore } from "@/lib/data-store";
@@ -48,6 +48,7 @@ export function AppShell({
   children: ReactNode;
 }) {
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [userOpen, setUserOpen] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
@@ -103,6 +104,12 @@ export function AppShell({
     .filter((n) => !dispensadas.includes(n.id))
     .slice(0, 12);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+
+  // Fecha o menu mobile sozinho assim que a pessoa navega pra outra tela —
+  // sem isso, o menu ficaria aberto por cima da tela nova depois do clique.
+  useEffect(() => {
+    setMobileNavOpen(false);
+  }, [pathname]);
   const navigate = useNavigate();
 
   // Auth gate (client-side) — agora busca a sessão real do Supabase, não do localStorage
@@ -136,115 +143,35 @@ export function AppShell({
 
   return (
     <div className="flex min-h-screen w-full bg-background text-foreground">
-      <Drawer>
-        <DrawerTrigger asChild>
-          <button
-            className="md:hidden mr-2 rounded-md p-2 text-muted-foreground hover:bg-sidebar-accent"
-            aria-label="Open menu"
-          >
-            <LayoutDashboard className="h-5 w-5" />
-          </button>
-        </DrawerTrigger>
-        <DrawerContent className="max-w-xs">
-          <DrawerOverlay />
-          <div className="flex h-full flex-col bg-sidebar text-sidebar-foreground">
-            <div className="flex h-14 items-center gap-2 border-b px-3">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-md bg-sidebar-accent ring-1 ring-primary/40">
-                <img src={veloceLogo.url} alt="Veloce" className="h-8 w-8 object-cover" />
-              </div>
-              <span className="truncate text-sm font-semibold tracking-tight">Veloce</span>
-              <button
-                onClick={() => setCollapsed((c) => !c)}
-                className="ml-auto rounded-md p-1 text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
-                aria-label="Toggle sidebar"
-              >
-                {collapsed ? (
-                  <ChevronsRight className="h-4 w-4" />
-                ) : (
-                  <ChevronsLeft className="h-4 w-4" />
-                )}
-              </button>
-            </div>
-            <nav className="flex flex-col gap-0.5 p-2">
-              {nav.map((item) => {
-                const active = item.to === "/" ? pathname === "/" : pathname.startsWith(item.to);
-                const Icon = item.icon;
-                return (
-                  <Link
-                    key={item.to}
-                    to={item.to}
-                    className={cn(
-                      "group relative flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[13px] font-medium transition-colors",
-                      active
-                        ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                        : "text-sidebar-foreground/75 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground",
-                    )}
-                    title={item.label}
-                  >
-                    {active && (
-                      <span className="absolute left-0 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-r bg-brand-deep" />
-                    )}
-                    <Icon className={cn("h-4 w-4 shrink-0", active ? "text-primary" : "")} />
-                    <span className="min-w-0 flex-1 truncate">{item.label}</span>
-                    {"badge" in item && item.badge ? (
-                      <span className="rounded bg-sidebar-accent px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
-                        {item.badge}
-                      </span>
-                    ) : null}
-                  </Link>
-                );
-              })}
-            </nav>
-            <div className="absolute inset-x-2 bottom-2">
-              <button
-                onClick={() => setUserOpen((v) => !v)}
-                className="flex w-full items-center gap-2 rounded-md border bg-sidebar-accent/40 p-2.5 text-left transition-colors hover:bg-sidebar-accent/70"
-              >
-                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/50 text-[11px] font-semibold text-primary-foreground">
-                  {session.initials}
-                </div>
-                <div className="min-w-0 flex-1 leading-tight">
-                  <div className="truncate text-xs font-medium">{session.name}</div>
-                  <div className="truncate text-[10px] text-muted-foreground">{session.email}</div>
-                </div>
-              </button>
-              {userOpen && (
-                <>
-                  <div className="fixed inset-0 z-40" onClick={() => setUserOpen(false)} />
-                  <div className="absolute bottom-14 left-0 right-0 z-50 overflow-hidden rounded-md border bg-popover shadow-elegant">
-                    <button
-                      onClick={handleSignOut}
-                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-destructive hover:bg-destructive/10"
-                    >
-                      <LogOut className="h-3.5 w-3.5" /> Sair
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-        </DrawerContent>
-      </Drawer>
+      {/* Fundo escurecido/transparente atrás do menu, só no mobile — clicar nele fecha o menu */}
+      {mobileNavOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-background/70 backdrop-blur-sm md:hidden"
+          onClick={() => setMobileNavOpen(false)}
+        />
+      )}
 
+      {/* Sidebar */}
       <aside
         className={cn(
-          "sticky top-0 h-screen shrink-0 border-r bg-sidebar text-sidebar-foreground transition-[width] duration-200",
-          collapsed ? "w-[64px]" : "w-[236px]",
-          "hidden md:block",
+          "fixed inset-y-0 left-0 z-50 h-screen shrink-0 border-r bg-sidebar text-sidebar-foreground shadow-2xl transition-transform duration-200 md:sticky md:top-0 md:shadow-none",
+          "w-[236px]",
+          collapsed ? "md:w-[64px]" : "md:w-[236px]",
+          mobileNavOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0",
         )}
       >
         <div className="flex h-14 items-center gap-2 border-b px-3">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-md bg-sidebar-accent ring-1 ring-primary/40">
             <img src={veloceLogo.url} alt="Veloce" className="h-8 w-8 object-cover" />
           </div>
-          {!collapsed && (
+          {(!collapsed || mobileNavOpen) && (
             <div className="flex min-w-0 flex-1 flex-col leading-tight">
               <span className="truncate text-sm font-semibold tracking-tight">Veloce</span>
             </div>
           )}
           <button
             onClick={() => setCollapsed((c) => !c)}
-            className="ml-auto rounded-md p-1 text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground"
+            className="ml-auto hidden rounded-md p-1 text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground md:block"
             aria-label="Toggle sidebar"
           >
             {collapsed ? (
@@ -253,7 +180,15 @@ export function AppShell({
               <ChevronsLeft className="h-4 w-4" />
             )}
           </button>
+          <button
+            onClick={() => setMobileNavOpen(false)}
+            className="ml-auto rounded-md p-1 text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground md:hidden"
+            aria-label="Fechar menu"
+          >
+            <X className="h-4 w-4" />
+          </button>
         </div>
+
         <nav className="flex flex-col gap-0.5 p-2">
           {nav.map((item) => {
             const active = item.to === "/" ? pathname === "/" : pathname.startsWith(item.to);
@@ -262,19 +197,20 @@ export function AppShell({
               <Link
                 key={item.to}
                 to={item.to}
+                onClick={() => setMobileNavOpen(false)}
                 className={cn(
                   "group relative flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[13px] font-medium transition-colors",
                   active
                     ? "bg-sidebar-accent text-sidebar-accent-foreground"
                     : "text-sidebar-foreground/75 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground",
                 )}
-                title={collapsed ? item.label : undefined}
+                title={collapsed && !mobileNavOpen ? item.label : undefined}
               >
                 {active && (
                   <span className="absolute left-0 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-r bg-brand-deep" />
                 )}
                 <Icon className={cn("h-4 w-4 shrink-0", active ? "text-primary" : "")} />
-                {!collapsed && (
+                {(!collapsed || mobileNavOpen) && (
                   <>
                     <span className="min-w-0 flex-1 truncate">{item.label}</span>
                     {"badge" in item && item.badge ? (
@@ -288,7 +224,9 @@ export function AppShell({
             );
           })}
         </nav>
-        {!collapsed && (
+
+        {/* User card + menu */}
+        {(!collapsed || mobileNavOpen) && (
           <div className="absolute inset-x-2 bottom-2">
             <button
               onClick={() => setUserOpen((v) => !v)}
@@ -308,7 +246,7 @@ export function AppShell({
                 <div className="absolute bottom-14 left-0 right-0 z-50 overflow-hidden rounded-md border bg-popover shadow-elegant">
                   <button
                     onClick={handleSignOut}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-destructive hover:bg-destructive/10"
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-destructive transition-colors hover:bg-destructive/10"
                   >
                     <LogOut className="h-3.5 w-3.5" /> Sair
                   </button>
@@ -323,6 +261,13 @@ export function AppShell({
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Topbar */}
         <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b bg-background/80 px-4 backdrop-blur-md md:px-6">
+          <button
+            onClick={() => setMobileNavOpen(true)}
+            className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground md:hidden"
+            aria-label="Abrir menu"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
           <div className="flex min-w-0 flex-1 items-center gap-3">
             <div className="hidden min-w-0 flex-col leading-tight md:flex">
               <h1 className="truncate text-sm font-semibold tracking-tight">
@@ -412,7 +357,7 @@ export function AppShell({
                               dispensarNotificacao(n.id);
                             }}
                             title="Dispensar"
-                            className="shrink-0 rounded p-1 text-muted-foreground opacity-0 hover:bg-background hover:text-foreground group-hover:opacity-100"
+                            className="shrink-0 rounded p-1 text-muted-foreground opacity-70 hover:bg-background hover:text-foreground hover:opacity-100 md:opacity-0 md:group-hover:opacity-100"
                           >
                             <X className="h-3 w-3" />
                           </button>

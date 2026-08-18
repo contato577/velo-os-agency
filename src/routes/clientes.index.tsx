@@ -70,14 +70,14 @@ function ClientesList() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Buscar cliente…"
-              className="h-8 w-52 min-h-[44px] rounded-md border bg-surface pl-7 pr-2 text-xs focus:border-primary/60 focus:outline-none"
+              className="h-8 w-52 rounded-md border bg-surface pl-7 pr-2 text-xs focus:border-primary/60 focus:outline-none"
             />
           </div>
           <div className="relative">
             <select
               value={statusFiltro}
               onChange={(e) => setStatusFiltro(e.target.value as typeof statusFiltro)}
-              className="h-8 min-h-[44px] appearance-none rounded-md border bg-surface pl-2.5 pr-7 text-xs font-medium focus:border-primary/60 focus:outline-none"
+              className="h-8 appearance-none rounded-md border bg-surface pl-2.5 pr-7 text-xs font-medium focus:border-primary/60 focus:outline-none"
             >
               <option value="ativos">Ativos (padrão)</option>
               <option value="todos">Todos, incl. arquivados</option>
@@ -91,13 +91,13 @@ function ClientesList() {
           </div>
           <button
             onClick={() => setNovoAberto(true)}
-            className="inline-flex h-8 min-h-[44px] items-center gap-1.5 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+            className="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary/90"
           >
             <Plus className="h-3.5 w-3.5" /> Novo Cliente
           </button>
         </PageHeader>
 
-        <div className="overflow-x-auto rounded-lg border bg-card">
+        <div className="overflow-hidden rounded-lg border bg-card">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-surface/50 text-left text-[11px] uppercase tracking-wider text-muted-foreground">
@@ -239,6 +239,7 @@ function NovoClienteModal({
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [monthlyValue, setMonthlyValue] = useState(500);
+  const [contratoMeses, setContratoMeses] = useState(12);
   const [services, setServices] = useState<string[]>([]);
 
   const toggleServico = (s: string) => {
@@ -258,6 +259,7 @@ function NovoClienteModal({
       plan,
       monthlyValue,
       services,
+      contratoMeses,
       email: email || undefined,
       phone: phone || undefined,
     });
@@ -331,6 +333,8 @@ function NovoClienteModal({
                 placeholder="Quem toca a conta"
               />
             </Field>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
             <Field label="Mensalidade (R$)">
               <input
                 type="number"
@@ -339,6 +343,19 @@ function NovoClienteModal({
                 onChange={(e) => setMonthlyValue(Number(e.target.value))}
                 className={inputCls}
               />
+            </Field>
+            <Field label="Duração do contrato">
+              <select
+                value={contratoMeses}
+                onChange={(e) => setContratoMeses(Number(e.target.value))}
+                className={inputCls}
+              >
+                <option value={1}>Mensal (1 mês)</option>
+                <option value={3}>Trimestral (3 meses)</option>
+                <option value={6}>Semestral (6 meses)</option>
+                <option value={12}>Anual (12 meses)</option>
+                <option value={24}>2 anos (24 meses)</option>
+              </select>
             </Field>
           </div>
           <Field label="Serviços contratados">
