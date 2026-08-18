@@ -738,6 +738,7 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
       supabase.removeChannel(channel);
     };
   }, []);
+  const mesAtual = mesAtualISO();
   const pontoControleAtual = useMemo(
     () => pontosControle.find((p) => p.mes === mesAtual) ?? null,
     [pontosControle, mesAtual],

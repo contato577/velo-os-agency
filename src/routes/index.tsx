@@ -205,7 +205,8 @@ function Dashboard() {
               {proximasAcoes.map((a) => (
                 <li key={a.id}>
                   <Link
-                    to={a.to as string}
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    to={a.to as any}
                     className="flex items-center gap-2.5 rounded-md p-2 transition-colors hover:bg-accent"
                   >
                     <span
@@ -241,6 +242,7 @@ function Dashboard() {
               </div>
               <Link
                 to="/operacao"
+                search={{ tab: "agenda" }}
                 className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline"
               >
                 Abrir agenda <ArrowRight className="h-3 w-3" />
@@ -308,7 +310,8 @@ function PulseCard({
   };
   return (
     <Link
-      to={to}
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      to={to as any}
       className="group relative overflow-hidden rounded-lg border bg-card p-4 transition-all hover:border-primary/40 hover:bg-surface/40"
     >
       <div className="flex items-start justify-between gap-2">

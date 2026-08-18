@@ -60,7 +60,11 @@ export function LancamentoForm({
         date: data,
         description: descricao,
         category: categoria || (tipo === "entrada" ? "Mensalidade" : "Operacional"),
-        costCenter: tipo === "entrada" ? "Receita" : ((categoria || "Operacional") as any),
+        costCenter:
+          tipo === "entrada"
+            ? "Receita"
+            : ((categoria ||
+                "Operacional") as import("@/lib/mock-data").FinanceEntry["costCenter"]),
         type: tipo,
         amount: Number(valor) || 0,
         client: contraparte || undefined,

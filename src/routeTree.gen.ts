@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as CapturaRouteImport } from './routes/captura'
 import { Route as CentralIaRouteImport } from './routes/central-ia'
 import { Route as ClientesRouteImport } from './routes/clientes'
 import { Route as ComercialRouteImport } from './routes/comercial'
@@ -29,6 +30,11 @@ const IndexRoute = IndexRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CapturaRoute = CapturaRouteImport.update({
+  id: '/captura',
+  path: '/captura',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CentralIaRoute = CentralIaRouteImport.update({
@@ -80,6 +86,7 @@ const ClientesClientIdRoute = ClientesClientIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/captura': typeof CapturaRoute
   '/central-ia': typeof CentralIaRoute
   '/clientes': typeof ClientesRouteWithChildren
   '/comercial': typeof ComercialRoute
@@ -93,6 +100,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/captura': typeof CapturaRoute
   '/central-ia': typeof CentralIaRoute
   '/comercial': typeof ComercialRoute
   '/configuracoes': typeof ConfiguracoesRoute
@@ -106,6 +114,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/captura': typeof CapturaRoute
   '/central-ia': typeof CentralIaRoute
   '/clientes': typeof ClientesRouteWithChildren
   '/comercial': typeof ComercialRoute
@@ -121,6 +130,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/captura'
     | '/central-ia'
     | '/clientes'
     | '/comercial'
@@ -134,6 +144,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/captura'
     | '/central-ia'
     | '/comercial'
     | '/configuracoes'
@@ -146,6 +157,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/auth'
+    | '/captura'
     | '/central-ia'
     | '/clientes'
     | '/comercial'
@@ -160,6 +172,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
+  CapturaRoute: typeof CapturaRoute
   CentralIaRoute: typeof CentralIaRoute
   ClientesRoute: typeof ClientesRouteWithChildren
   ComercialRoute: typeof ComercialRoute
@@ -183,6 +196,13 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/captura': {
+      id: '/captura'
+      path: '/captura'
+      fullPath: '/captura'
+      preLoaderRoute: typeof CapturaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/central-ia': {
@@ -268,6 +288,7 @@ const ClientesRouteWithChildren = ClientesRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
+  CapturaRoute: CapturaRoute,
   CentralIaRoute: CentralIaRoute,
   ClientesRoute: ClientesRouteWithChildren,
   ComercialRoute: ComercialRoute,
@@ -279,3 +300,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
