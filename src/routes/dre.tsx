@@ -165,7 +165,11 @@ function DRE() {
   const impostos = despesas.Impostos;
   const receitaLiquida = receitaBruta - impostos;
   const custoOperacional = totalDespesas - impostos;
-  const lucroBruto = receitaLiquida - despesas.Marketing - despesas.Ferramentas;
+  // Lucro Bruto = receita menos o custo DIRETO de entregar o serviço — numa
+  // agência, isso é a Equipe (quem produz/entrega pro cliente), não
+  // Marketing/Ferramentas (que são despesa operacional/administrativa,
+  // continuam descontadas mais abaixo, no Lucro Líquido).
+  const lucroBruto = receitaLiquida - despesas.Equipe;
   const lucroLiquido = receitaLiquida - custoOperacional;
   const margem = receitaBruta > 0 ? (lucroLiquido / receitaBruta) * 100 : 0;
   const ebitda = lucroLiquido + impostos;

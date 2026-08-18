@@ -405,7 +405,7 @@ interface DataStoreContextValue {
   ) => void;
   addClientManual: (
     partial: Pick<Client, "name" | "company" | "owner" | "plan" | "monthlyValue" | "services"> &
-      Partial<Client>,
+      Partial<Client> & { dataCobranca?: string },
   ) => Client;
   addComentario: (clientId: string, texto: string, autor: string) => void;
   removeComentario: (clientId: string, comentarioId: string) => void;
@@ -1094,15 +1094,44 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
   const addClientManual: DataStoreContextValue["addClientManual"] = (partial) => {
     const hoje = new Date();
     const clientId = crypto.randomUUID();
+    const dataInicioJornada = hoje.toISOString().slice(0, 10);
+
+    // A data de cobrança define o "dia do mês" em que esse cliente é cobrado
+    // de verdade — útil pra cadastrar um cliente que já existia antes do
+    // sistema (ex: já paga todo dia 13). Se não escolher nada, usa hoje.
+    const dataCobranca = partial.dataCobranca || dataInicioJornada;
+
+    const servicos = partial.services ?? [];
+    const matchedTemplates = servicos
+      .map((s) => serviceTemplates.find((t) => t.name === s || t.id === s))
+      .filter((t): t is ServiceTemplate => Boolean(t));
+    const prazoJornadaDias =
+      matchedTemplates.length > 0
+        ? Math.max(...matchedTemplates.map((t) => t.defaultDeadlineDays))
+        : 15;
+    const dataPrevistaFimOnboarding = new Date(
+      hoje.getTime() + prazoJornadaDias * 24 * 60 * 60 * 1000,
+    )
+      .toISOString()
+      .slice(0, 10);
+    const etapaJornada = matchedTemplates[0]?.stages[0] ?? "Briefing";
+
+    const { dataCobranca: _omit, ...clientFields } = partial;
     const newClient: Client = {
       id: clientId,
       status: "onboarding",
-      since: hoje.toISOString().slice(0, 10),
-      renewalDate: addMonths(hoje, partial.contratoMeses ?? 12)
-        .toISOString()
-        .slice(0, 10),
+      since: dataInicioJornada,
+      renewalDate:
+        partial.renewalDate ??
+        addMonths(hoje, partial.contratoMeses ?? 12)
+          .toISOString()
+          .slice(0, 10),
       contratoMeses: partial.contratoMeses ?? 12,
-      paymentDay: partial.paymentDay ?? 5,
+      paymentDay: partial.paymentDay ?? Number(dataCobranca.slice(8, 10)),
+      prazoJornadaDias,
+      dataInicioJornada,
+      dataPrevistaFimOnboarding,
+      etapaJornada,
       timeline: [
         {
           id: `tl-${Date.now()}`,
@@ -1112,7 +1141,7 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
         },
       ],
       comentarios: [],
-      ...partial,
+      ...clientFields,
     };
     setClients((prev) => [newClient, ...prev]);
     supabase
@@ -1122,6 +1151,136 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
         if (error)
           console.error("Erro ao salvar cliente (cadastro manual) no Supabase:", error.message);
       });
+    supabase
+      .from("client_timeline")
+      .insert({
+        id: newClient.timeline[0].id,
+        client_id: clientId,
+        user_name: "Sistema",
+        text: "Cliente cadastrado manualmente",
+        created_at: hoje.toISOString(),
+      })
+      .then(({ error }) => {
+        if (error) console.error("Erro ao salvar histórico do cliente no Supabase:", error.message);
+      });
+
+    // Mesmo tratamento de quem vem de venda fechada: cria projeto (com
+    // checklist do template do serviço) e tarefas de onboarding — sem isso,
+    // a aba Operação do cliente ficava vazia pra quem era cadastrado por aqui.
+    const newProjects: Project[] = [];
+    const newTasks: Task[] = [];
+    servicos.forEach((s) => {
+      const tpl = serviceTemplates.find((t) => t.name === s || t.id === s);
+      const deadlineDays = tpl?.defaultDeadlineDays ?? 15;
+      const projDeadline = new Date(hoje.getTime() + deadlineDays * 24 * 60 * 60 * 1000)
+        .toISOString()
+        .slice(0, 10);
+      const projId = crypto.randomUUID();
+
+      let type: Project["type"] = "Tráfego";
+      const sLower = s.toLowerCase();
+      if (sLower.includes("landing")) type = "Landing Page";
+      else if (sLower.includes("site")) type = "Site";
+      else if (sLower.includes("consultoria")) type = "Consultoria";
+      else if (sLower.includes("criativos")) type = "Criativos";
+      else if (sLower.includes("automação") || sLower.includes("automacao")) type = "Automação";
+
+      newProjects.push({
+        id: projId,
+        clientId,
+        clientName: newClient.company,
+        name: `${s} — ${newClient.company}`,
+        type,
+        status: "briefing",
+        fase: "implementacao",
+        progress: 0,
+        deadline: projDeadline,
+        owner: newClient.owner,
+        checklist: tpl?.checklist
+          ? tpl.checklist.map((item) => ({ id: crypto.randomUUID(), text: item, done: false }))
+          : [],
+      });
+
+      if (tpl?.tasks) {
+        tpl.tasks.forEach((t) => {
+          const taskDue = new Date(hoje.getTime() + t.dueOffsetDays * 24 * 60 * 60 * 1000)
+            .toISOString()
+            .slice(0, 10);
+          newTasks.push({
+            id: crypto.randomUUID(),
+            title: `${t.title} (${newClient.company})`,
+            owner: newClient.owner,
+            priority: t.priority,
+            status: "hoje",
+            dueDate: taskDue,
+            clientId,
+            projectId: projId,
+            labels: ["Onboarding", s],
+          });
+        });
+      }
+    });
+
+    if (newProjects.length > 0) {
+      setProjects((prev) => [...newProjects, ...prev]);
+      supabase
+        .from("projects")
+        .insert(newProjects.map(projectToDb))
+        .then(({ error }) => {
+          if (error) console.error("Erro ao salvar projetos no Supabase:", error.message);
+          newProjects.forEach((p) => {
+            if (p.checklist.length === 0) return;
+            supabase
+              .from("checklist_items")
+              .insert(
+                p.checklist.map((item) => ({
+                  id: item.id,
+                  project_id: p.id,
+                  text: item.text,
+                  done: item.done,
+                })),
+              )
+              .then(({ error: checklistError }) => {
+                if (checklistError)
+                  console.error("Erro ao salvar checklist no Supabase:", checklistError.message);
+              });
+          });
+        });
+    }
+    if (newTasks.length > 0) {
+      setTasks((prev) => [...newTasks, ...prev]);
+      supabase
+        .from("tasks")
+        .insert(newTasks.map(taskToDb))
+        .then(({ error }) => {
+          if (error) console.error("Erro ao salvar tarefas no Supabase:", error.message);
+        });
+    }
+
+    // A ideia é que cadastrar o cliente aqui já seja suficiente pra contar no
+    // financeiro — sem precisar passar por uma "venda" separada no CRM.
+    // Data usada é a de cobrança escolhida (ou hoje, se não escolher nada) —
+    // sendo recorrente, o DRE já repete esse valor todo mês seguinte no
+    // mesmo dia, contanto que a cobrança daquele mês seja confirmada.
+    const newFinanceEntry: FinanceEntry = {
+      id: crypto.randomUUID(),
+      date: dataCobranca,
+      description: `Mensalidade — ${newClient.company}`,
+      category: "Mensalidade",
+      costCenter: "Receita",
+      type: "entrada",
+      amount: newClient.monthlyValue,
+      client: newClient.company,
+      recurring: true,
+    };
+    setExpenses((prev) => [newFinanceEntry, ...prev]);
+    supabase
+      .from("finance_entries")
+      .insert(expenseToDb(newFinanceEntry))
+      .then(({ error }) => {
+        if (error) console.error("Erro ao salvar cobrança inicial no Supabase:", error.message);
+      });
+
     return newClient;
   };
 

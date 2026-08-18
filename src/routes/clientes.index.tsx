@@ -240,6 +240,7 @@ function NovoClienteModal({
   const [phone, setPhone] = useState("");
   const [monthlyValue, setMonthlyValue] = useState(500);
   const [contratoMeses, setContratoMeses] = useState(12);
+  const [dataCobranca, setDataCobranca] = useState(() => new Date().toISOString().slice(0, 10));
   const [services, setServices] = useState<string[]>([]);
 
   const toggleServico = (s: string) => {
@@ -260,6 +261,7 @@ function NovoClienteModal({
       monthlyValue,
       services,
       contratoMeses,
+      dataCobranca,
       email: email || undefined,
       phone: phone || undefined,
     });
@@ -358,6 +360,18 @@ function NovoClienteModal({
               </select>
             </Field>
           </div>
+          <Field label="Data da mensalidade (dia de cobrança)">
+            <input
+              type="date"
+              value={dataCobranca}
+              onChange={(e) => setDataCobranca(e.target.value)}
+              className={inputCls}
+            />
+            <p className="mt-1 text-[10px] leading-relaxed text-muted-foreground">
+              Cliente novo: deixe hoje. Cliente que já existia antes do sistema (ex: já paga todo
+              dia 13): escolha essa data — o financeiro passa a cobrar sempre nesse dia.
+            </p>
+          </Field>
           <Field label="Serviços contratados">
             <div className="flex flex-wrap gap-1.5">
               {SERVICOS.map((s) => (
