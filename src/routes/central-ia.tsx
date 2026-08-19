@@ -9,7 +9,9 @@ import {
   ChevronDown,
   CircleCheck,
   CircleAlert,
-  Menu,
+  Paperclip,
+  Plus,
+  X,
 } from "lucide-react";
 import { useState, useRef, useEffect, useMemo } from "react";
 import { AppShell, PageHeader } from "@/components/app-shell";
@@ -73,19 +75,10 @@ function CentralIA() {
   const [digitando, setDigitando] = useState(false);
   const [clienteSelecionado, setClienteSelecionado] = useState(clients[0]?.id ?? "");
   const [mostrarSeletorRelatorio, setMostrarSeletorRelatorio] = useState(false);
-  // Lembra se a pessoa preferiu esconder as sugestões, pra não voltar a
-  // poluir a tela toda vez que ela reabrir a Central de IA.
-  const [sugestoesVisiveis, setSugestoesVisiveis] = useState(() => {
-    if (typeof window === "undefined") return true;
-    return localStorage.getItem("veloce-ia-sugestoes-visiveis") !== "false";
-  });
-  const alternarSugestoes = () => {
-    setSugestoesVisiveis((v) => {
-      const novo = !v;
-      localStorage.setItem("veloce-ia-sugestoes-visiveis", String(novo));
-      return novo;
-    });
-  };
+  // Menu "+" estilo WhatsApp — fica fechado por padrão, só abre quando a
+  // pessoa clica, pra não poluir a tela com botão e sugestões o tempo todo.
+  const [menuAnexoAberto, setMenuAnexoAberto] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -120,6 +113,31 @@ function CentralIA() {
       text: "Recebi sua mensagem! Ainda não tenho acesso a um modelo de IA real pra responder com dados do sistema — isso é ligado assim que o back-end for conectado.",
       hora: horaAgora(),
     });
+  };
+
+  const anexarArquivo = (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    const nomes = Array.from(files)
+      .map((f) => f.name)
+      .join(", ");
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: `u-${Date.now()}`,
+        kind: "text",
+        role: "user",
+        text: `📎 Anexou: ${nomes}`,
+        hora: horaAgora(),
+      },
+    ]);
+    responderComAtraso({
+      id: `a-${Date.now()}`,
+      kind: "text",
+      role: "assistant",
+      text: "Recebi o arquivo! Analisar anexos ainda não está disponível — isso é ligado assim que o back-end de IA for conectado.",
+      hora: horaAgora(),
+    });
+    setMenuAnexoAberto(false);
   };
 
   const gerarRelatorio = () => {
@@ -231,100 +249,144 @@ function CentralIA() {
             )}
           </div>
 
-          {/* Ações — organizadas em blocos com rótulo, em vez de tudo espremido numa linha só */}
-          <div className="border-t bg-surface/50 px-5 py-3.5">
-            <div className="mb-2 text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
-              Ações
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              {!mostrarSeletorRelatorio ? (
-                <button
-                  onClick={() => setMostrarSeletorRelatorio(true)}
-                  className="inline-flex items-center gap-1.5 rounded-md border border-primary/25 bg-primary/10 px-3 py-1.5 text-[12px] font-medium text-primary transition-colors hover:bg-primary/20"
-                >
-                  <FileText className="h-3 w-3" /> Gerar relatório de cliente
-                </button>
-              ) : (
-                <div className="flex flex-wrap items-center gap-2 rounded-md border border-primary/25 bg-primary/5 px-2.5 py-1.5">
-                  <FileText className="h-3.5 w-3.5 shrink-0 text-primary" />
-                  <div className="relative">
-                    <select
-                      value={clienteSelecionado}
-                      onChange={(e) => setClienteSelecionado(e.target.value)}
-                      className="h-7 appearance-none rounded-md border bg-card py-0 pl-2.5 pr-7 text-[12px] outline-none focus:ring-1 focus:ring-primary/50"
+          {/* Campo de digitação, com botão "+" estilo WhatsApp à esquerda */}
+          <div className="relative border-t bg-surface/40 px-5 py-4">
+            {menuAnexoAberto && (
+              <>
+                <div className="fixed inset-0 z-30" onClick={() => setMenuAnexoAberto(false)} />
+                <div className="absolute bottom-full left-5 z-40 mb-2 w-72 overflow-hidden rounded-2xl border bg-card shadow-2xl">
+                  <div className="flex items-center justify-between border-b px-3 py-2">
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      Mais opções
+                    </span>
+                    <button
+                      onClick={() => setMenuAnexoAberto(false)}
+                      className="rounded p-0.5 text-muted-foreground hover:bg-accent"
                     >
-                      {clients.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.company}
-                        </option>
-                      ))}
-                    </select>
-                    <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
+                      <X className="h-3.5 w-3.5" />
+                    </button>
                   </div>
+
                   <button
-                    onClick={() => {
-                      gerarRelatorio();
-                      setMostrarSeletorRelatorio(false);
-                    }}
-                    disabled={!clienteAtivo}
-                    className="inline-flex items-center gap-1 rounded-md bg-primary px-2.5 py-1 text-[11px] font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex w-full items-center gap-3 px-3.5 py-2.5 text-left text-[13px] hover:bg-accent"
                   >
-                    <Sparkles className="h-3 w-3" /> Gerar
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-info/15 text-info">
+                      <Paperclip className="h-4 w-4" />
+                    </span>
+                    Anexar arquivo
                   </button>
-                  <button
-                    onClick={() => setMostrarSeletorRelatorio(false)}
-                    className="text-[11px] text-muted-foreground hover:text-foreground"
-                  >
-                    Cancelar
-                  </button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => anexarArquivo(e.target.files)}
+                  />
+
+                  {!mostrarSeletorRelatorio ? (
+                    <button
+                      onClick={() => setMostrarSeletorRelatorio(true)}
+                      className="flex w-full items-center gap-3 px-3.5 py-2.5 text-left text-[13px] hover:bg-accent"
+                    >
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
+                        <FileText className="h-4 w-4" />
+                      </span>
+                      Gerar relatório de cliente
+                    </button>
+                  ) : (
+                    <div className="space-y-2 px-3.5 py-2.5">
+                      <div className="flex items-center gap-2 text-[12px] font-medium text-primary">
+                        <FileText className="h-3.5 w-3.5" /> Gerar relatório de cliente
+                      </div>
+                      <div className="relative">
+                        <select
+                          value={clienteSelecionado}
+                          onChange={(e) => setClienteSelecionado(e.target.value)}
+                          className="h-8 w-full appearance-none rounded-md border bg-background py-0 pl-2.5 pr-7 text-[12px] outline-none focus:ring-1 focus:ring-primary/50"
+                        >
+                          {clients.map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {c.company}
+                            </option>
+                          ))}
+                        </select>
+                        <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
+                      </div>
+                      <div className="flex justify-end gap-2">
+                        <button
+                          onClick={() => setMostrarSeletorRelatorio(false)}
+                          className="text-[11px] text-muted-foreground hover:text-foreground"
+                        >
+                          Cancelar
+                        </button>
+                        <button
+                          onClick={() => {
+                            gerarRelatorio();
+                            setMostrarSeletorRelatorio(false);
+                            setMenuAnexoAberto(false);
+                          }}
+                          disabled={!clienteAtivo}
+                          className="inline-flex items-center gap-1 rounded-md bg-primary px-2.5 py-1 text-[11px] font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                        >
+                          <Sparkles className="h-3 w-3" /> Gerar
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="border-t px-3.5 py-2.5">
+                    <div className="mb-1.5 text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+                      Perguntas mais usadas
+                    </div>
+                    <div className="space-y-1">
+                      {sugestoes.map((s) => (
+                        <button
+                          key={s}
+                          onClick={() => {
+                            enviarMensagem(s);
+                            setMenuAnexoAberto(false);
+                          }}
+                          className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12px] text-muted-foreground hover:bg-accent hover:text-foreground"
+                        >
+                          <Sparkles className="h-3 w-3 shrink-0 text-primary" /> {s}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
-              )}
-            </div>
-          </div>
-
-          {/* Sugestões rápidas — bloco próprio, separado das ações */}
-          <div className="border-t bg-surface/40 px-5 py-3">
-            <button
-              onClick={alternarSugestoes}
-              className="mb-2 flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-widest text-muted-foreground hover:text-foreground"
-              title={sugestoesVisiveis ? "Esconder sugestões" : "Mostrar sugestões"}
-            >
-              <Menu className="h-3 w-3" />
-              Perguntas sugeridas
-              <ChevronDown
-                className={cn("h-3 w-3 transition-transform", !sugestoesVisiveis && "-rotate-90")}
-              />
-            </button>
-            {sugestoesVisiveis && (
-              <div className="flex flex-wrap gap-1.5">
-                {sugestoes.map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => enviarMensagem(s)}
-                    className="inline-flex items-center gap-1 rounded-full border border-primary/25 bg-primary/5 px-2.5 py-1 text-[11px] text-primary transition-colors hover:bg-primary/15"
-                  >
-                    <Sparkles className="h-2.5 w-2.5" /> {s}
-                  </button>
-                ))}
-              </div>
+              </>
             )}
-          </div>
 
-          {/* Campo de digitação */}
-          <div className="flex items-center gap-2 bg-surface/40 px-5 py-4">
-            <input
-              value={chatInput}
-              onChange={(e) => setChatInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && enviarMensagem(chatInput)}
-              placeholder="Escreva uma mensagem..."
-              className="h-12 flex-1 rounded-full border bg-card px-4 text-[14px] outline-none focus:ring-1 focus:ring-primary/50"
-            />
-            <button
-              onClick={() => enviarMensagem(chatInput)}
-              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/80 text-primary-foreground shadow-lg shadow-primary/20 transition-transform hover:scale-105"
-            >
-              <Send className="h-4.5 w-4.5" />
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setMenuAnexoAberto((v) => !v)}
+                className={cn(
+                  "flex h-10 w-10 shrink-0 items-center justify-center rounded-full border transition-colors",
+                  menuAnexoAberto
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "bg-card text-muted-foreground hover:bg-accent hover:text-foreground",
+                )}
+                title="Mais opções"
+              >
+                <Plus
+                  className={cn("h-5 w-5 transition-transform", menuAnexoAberto && "rotate-45")}
+                />
+              </button>
+              <input
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && enviarMensagem(chatInput)}
+                placeholder="Escreva uma mensagem..."
+                className="h-12 flex-1 rounded-full border bg-card px-4 text-[14px] outline-none focus:ring-1 focus:ring-primary/50"
+              />
+              <button
+                onClick={() => enviarMensagem(chatInput)}
+                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/80 text-primary-foreground shadow-lg shadow-primary/20 transition-transform hover:scale-105"
+              >
+                <Send className="h-4.5 w-4.5" />
+              </button>
+            </div>
           </div>
         </div>
       </div>

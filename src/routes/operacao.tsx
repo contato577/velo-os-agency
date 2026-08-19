@@ -60,7 +60,6 @@ const HOJE = new Date().toISOString().slice(0, 10);
 const projStatus = {
   briefing: { label: "Briefing", color: "bg-info/15 text-info" },
   producao: { label: "Em produção", color: "bg-warning/15 text-warning" },
-  revisao: { label: "Em revisão", color: "bg-primary/15 text-primary" },
   entregue: { label: "Entregue", color: "bg-success/15 text-success" },
 };
 
@@ -233,7 +232,7 @@ void Link;
 
 function ProjetosPanel() {
   const { projects: projetosReais } = useDataStore();
-  const groups = ["briefing", "producao", "revisao", "entregue"] as const;
+  const groups = ["briefing", "producao", "entregue"] as const;
   // Só projetos de Implementação entram nesse quadro — eles são os que realmente
   // "andam" por essas 4 colunas. Gestão do Cliente não tem esse ciclo (não tem fim),
   // por isso fica de fora daqui e é mostrada como um resumo à parte, mais abaixo.

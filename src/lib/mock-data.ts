@@ -310,7 +310,7 @@ export interface Project {
   clientName: string;
   name: string;
   type: "Tráfego" | "Landing Page" | "Site" | "Consultoria" | "Criativos" | "Automação";
-  status: "briefing" | "producao" | "revisao" | "entregue";
+  status: "briefing" | "producao" | "entregue";
   // Fase do ciclo de vida — fonte única de verdade sobre onde o cliente está.
   // "implementacao": entrega inicial, com prazo e checklist de onboarding.
   // "operacao_continua": criado automaticamente quando a implementação termina —
@@ -341,7 +341,7 @@ export const projects: Project[] = [
     clientName: "Pereira Ortopedia",
     name: "LP Consulta Online",
     type: "Landing Page",
-    status: "revisao",
+    status: "producao",
     fase: "implementacao",
     progress: 85,
     deadline: "2026-07-10",
