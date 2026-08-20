@@ -369,7 +369,8 @@ function NovoClienteModal({
             />
             <p className="mt-1 text-[10px] leading-relaxed text-muted-foreground">
               Cliente novo: deixe hoje. Cliente que já existia antes do sistema (ex: já paga todo
-              dia 13): escolha essa data — o financeiro passa a cobrar sempre nesse dia.
+              dia 13): escolha essa data — o financeiro passa a cobrar sempre nesse dia, e você
+              recebe lembrete 5 dias antes de cada vencimento.
             </p>
           </Field>
           <Field label="Serviços contratados">

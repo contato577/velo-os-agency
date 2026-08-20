@@ -76,11 +76,37 @@ function ClienteDetalhe() {
   const { clients, updateClientStatus, deleteClient } = useDataStore();
   const { clientId } = useParams({ from: "/clientes/$clientId" });
   const navigate = useNavigate();
-  const client = clients.find((c) => c.id === clientId) ?? clients[0];
+  const client = clients.find((c) => c.id === clientId);
   const [tab, setTab] = useState<Tab>("geral");
   const [confirmArquivar, setConfirmArquivar] = useState(false);
   const [confirmExcluir, setConfirmExcluir] = useState(false);
   const [excluirTexto, setExcluirTexto] = useState("");
+
+  // Antes, se o cliente ainda não tivesse carregado (ex: acabou de dar F5 na
+  // página), o código pegava "o primeiro cliente da lista" como se fosse
+  // este — e como a lista começa vazia enquanto busca no banco, isso
+  // quebrava a tela inteira. Agora mostra um carregamento de verdade.
+  if (!client) {
+    return (
+      <AppShell title="Cliente" subtitle="">
+        <div className="flex h-[60vh] flex-col items-center justify-center gap-3 text-muted-foreground">
+          {clients.length === 0 ? (
+            <>
+              <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+              <p className="text-sm">Carregando cliente…</p>
+            </>
+          ) : (
+            <>
+              <p className="text-sm">Não encontramos esse cliente.</p>
+              <Link to="/clientes" className="text-sm text-primary hover:underline">
+                Voltar para Clientes
+              </Link>
+            </>
+          )}
+        </div>
+      </AppShell>
+    );
+  }
 
   // "Arquivado" só entra nas opções do dropdown quando o cliente já está
   // cancelado (ou já arquivado) — assim o dropdown não pode pular o passo
@@ -1677,9 +1703,10 @@ function ProjectCard({ project }: { project: import("@/lib/mock-data").Project }
 
 function TabOperacao({ clientId }: { clientId: string }) {
   const { clients, projects, tasks, toggleTaskDone } = useDataStore();
-  const client = clients.find((c) => c.id === clientId) ?? clients[0];
+  const client = clients.find((c) => c.id === clientId);
   const clientProjects = projects.filter((p) => p.clientId === clientId);
   const clientTasks = tasks.filter((t) => t.clientId === clientId);
+  if (!client) return null;
 
   // Antes vinha com 2 arquivos de exemplo sempre presentes, em qualquer cliente.
   // Começa vazio agora — só aparece o que for enviado de verdade.

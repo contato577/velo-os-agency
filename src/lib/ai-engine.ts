@@ -164,6 +164,38 @@ export function gerarInsights(input: AIInputs): Insight[] {
     });
   });
 
+  // Mensalidade — diferente da renovação de CONTRATO acima, isso é o dia do
+  // mês em que o cliente paga. Avisa 5 dias antes de cada cobrança chegar,
+  // pra não deixar cliente ativo passar batido sem confirmar/cobrar a tempo.
+  const proximoVencimentoMensalidade = (paymentDay: number) => {
+    const candidato = new Date(HOJE.getFullYear(), HOJE.getMonth(), paymentDay);
+    if (candidato < HOJE) candidato.setMonth(candidato.getMonth() + 1);
+    return candidato;
+  };
+  const clientesMensalidadeProxima = clients.filter((c) => {
+    if (c.status !== "ativo" || !c.paymentDay) return false;
+    const diff = (proximoVencimentoMensalidade(c.paymentDay).getTime() - HOJE.getTime()) / 86400000;
+    return diff >= 0 && diff <= 5;
+  });
+  clientesMensalidadeProxima.forEach((c) => {
+    const diasRestantes = Math.ceil(
+      (proximoVencimentoMensalidade(c.paymentDay).getTime() - HOJE.getTime()) / 86400000,
+    );
+    insights.push({
+      id: `d-mensalidade-${c.id}`,
+      area: "Clientes",
+      titulo:
+        diasRestantes === 0
+          ? `Mensalidade de ${c.company} vence hoje`
+          : `Mensalidade de ${c.company} vence em ${diasRestantes} dia(s)`,
+      descricao: "Confirme o recebimento assim que a cobrança acontecer, no DRE Inteligente.",
+      prioridade: diasRestantes === 0 ? "critica" : "media",
+      impacto: BRL(c.monthlyValue),
+      acaoLabel: "Ver DRE",
+      to: "/dre",
+    });
+  });
+
   const gapMeta = ((kpis.metaMes - kpis.vendasMes) / kpis.metaMes) * 100;
   if (gapMeta > 0) {
     insights.push({

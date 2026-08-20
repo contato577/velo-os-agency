@@ -71,6 +71,48 @@ export interface PontoControle {
 
 const PC_STORAGE_KEY = "veloce.pontos-controle.v1";
 
+function pontoControleToDb(p: PontoControle) {
+  return {
+    id: p.id,
+    mes: p.mes,
+    ano: p.ano,
+    criado_em: p.criadoEm,
+    analise_anterior: p.analiseAnterior,
+    funcionou: p.funcionou,
+    nao_funcionou: p.naoFuncionou,
+    objetivos: p.objetivos,
+    meta_comercial: p.metaComercial,
+    novos_clientes_desejados: p.novosClientesDesejados,
+    servicos_entregar: p.servicosEntregar,
+    taxa_prospeccao_reuniao: p.taxaProspeccaoReuniao,
+    taxa_reuniao_fechamento: p.taxaReuniaoFechamento,
+    qualidade: p.qualidade,
+    prioridades: p.prioridades,
+    proximos_passos: p.proximosPassos,
+  };
+}
+
+function pontoControleFromDb(row: Record<string, unknown>): PontoControle {
+  return {
+    id: row.id as string,
+    mes: row.mes as string,
+    ano: row.ano as number,
+    criadoEm: row.criado_em as string,
+    analiseAnterior: (row.analise_anterior as string) ?? "",
+    funcionou: (row.funcionou as string) ?? "",
+    naoFuncionou: (row.nao_funcionou as string) ?? "",
+    objetivos: (row.objetivos as string) ?? "",
+    metaComercial: (row.meta_comercial as number) ?? 0,
+    novosClientesDesejados: (row.novos_clientes_desejados as number) ?? 0,
+    servicosEntregar: (row.servicos_entregar as number) ?? 0,
+    taxaProspeccaoReuniao: (row.taxa_prospeccao_reuniao as number) ?? 0,
+    taxaReuniaoFechamento: (row.taxa_reuniao_fechamento as number) ?? 0,
+    qualidade: (row.qualidade as QualidadeItem[]) ?? [],
+    prioridades: (row.prioridades as string) ?? "",
+    proximosPassos: (row.proximos_passos as string) ?? "",
+  };
+}
+
 function addMonths(base: Date, months: number) {
   const d = new Date(base.getTime());
   const day = d.getDate();
@@ -104,25 +146,6 @@ export function formatMesLabel(mes: string) {
     "Dezembro",
   ];
   return `${nomes[Number(m) - 1] ?? m} ${y}`;
-}
-
-function loadPontos(): PontoControle[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = window.localStorage.getItem(PC_STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as PontoControle[]) : [];
-  } catch {
-    return [];
-  }
-}
-
-function persistPontos(list: PontoControle[]) {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(PC_STORAGE_KEY, JSON.stringify(list));
-  } catch {
-    /* ignore */
-  }
 }
 
 // ─── Conversão banco (snake_case) ↔ sistema (camelCase) — Leads e Clientes ────
@@ -405,7 +428,7 @@ interface DataStoreContextValue {
   ) => void;
   addClientManual: (
     partial: Pick<Client, "name" | "company" | "owner" | "plan" | "monthlyValue" | "services"> &
-      Partial<Client>,
+      Partial<Client> & { dataCobranca?: string },
   ) => Client;
   addComentario: (clientId: string, texto: string, autor: string) => void;
   removeComentario: (clientId: string, comentarioId: string) => void;
@@ -450,7 +473,7 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
   const [expenses, setExpenses] = useState<FinanceEntry[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [serviceTemplates, setServiceTemplates] = useState<ServiceTemplate[]>(seedTemplates);
-  const [pontosControle, setPontosControle] = useState<PontoControle[]>(() => loadPontos());
+  const [pontosControle, setPontosControle] = useState<PontoControle[]>([]);
   const [clientDocuments, setClientDocuments] = useState<DocItem[]>([]);
   const [recurringConfirmations, setRecurringConfirmations] = useState<RecurringConfirmation[]>([]);
   const [systemNotifications, setSystemNotifications] = useState<SystemNotification[]>([]);
@@ -553,12 +576,31 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
       });
   };
 
+  const carregarPontosControle = () => {
+    supabase
+      .from("pontos_controle")
+      .select("*")
+      .order("mes", { ascending: false })
+      .then(({ data, error }) => {
+        if (error) {
+          console.error("Erro ao carregar Ponto de Controle do Supabase:", error.message);
+          toast.error("Não foi possível carregar o Ponto de Controle.", {
+            description: "Verifique sua conexão e tente de novo.",
+            action: { label: "Tentar de novo", onClick: carregarPontosControle },
+          });
+          return;
+        }
+        setPontosControle((data ?? []).map(pontoControleFromDb));
+      });
+  };
+
   useEffect(() => {
     carregarLeads();
     carregarClientes();
     carregarProjetos();
     carregarTarefas();
     carregarFinanceiro();
+    carregarPontosControle();
 
     // Time real — antes os formulários usavam uma lista fixa de 4 nomes fictícios
     // pra "Responsável". Agora busca quem realmente tem conta no sistema.
@@ -793,11 +835,17 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
     };
     setPontosControle((prev) => {
       const existente = prev.find((p) => p.mes === input.mes);
+      const registroFinal = existente ? { ...registro, criadoEm: existente.criadoEm } : registro;
       const next = existente
-        ? prev.map((p) => (p.mes === input.mes ? { ...registro, criadoEm: p.criadoEm } : p))
-        : [registro, ...prev];
+        ? prev.map((p) => (p.mes === input.mes ? registroFinal : p))
+        : [registroFinal, ...prev];
       const sorted = [...next].sort((a, b) => b.mes.localeCompare(a.mes));
-      persistPontos(sorted);
+      supabase
+        .from("pontos_controle")
+        .upsert(pontoControleToDb(registroFinal), { onConflict: "mes" })
+        .then(({ error }) => {
+          if (error) console.error("Erro ao salvar Ponto de Controle no Supabase:", error.message);
+        });
       return sorted;
     });
     return registro;
@@ -1146,34 +1194,221 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
   const addClientManual: DataStoreContextValue["addClientManual"] = (partial) => {
     const hoje = new Date();
     const clientId = crypto.randomUUID();
+    const dataInicioJornada = hoje.toISOString().slice(0, 10);
+
+    // A data de cobrança define o "dia do mês" em que esse cliente é cobrado
+    // de verdade — útil pra cadastrar um cliente que já existia antes do
+    // sistema (ex: já paga todo dia 13). Se não escolher nada, usa hoje.
+    const dataCobranca = partial.dataCobranca || dataInicioJornada;
+
+    const servicos = partial.services ?? [];
+    const matchedTemplates = servicos
+      .map((s) => serviceTemplates.find((t) => t.name === s || t.id === s))
+      .filter((t): t is ServiceTemplate => Boolean(t));
+    const prazoJornadaDias =
+      matchedTemplates.length > 0
+        ? Math.max(...matchedTemplates.map((t) => t.defaultDeadlineDays))
+        : 15;
+    const dataPrevistaFimOnboarding = new Date(
+      hoje.getTime() + prazoJornadaDias * 24 * 60 * 60 * 1000,
+    )
+      .toISOString()
+      .slice(0, 10);
+    const etapaJornada = matchedTemplates[0]?.stages?.[0] ?? "Briefing";
+
+    const { dataCobranca: _omit, ...clientFields } = partial;
+    const timelineEntry = {
+      id: `tl-${Date.now()}`,
+      time: "Agora",
+      user: "Sistema",
+      text: "Cliente cadastrado manualmente",
+    };
     const newClient: Client = {
       id: clientId,
       status: "onboarding",
-      since: hoje.toISOString().slice(0, 10),
-      renewalDate: addMonths(hoje, partial.contratoMeses ?? 12)
-        .toISOString()
-        .slice(0, 10),
+      since: dataInicioJornada,
+      renewalDate:
+        partial.renewalDate ??
+        addMonths(hoje, partial.contratoMeses ?? 12)
+          .toISOString()
+          .slice(0, 10),
       contratoMeses: partial.contratoMeses ?? 12,
-      paymentDay: partial.paymentDay ?? 5,
-      timeline: [
-        {
-          id: `tl-${Date.now()}`,
-          time: "Agora",
-          user: "Sistema",
-          text: "Cliente cadastrado manualmente",
-        },
-      ],
+      paymentDay: partial.paymentDay ?? Number(dataCobranca.slice(8, 10)),
+      prazoJornadaDias,
+      dataInicioJornada,
+      dataPrevistaFimOnboarding,
+      etapaJornada,
+      timeline: [timelineEntry],
       comentarios: [],
-      ...partial,
+      ...clientFields,
     };
+
+    // Monta projeto (com checklist do template do serviço) + tarefas de
+    // onboarding — igual ao que já acontece quando o cliente vem de uma
+    // venda fechada pelo CRM. Antes, cadastrar por aqui deixava a aba
+    // Operação do cliente completamente vazia.
+    const newProjects: Project[] = [];
+    const newTasks: Task[] = [];
+    servicos.forEach((s) => {
+      const tpl = serviceTemplates.find((t) => t.name === s || t.id === s);
+      const deadlineDays = tpl?.defaultDeadlineDays ?? 15;
+      const projDeadline = new Date(hoje.getTime() + deadlineDays * 24 * 60 * 60 * 1000)
+        .toISOString()
+        .slice(0, 10);
+      const projId = crypto.randomUUID();
+
+      let type: Project["type"] = "Tráfego";
+      const sLower = s.toLowerCase();
+      if (sLower.includes("landing")) type = "Landing Page";
+      else if (sLower.includes("site")) type = "Site";
+      else if (sLower.includes("consultoria")) type = "Consultoria";
+      else if (sLower.includes("criativos")) type = "Criativos";
+      else if (sLower.includes("automação") || sLower.includes("automacao")) type = "Automação";
+
+      newProjects.push({
+        id: projId,
+        clientId,
+        clientName: newClient.company,
+        name: `${s} — ${newClient.company}`,
+        type,
+        status: "briefing",
+        fase: "implementacao",
+        progress: 0,
+        deadline: projDeadline,
+        owner: newClient.owner,
+        checklist: tpl?.checklist
+          ? tpl.checklist.map((item) => ({ id: crypto.randomUUID(), text: item, done: false }))
+          : [],
+      });
+
+      if (tpl?.tasks) {
+        tpl.tasks.forEach((t) => {
+          const taskDue = new Date(hoje.getTime() + t.dueOffsetDays * 24 * 60 * 60 * 1000)
+            .toISOString()
+            .slice(0, 10);
+          newTasks.push({
+            id: crypto.randomUUID(),
+            title: `${t.title} (${newClient.company})`,
+            owner: newClient.owner,
+            priority: t.priority,
+            status: "hoje",
+            dueDate: taskDue,
+            clientId,
+            projectId: projId,
+            labels: ["Onboarding", s],
+          });
+        });
+      }
+    });
+
+    // A ideia é que cadastrar o cliente aqui já seja suficiente pra contar no
+    // financeiro — sem precisar passar por uma "venda" separada no CRM. Data
+    // usada é a de cobrança escolhida (ou hoje, se não escolher nada).
+    const newFinanceEntry: FinanceEntry = {
+      id: crypto.randomUUID(),
+      date: dataCobranca,
+      description: `Mensalidade — ${newClient.company}`,
+      category: "Mensalidade",
+      costCenter: "Receita",
+      type: "entrada",
+      amount: newClient.monthlyValue,
+      client: newClient.company,
+      recurring: true,
+    };
+
+    // Reflete tudo na tela na hora.
     setClients((prev) => [newClient, ...prev]);
+    if (newProjects.length > 0) setProjects((prev) => [...newProjects, ...prev]);
+    if (newTasks.length > 0) setTasks((prev) => [...newTasks, ...prev]);
+    setExpenses((prev) => [newFinanceEntry, ...prev]);
+
+    // Salva no Supabase em SEQUÊNCIA (cliente → timeline/projetos → checklist/
+    // tarefas/cobrança) — nunca em paralelo. Checklist e tarefas dependem do
+    // projeto já existir, e o projeto depende do cliente já existir; mandar
+    // tudo "ao mesmo tempo" fazia o banco rejeitar em silêncio quando a
+    // ordem de chegada não batia, e os dados sumiam ao recarregar a página.
     supabase
       .from("clients")
       .insert(clientToDb(newClient))
-      .then(({ error }) => {
-        if (error)
-          console.error("Erro ao salvar cliente (cadastro manual) no Supabase:", error.message);
+      .then(({ error: clientError }) => {
+        if (clientError) {
+          console.error(
+            "Erro ao salvar cliente (cadastro manual) no Supabase:",
+            clientError.message,
+          );
+          return;
+        }
+
+        supabase
+          .from("client_timeline")
+          .insert({
+            id: timelineEntry.id,
+            client_id: clientId,
+            user_name: "Sistema",
+            text: timelineEntry.text,
+            created_at: hoje.toISOString(),
+          })
+          .then(({ error: timelineError }) => {
+            if (timelineError)
+              console.error(
+                "Erro ao salvar histórico do cliente no Supabase:",
+                timelineError.message,
+              );
+          });
+
+        if (newProjects.length > 0) {
+          supabase
+            .from("projects")
+            .insert(newProjects.map(projectToDb))
+            .then(({ error: projectsError }) => {
+              if (projectsError) {
+                console.error("Erro ao salvar projetos no Supabase:", projectsError.message);
+                return;
+              }
+
+              const allChecklistItems = newProjects.flatMap((p) =>
+                (p.checklist ?? []).map((item, i) => ({
+                  id: item.id,
+                  project_id: p.id,
+                  text: item.text,
+                  done: item.done,
+                  ordem: i,
+                })),
+              );
+              if (allChecklistItems.length > 0) {
+                supabase
+                  .from("checklist_items")
+                  .insert(allChecklistItems)
+                  .then(({ error: checklistError }) => {
+                    if (checklistError)
+                      console.error(
+                        "Erro ao salvar checklist no Supabase:",
+                        checklistError.message,
+                      );
+                  });
+              }
+
+              if (newTasks.length > 0) {
+                supabase
+                  .from("tasks")
+                  .insert(newTasks.map(taskToDb))
+                  .then(({ error: tasksError }) => {
+                    if (tasksError)
+                      console.error("Erro ao salvar tarefas no Supabase:", tasksError.message);
+                  });
+              }
+            });
+        }
+
+        supabase
+          .from("finance_entries")
+          .insert(expenseToDb(newFinanceEntry))
+          .then(({ error: financeError }) => {
+            if (financeError)
+              console.error("Erro ao salvar cobrança inicial no Supabase:", financeError.message);
+          });
       });
+
     return newClient;
   };
 
@@ -1395,30 +1630,6 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
       timeline: [timelineEntry],
     };
 
-    // Salva o cliente no Supabase em segundo plano (a tela já reflete na hora).
-    // Projetos, checklist, tarefas e a cobrança inicial são salvos logo abaixo,
-    // depois que o cliente e os projetos já têm um ID real pra referenciar.
-    supabase
-      .from("client_timeline")
-      .insert({
-        id: timelineEntry.id,
-        client_id: clientId,
-        user_name: timelineEntry.user,
-        text: timelineEntry.text,
-        created_at: hoje.toISOString(),
-      })
-      .then(({ error }) => {
-        if (error)
-          console.error("Erro ao salvar histórico inicial do cliente no Supabase:", error.message);
-      });
-
-    supabase
-      .from("clients")
-      .insert(clientToDb(newClient))
-      .then(({ error }) => {
-        if (error) console.error("Erro ao salvar cliente no Supabase:", error.message);
-      });
-
     // 5. Para cada serviço, cria um Projeto vinculado ao cliente, aplicando checklist e tarefas
     const newProjects: Project[] = [];
     const newTasks: Task[] = [];
@@ -1476,11 +1687,10 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
     });
 
     // 6. Cria o primeiro registro de cobrança (mensalidade) — contabilizado
-    // HOJE, no dia real em que o contrato foi assinado/pago. Antes isso
-    // aparecia 30 dias no futuro, o que fazia a mensalidade "sumir" do mês
-    // em que o cliente realmente entrou. Sendo "recurring: true", o DRE já
-    // repete esse valor automaticamente todo mês seguinte (contanto que o
-    // cliente continue ativo e a cobrança daquele mês seja confirmada).
+    // HOJE, no dia real em que o contrato foi assinado/pago. Sendo
+    // "recurring: true", o DRE já repete esse valor automaticamente todo mês
+    // seguinte (contanto que o cliente continue ativo e a cobrança daquele
+    // mês seja confirmada).
     const dataAssinatura = hoje.toISOString().slice(0, 10);
     const newFinanceEntry: FinanceEntry = {
       id: crypto.randomUUID(),
@@ -1494,56 +1704,100 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
       recurring: true,
     };
 
-    // Atualiza o estado global
+    // Atualiza o estado global — a tela já reflete tudo na hora, mesmo antes
+    // de qualquer resposta do Supabase.
     setClients((prev) => [newClient, ...prev]);
     if (newProjects.length > 0) setProjects((prev) => [...newProjects, ...prev]);
     if (newTasks.length > 0) setTasks((prev) => [...newTasks, ...prev]);
     setExpenses((prev) => [newFinanceEntry, ...prev]);
 
-    // Salva tudo no Supabase em segundo plano — projetos primeiro, depois o
-    // checklist de cada um (precisa do project_id já existente), tarefas e
-    // a cobrança inicial. Cada bloco é independente: se um falhar, os outros
-    // continuam tentando salvar normalmente.
-    if (newProjects.length > 0) {
-      supabase
-        .from("projects")
-        .insert(newProjects.map(projectToDb))
-        .then(({ error }) => {
-          if (error) console.error("Erro ao salvar projetos no Supabase:", error.message);
-        });
-
-      const allChecklistItems = newProjects.flatMap((p) =>
-        (p.checklist ?? []).map((item, i) => ({
-          id: item.id,
-          project_id: p.id,
-          text: item.text,
-          done: item.done,
-          ordem: i,
-        })),
-      );
-      if (allChecklistItems.length > 0) {
-        supabase
-          .from("checklist_items")
-          .insert(allChecklistItems)
-          .then(({ error }) => {
-            if (error) console.error("Erro ao salvar checklist no Supabase:", error.message);
-          });
-      }
-    }
-    if (newTasks.length > 0) {
-      supabase
-        .from("tasks")
-        .insert(newTasks.map(taskToDb))
-        .then(({ error }) => {
-          if (error)
-            console.error("Erro ao salvar tarefas de onboarding no Supabase:", error.message);
-        });
-    }
+    // Salva no Supabase em SEQUÊNCIA, não em paralelo: cliente primeiro, e só
+    // depois dele existir de verdade no banco (dentro do .then()) é que
+    // projetos/checklist/tarefas são enviados — essas duas últimas tabelas
+    // têm referência obrigatória a projeto/cliente já existente, então
+    // mandar tudo "ao mesmo tempo" fazia o banco rejeitar em silêncio quando
+    // a ordem de chegada não batia (era isso que fazia checklist e tarefa
+    // "sumirem" ao recarregar a página).
     supabase
-      .from("finance_entries")
-      .insert(expenseToDb(newFinanceEntry))
-      .then(({ error }) => {
-        if (error) console.error("Erro ao salvar cobrança inicial no Supabase:", error.message);
+      .from("clients")
+      .insert(clientToDb(newClient))
+      .then(({ error: clientError }) => {
+        if (clientError) {
+          console.error("Erro ao salvar cliente no Supabase:", clientError.message);
+          return;
+        }
+
+        supabase
+          .from("client_timeline")
+          .insert({
+            id: timelineEntry.id,
+            client_id: clientId,
+            user_name: timelineEntry.user,
+            text: timelineEntry.text,
+            created_at: hoje.toISOString(),
+          })
+          .then(({ error: timelineError }) => {
+            if (timelineError)
+              console.error(
+                "Erro ao salvar histórico inicial do cliente no Supabase:",
+                timelineError.message,
+              );
+          });
+
+        if (newProjects.length > 0) {
+          supabase
+            .from("projects")
+            .insert(newProjects.map(projectToDb))
+            .then(({ error: projectsError }) => {
+              if (projectsError) {
+                console.error("Erro ao salvar projetos no Supabase:", projectsError.message);
+                return;
+              }
+
+              const allChecklistItems = newProjects.flatMap((p) =>
+                (p.checklist ?? []).map((item, i) => ({
+                  id: item.id,
+                  project_id: p.id,
+                  text: item.text,
+                  done: item.done,
+                  ordem: i,
+                })),
+              );
+              if (allChecklistItems.length > 0) {
+                supabase
+                  .from("checklist_items")
+                  .insert(allChecklistItems)
+                  .then(({ error: checklistError }) => {
+                    if (checklistError)
+                      console.error(
+                        "Erro ao salvar checklist no Supabase:",
+                        checklistError.message,
+                      );
+                  });
+              }
+
+              if (newTasks.length > 0) {
+                supabase
+                  .from("tasks")
+                  .insert(newTasks.map(taskToDb))
+                  .then(({ error: tasksError }) => {
+                    if (tasksError)
+                      console.error(
+                        "Erro ao salvar tarefas de onboarding no Supabase:",
+                        tasksError.message,
+                      );
+                  });
+              }
+            });
+        }
+
+        supabase
+          .from("finance_entries")
+          .insert(expenseToDb(newFinanceEntry))
+          .then(({ error: financeError }) => {
+            if (financeError)
+              console.error("Erro ao salvar cobrança inicial no Supabase:", financeError.message);
+          });
       });
 
     // 8. Retorna o cliente criado
