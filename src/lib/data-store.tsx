@@ -844,7 +844,13 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
         .from("pontos_controle")
         .upsert(pontoControleToDb(registroFinal), { onConflict: "mes" })
         .then(({ error }) => {
-          if (error) console.error("Erro ao salvar Ponto de Controle no Supabase:", error.message);
+          if (error) {
+            console.error("Erro ao salvar Ponto de Controle no Supabase:", error.message);
+            toast.error("Não foi possível salvar o Ponto de Controle no banco.", {
+              description: error.message,
+              duration: 15000,
+            });
+          }
         });
       return sorted;
     });
