@@ -1862,14 +1862,19 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
 
       // 2. Verifica se todos os projetos de IMPLEMENTAÇÃO do cliente estão com checklist 100%.
       // Projetos de Gestão do Cliente não entram nessa conta — eles não têm "fim".
+      // Importante: considera TODOS os projetos de implementação, incluindo o que acabou
+      // de ser marcado "Entregue" agora mesmo (linha acima) — antes, um projeto recém
+      // entregue já saía da lista de checagem, e o cliente nunca era ativado sozinho.
       if (!affectedClientId) return updated;
+      const clienteAtual = clients.find((c) => c.id === affectedClientId);
       const implementacoes = updated.filter(
         (p) => p.clientId === affectedClientId && p.fase === "implementacao",
       );
-      const aindaNaoEntregues = implementacoes.filter((p) => p.status !== "entregue");
       const allDone =
-        aindaNaoEntregues.length > 0 &&
-        aindaNaoEntregues.every((p) => (p.checklist ?? []).every((item) => item.done));
+        clienteAtual?.status !== "ativo" &&
+        implementacoes.length > 0 &&
+        implementacoes.every((p) => (p.checklist ?? []).every((item) => item.done));
+      const aindaNaoEntregues = implementacoes;
 
       if (allDone) {
         // 3. Fecha a implementação (Onboarding = Implementação, um conceito só) e cria,

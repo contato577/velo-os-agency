@@ -114,6 +114,10 @@ function Operacao() {
             icon={AlertTriangle}
             hint="Resolver hoje"
             onClick={() => setTab("tarefas")}
+            previewItems={tarefasAtrasadas.map((t) => ({
+              titulo: t.title,
+              detalhe: `venceu ${t.dueDate.split("-").reverse().join("/")}`,
+            }))}
           />
           <PulseTile
             label="Para hoje"
@@ -122,6 +126,7 @@ function Operacao() {
             icon={Clock}
             hint="Foco do dia"
             onClick={() => setTab("tarefas")}
+            previewItems={tarefasHoje.map((t) => ({ titulo: t.title, detalhe: t.owner }))}
           />
           <PulseTile
             label="Projetos em produção"
@@ -185,6 +190,7 @@ function PulseTile({
   icon: Icon,
   hint,
   onClick,
+  previewItems,
 }: {
   label: string;
   value: number | string;
@@ -192,6 +198,9 @@ function PulseTile({
   icon: typeof AlertTriangle;
   hint?: string;
   onClick?: () => void;
+  /** Lista curta de itens mostrada num balão ao passar o mouse — pra conferir
+   * na hora o que exatamente está sendo contado nesse número. */
+  previewItems?: { titulo: string; detalhe?: string }[];
 }) {
   const toneMap: Record<PulseTone, string> = {
     primary: "text-primary bg-primary/10",
@@ -223,6 +232,29 @@ function PulseTile({
         </div>
       </div>
       <ArrowRight className="absolute right-3 bottom-3 h-3 w-3 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+
+      {previewItems && previewItems.length > 0 && (
+        <div className="pointer-events-none absolute left-1/2 top-full z-30 mt-2 w-64 -translate-x-1/2 rounded-lg border bg-popover p-2.5 text-left opacity-0 shadow-xl transition-opacity duration-150 group-hover:opacity-100">
+          <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+            {value} {typeof value === "number" && value === 1 ? "item" : "itens"}
+          </div>
+          <div className="max-h-48 space-y-1 overflow-y-auto">
+            {previewItems.slice(0, 8).map((item, i) => (
+              <div key={i} className="truncate text-[12px]">
+                <span className="text-foreground">{item.titulo}</span>
+                {item.detalhe && (
+                  <span className="ml-1 text-muted-foreground">· {item.detalhe}</span>
+                )}
+              </div>
+            ))}
+            {previewItems.length > 8 && (
+              <div className="pt-0.5 text-[11px] text-muted-foreground">
+                +{previewItems.length - 8} outra(s)…
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </button>
   );
 }

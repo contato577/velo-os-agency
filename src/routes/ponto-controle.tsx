@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Target,
   CalendarDays,
@@ -116,13 +116,21 @@ function PontoControlePage() {
     () => pontosControle.find((p) => p.mes === mes) ?? null,
     [pontosControle, mes],
   );
-  const [form, setForm] = useState<FormState>(() => {
-    const atual = pontosControle.find((p) => p.mes === mesAtualISO());
-    return atual
-      ? { ...atual, qualidade: atual.qualidade.map((q) => ({ ...q })) }
-      : emptyForm(mesAtualISO());
-  });
+  const [form, setForm] = useState<FormState>(() => emptyForm(mesAtualISO()));
   const [saved, setSaved] = useState(false);
+
+  // O formulário começava sempre em branco porque tentava carregar os dados
+  // ANTES da busca no Supabase terminar (a lista ainda estava vazia nesse
+  // instante). Agora sincroniza de verdade assim que o dado do mês chega —
+  // e também troca o conteúdo do formulário ao navegar entre meses diferentes.
+  useEffect(() => {
+    if (existente) {
+      setForm({ ...existente, qualidade: existente.qualidade.map((q) => ({ ...q })) });
+    } else {
+      setForm(emptyForm(mes));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mes, existente]);
 
   const mesAnterior = useMemo(() => mesAnteriorISO(mes), [mes]);
 
