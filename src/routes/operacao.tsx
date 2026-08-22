@@ -212,7 +212,7 @@ function PulseTile({
   return (
     <button
       onClick={onClick}
-      className="group relative overflow-hidden rounded-lg border bg-card p-4 text-left transition-all hover:border-primary/40 hover:bg-surface/40"
+      className="group relative rounded-lg border bg-card p-4 text-left transition-all hover:border-primary/40 hover:bg-surface/40"
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
