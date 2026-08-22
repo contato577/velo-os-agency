@@ -213,7 +213,7 @@ function LeadCard({
       )}
 
       <div className="mt-2 flex items-center justify-between gap-2 border-t pt-2">
-        <span className="font-mono text-sm font-bold text-primary">{formatBRL(lead.value)}</span>
+        <span className="font-mono text-2xl font-bold text-primary">{formatBRL(lead.value)}</span>
         <div className="flex items-center gap-1.5">
           <span
             className={cn(
@@ -259,7 +259,7 @@ function StageColumn({
     <div
       ref={setNodeRef}
       className={cn(
-        "flex h-full w-72 shrink-0 flex-col rounded-lg border bg-surface/40 transition-colors",
+        "flex h-full w-72 shrink-0 flex-col rounded-sm border bg-surface/40 transition-colors",
         isOver && "border-primary/60 bg-primary/5",
       )}
     >
@@ -274,7 +274,7 @@ function StageColumn({
           </span>
         </div>
       </div>
-      <div className="border-b px-3 py-1.5 font-mono text-[10px] text-muted-foreground">
+      <div className="border-b px-3 py-1.5 font-mono text-2xl font-bold text-primary">
         {formatBRL(stageValue)}
       </div>
       <div className="flex flex-1 flex-col gap-2 overflow-y-auto p-2">
@@ -362,7 +362,7 @@ function LeadDetailPanel({ lead, onClose }: { lead: Lead; onClose: () => void })
             </span>
           </div>
 
-          <div className="mt-4 rounded-lg border bg-surface p-3">
+          <div className="mt-4 rounded-sm border bg-surface p-3">
             <div className="mb-2 flex items-center justify-between">
               <div className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
                 Valor da oportunidade
@@ -413,7 +413,7 @@ function LeadDetailPanel({ lead, onClose }: { lead: Lead; onClose: () => void })
           </div>
 
           {lead.stage === "perdido" && lead.motivoPerda && (
-            <div className="mt-3 rounded-lg border border-destructive/30 bg-destructive/5 p-3">
+            <div className="mt-3 rounded-sm border border-destructive/30 bg-destructive/5 p-3">
               <div className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest text-destructive">
                 <XCircle className="h-3 w-3" /> Motivo da perda
               </div>
@@ -544,7 +544,7 @@ function VendaConfirmDialog({
                     type="button"
                     onClick={() => selectPlano(p)}
                     className={cn(
-                      "flex flex-col items-start justify-between rounded-lg border p-2.5 text-left transition-all",
+                      "flex flex-col items-start justify-between rounded-sm border p-2.5 text-left transition-all",
                       isSelected
                         ? "border-primary bg-primary/10 ring-1 ring-primary/40"
                         : "border-border bg-surface/40 hover:border-primary/30",
