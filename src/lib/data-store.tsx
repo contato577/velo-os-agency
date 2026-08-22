@@ -456,11 +456,15 @@ interface DataStoreContextValue {
     url: string,
   ) => void;
   deleteClientDocument: (id: string) => void;
+  getClientDocumentUrl: (storagePath: string) => Promise<string | null>;
 
   recurringConfirmations: RecurringConfirmation[];
   confirmRecurring: (entryId: string, mes: string, status: RecurringConfirmation["status"]) => void;
 
   systemNotifications: SystemNotification[];
+
+  logoUrl: string | null;
+  updateLogo: (file: File) => Promise<void>;
 }
 
 const DataStoreContext = createContext<DataStoreContextValue | null>(null);
@@ -477,6 +481,7 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
   const [clientDocuments, setClientDocuments] = useState<DocItem[]>([]);
   const [recurringConfirmations, setRecurringConfirmations] = useState<RecurringConfirmation[]>([]);
   const [systemNotifications, setSystemNotifications] = useState<SystemNotification[]>([]);
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [metasFallback, setMetasFallback] = useState<MetasMensais>({
     metaComercial: 50000,
   });
@@ -601,6 +606,21 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
     carregarTarefas();
     carregarFinanceiro();
     carregarPontosControle();
+
+    // Logo do sistema — se alguém já subiu uma personalizada, usa ela;
+    // senão fica com o logo padrão do Veloce.
+    supabase
+      .from("app_settings")
+      .select("value")
+      .eq("key", "logo_url")
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (error) {
+          console.error("Erro ao carregar logo do Supabase:", error.message);
+          return;
+        }
+        if (data?.value) setLogoUrl(data.value as string);
+      });
 
     // Time real — antes os formulários usavam uma lista fixa de 4 nomes fictícios
     // pra "Responsável". Agora busca quem realmente tem conta no sistema.
@@ -1232,10 +1252,10 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
     const newClient: Client = {
       id: clientId,
       status: "onboarding",
-      since: dataInicioJornada,
+      since: dataCobranca,
       renewalDate:
         partial.renewalDate ??
-        addMonths(hoje, partial.contratoMeses ?? 12)
+        addMonths(new Date(`${dataCobranca}T00:00:00`), partial.contratoMeses ?? 12)
           .toISOString()
           .slice(0, 10),
       contratoMeses: partial.contratoMeses ?? 12,
@@ -1249,12 +1269,13 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
       ...clientFields,
     };
 
-    // Monta projeto (com checklist do template do serviço) + tarefas de
-    // onboarding — igual ao que já acontece quando o cliente vem de uma
-    // venda fechada pelo CRM. Antes, cadastrar por aqui deixava a aba
-    // Operação do cliente completamente vazia.
+    // Monta o projeto (com checklist do template do serviço) — igual ao que
+    // já acontece quando o cliente vem de uma venda fechada pelo CRM. Antes,
+    // cadastrar por aqui deixava a aba Operação do cliente completamente vazia.
+    // Diferente da venda pelo CRM, aqui NÃO cria tarefas de onboarding — só o
+    // checklist mesmo, por decisão de fluxo (cliente cadastrado manualmente
+    // já costuma ter a implementação avançada ou até concluída de fato).
     const newProjects: Project[] = [];
-    const newTasks: Task[] = [];
     servicos.forEach((s) => {
       const tpl = serviceTemplates.find((t) => t.name === s || t.id === s);
       const deadlineDays = tpl?.defaultDeadlineDays ?? 15;
@@ -1286,25 +1307,6 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
           ? tpl.checklist.map((item) => ({ id: crypto.randomUUID(), text: item, done: false }))
           : [],
       });
-
-      if (tpl?.tasks) {
-        tpl.tasks.forEach((t) => {
-          const taskDue = new Date(hoje.getTime() + t.dueOffsetDays * 24 * 60 * 60 * 1000)
-            .toISOString()
-            .slice(0, 10);
-          newTasks.push({
-            id: crypto.randomUUID(),
-            title: `${t.title} (${newClient.company})`,
-            owner: newClient.owner,
-            priority: t.priority,
-            status: "hoje",
-            dueDate: taskDue,
-            clientId,
-            projectId: projId,
-            labels: ["Onboarding", s],
-          });
-        });
-      }
     });
 
     // A ideia é que cadastrar o cliente aqui já seja suficiente pra contar no
@@ -1325,14 +1327,13 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
     // Reflete tudo na tela na hora.
     setClients((prev) => [newClient, ...prev]);
     if (newProjects.length > 0) setProjects((prev) => [...newProjects, ...prev]);
-    if (newTasks.length > 0) setTasks((prev) => [...newTasks, ...prev]);
     setExpenses((prev) => [newFinanceEntry, ...prev]);
 
     // Salva no Supabase em SEQUÊNCIA (cliente → timeline/projetos → checklist/
-    // tarefas/cobrança) — nunca em paralelo. Checklist e tarefas dependem do
-    // projeto já existir, e o projeto depende do cliente já existir; mandar
-    // tudo "ao mesmo tempo" fazia o banco rejeitar em silêncio quando a
-    // ordem de chegada não batia, e os dados sumiam ao recarregar a página.
+    // cobrança) — nunca em paralelo. Checklist depende do projeto já existir,
+    // e o projeto depende do cliente já existir; mandar tudo "ao mesmo tempo"
+    // fazia o banco rejeitar em silêncio quando a ordem de chegada não
+    // batia, e os dados sumiam ao recarregar a página.
     supabase
       .from("clients")
       .insert(clientToDb(newClient))
@@ -1391,16 +1392,6 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
                         "Erro ao salvar checklist no Supabase:",
                         checklistError.message,
                       );
-                  });
-              }
-
-              if (newTasks.length > 0) {
-                supabase
-                  .from("tasks")
-                  .insert(newTasks.map(taskToDb))
-                  .then(({ error: tasksError }) => {
-                    if (tasksError)
-                      console.error("Erro ao salvar tarefas no Supabase:", tasksError.message);
                   });
               }
             });
@@ -1563,6 +1554,51 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
         .then(({ error }) => {
           if (error) console.error("Erro ao excluir arquivo do Storage:", error.message);
         });
+    }
+  };
+
+  // Gera um link temporário (expira em 2 minutos) pra ver/baixar o
+  // documento — só funciona pra quem está logado no sistema. Diferente de
+  // um link fixo, esse não pode ser copiado e reaberto depois por qualquer
+  // pessoa que não tenha acesso ao sistema.
+  const getClientDocumentUrl: DataStoreContextValue["getClientDocumentUrl"] = async (
+    storagePath,
+  ) => {
+    const { data, error } = await supabase.storage
+      .from("documentos-clientes")
+      .createSignedUrl(storagePath, 120);
+    if (error) {
+      console.error("Erro ao gerar link do documento:", error.message);
+      toast.error("Não foi possível abrir o documento.");
+      return null;
+    }
+    return data?.signedUrl ?? null;
+  };
+
+  // Sobe uma logo nova pro bucket público de identidade visual e salva o
+  // link nas configurações do sistema — fica valendo pra todo mundo que
+  // usa o sistema, em qualquer aparelho, a partir daí.
+  const updateLogo: DataStoreContextValue["updateLogo"] = async (file) => {
+    const path = `logo-${Date.now()}.${file.name.split(".").pop() ?? "png"}`;
+    const { error: uploadError } = await supabase.storage
+      .from("identidade-visual")
+      .upload(path, file, { upsert: true });
+    if (uploadError) {
+      console.error("Erro ao enviar logo para o Supabase Storage:", uploadError.message);
+      toast.error("Não foi possível enviar a logo.", { description: uploadError.message });
+      throw uploadError;
+    }
+    const { data } = supabase.storage.from("identidade-visual").getPublicUrl(path);
+    const url = data.publicUrl;
+    setLogoUrl(url);
+    const { error: saveError } = await supabase
+      .from("app_settings")
+      .upsert({ key: "logo_url", value: url }, { onConflict: "key" });
+    if (saveError) {
+      console.error("Erro ao salvar logo no Supabase:", saveError.message);
+      toast.error("A logo foi enviada, mas não salvou a preferência.", {
+        description: saveError.message,
+      });
     }
   };
 
@@ -2024,11 +2060,15 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
         addClientDocumentFile,
         addClientDocumentLink,
         deleteClientDocument,
+        getClientDocumentUrl,
 
         recurringConfirmations,
         confirmRecurring,
 
         systemNotifications,
+
+        logoUrl,
+        updateLogo,
       }}
     >
       {children}

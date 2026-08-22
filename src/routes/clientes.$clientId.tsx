@@ -1126,7 +1126,26 @@ function DocRow({
   onConfirmDelete: (id: string) => void;
   onCancelDelete: () => void;
 }) {
+  const { getClientDocumentUrl } = useDataStore();
   const isConfirming = confirmDeleteId === doc.id;
+
+  // Abre o arquivo na hora, gerando um link temporário — em vez de usar um
+  // link fixo salvo, que qualquer pessoa com ele em mãos conseguiria abrir
+  // pra sempre, mesmo sem estar logada no sistema.
+  const abrirArquivo = async (forcarDownload: boolean) => {
+    if (!doc.storagePath) return;
+    const url = await getClientDocumentUrl(doc.storagePath);
+    if (!url) return;
+    if (forcarDownload) {
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = doc.title;
+      a.click();
+    } else {
+      window.open(url, "_blank", "noopener,noreferrer");
+    }
+  };
+
   return (
     <li className="flex items-center gap-2.5 rounded-md border bg-surface/50 px-3 py-2 text-[12px]">
       {doc.type === "file" ? (
@@ -1144,22 +1163,26 @@ function DocRow({
           {doc.title}
         </a>
       ) : (
-        <span className="min-w-0 flex-1 truncate">{doc.title}</span>
+        <button
+          onClick={() => abrirArquivo(false)}
+          className="min-w-0 flex-1 truncate text-left hover:text-primary"
+        >
+          {doc.title}
+        </button>
       )}
       <span className="hidden text-[10px] text-muted-foreground sm:inline">{doc.addedBy}</span>
       <span className="text-[10px] text-muted-foreground">
         {new Date(doc.addedAt).toLocaleDateString("pt-BR")}
       </span>
       {doc.size && <span className="text-[10px] text-muted-foreground">{doc.size}</span>}
-      {doc.url && doc.type === "file" && (
-        <a
-          href={doc.url}
-          download={doc.title}
+      {doc.storagePath && doc.type === "file" && (
+        <button
+          onClick={() => abrirArquivo(true)}
           className="text-muted-foreground hover:text-foreground"
           title="Baixar"
         >
           <Download className="h-3 w-3" />
-        </a>
+        </button>
       )}
       {doc.type === "link" && doc.url && (
         <a

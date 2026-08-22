@@ -53,7 +53,7 @@ export function AppShell({
   const [userOpen, setUserOpen] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
   const [ready, setReady] = useState(false);
-  const { insights, systemNotifications } = useDataStore();
+  const { insights, systemNotifications, logoUrl } = useDataStore();
 
   // Notificações dispensadas ficam salvas no navegador — assim, ao clicar no X,
   // a notificação some de verdade e não volta a cada recarregamento da página,
@@ -162,7 +162,7 @@ export function AppShell({
       >
         <div className="flex h-14 items-center gap-2 border-b px-3">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-md bg-sidebar-accent ring-1 ring-primary/40">
-            <img src={veloceLogo.url} alt="Veloce" className="h-8 w-8 object-cover" />
+            <img src={logoUrl ?? veloceLogo.url} alt="Veloce" className="h-8 w-8 object-cover" />
           </div>
           {(!collapsed || mobileNavOpen) && (
             <div className="flex min-w-0 flex-1 flex-col leading-tight">

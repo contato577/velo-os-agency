@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Palette,
   Zap,
@@ -10,6 +10,8 @@ import {
   Trash2,
   Sun,
   Moon,
+  Image as ImageIcon,
+  Upload,
 } from "lucide-react";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { useDataStore } from "@/lib/data-store";
@@ -294,8 +296,23 @@ function TemplateEditor({ template }: { template: ServiceTemplate }) {
 
 function Config() {
   const { theme, setTheme } = useTheme();
-  const { serviceTemplates } = useDataStore();
+  const { serviceTemplates, logoUrl, updateLogo } = useDataStore();
   const [rules, setRules] = useState(automationRules);
+  const [enviandoLogo, setEnviandoLogo] = useState(false);
+  const logoInputRef = useRef<HTMLInputElement>(null);
+
+  const enviarLogo = async (files: FileList | null) => {
+    const file = files?.[0];
+    if (!file) return;
+    setEnviandoLogo(true);
+    try {
+      await updateLogo(file);
+    } catch {
+      // erro já mostrado via toast dentro de updateLogo
+    } finally {
+      setEnviandoLogo(false);
+    }
+  };
 
   const toggleRule = (id: string) =>
     setRules((prev) => prev.map((r) => (r.id === id ? { ...r, active: !r.active } : r)));
@@ -349,6 +366,51 @@ function Config() {
                 </button>
               );
             })}
+          </div>
+        </div>
+
+        {/* Logo do sistema */}
+        <div className="mt-6 rounded-xl border bg-card p-4">
+          <div className="flex items-center gap-2">
+            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/15">
+              <ImageIcon className="h-3.5 w-3.5 text-primary" />
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold tracking-tight">Logo do sistema</h3>
+              <p className="text-[11px] text-muted-foreground">
+                Aparece no menu lateral pra todo mundo que usa o sistema.
+              </p>
+            </div>
+          </div>
+          <div className="mt-4 flex items-center gap-4">
+            <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-lg border bg-surface">
+              {logoUrl ? (
+                <img src={logoUrl} alt="Logo atual" className="h-full w-full object-cover" />
+              ) : (
+                <ImageIcon className="h-6 w-6 text-muted-foreground" />
+              )}
+            </div>
+            <div>
+              <label
+                className={cn(
+                  "inline-flex cursor-pointer items-center gap-1.5 rounded-md border bg-surface px-3 py-1.5 text-[12px] font-medium hover:bg-accent",
+                  enviandoLogo && "pointer-events-none opacity-60",
+                )}
+              >
+                <Upload className="h-3.5 w-3.5" /> {enviandoLogo ? "Enviando…" : "Enviar nova logo"}
+                <input
+                  ref={logoInputRef}
+                  type="file"
+                  accept="image/*"
+                  disabled={enviandoLogo}
+                  className="hidden"
+                  onChange={(e) => enviarLogo(e.target.files)}
+                />
+              </label>
+              <p className="mt-1.5 text-[10px] text-muted-foreground">
+                PNG, JPG ou SVG. Formato quadrado (ex: 256×256) fica com melhor recorte.
+              </p>
+            </div>
           </div>
         </div>
 
