@@ -230,6 +230,7 @@ function NovoClienteModal({
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [monthlyValue, setMonthlyValue] = useState(500);
+  const [plan, setPlan] = useState<Client["plan"]>("Starter");
   const [contratoMeses, setContratoMeses] = useState(12);
   const [dataCobranca, setDataCobranca] = useState(() => new Date().toISOString().slice(0, 10));
   const [services, setServices] = useState<string[]>([]);
@@ -247,8 +248,6 @@ function NovoClienteModal({
 
   const salvar = () => {
     if (!podeCadastrar) return;
-    const plan: Client["plan"] =
-      monthlyValue >= 3000 ? "Scale" : monthlyValue >= 1500 ? "Growth" : "Starter";
     onSave({
       name,
       company,
@@ -356,6 +355,18 @@ function NovoClienteModal({
               </select>
             </Field>
           </div>
+          <Field label="Plano contratado">
+            <select
+              value={plan}
+              onChange={(e) => setPlan(e.target.value as Client["plan"])}
+              className={inputCls}
+            >
+              <option value="Starter">Starter</option>
+              <option value="Growth">Growth</option>
+              <option value="Scale">Scale</option>
+              <option value="Enterprise">Enterprise</option>
+            </select>
+          </Field>
           <Field label="Data da mensalidade (dia de cobrança)">
             <input
               type="date"
