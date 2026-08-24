@@ -1,3 +1,4 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap");
 @import "@fontsource-variable/jetbrains-mono";
 @import "tailwindcss" source(none);
 @source "../src";
@@ -9,10 +10,10 @@
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono Variable", ui-monospace, monospace;
 
-  --radius-sm: 0.25rem; /* 4px */
-  --radius-md: 0.3125rem; /* 5px */
-  --radius-lg: 0.375rem; /* 6px */
-  --radius-xl: 0.5rem; /* 8px */
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
   --radius-2xl: calc(var(--radius) + 8px);
   --radius-3xl: calc(var(--radius) + 12px);
 
@@ -65,142 +66,142 @@
   --shadow-card: var(--shadow-card-raw);
   --shadow-card-hover: var(--shadow-card-hover-raw);
   --shadow-elegant: var(--shadow-elegant-raw);
-  --shadow-glow: 0 0 40px -8px oklch(0.67 0.2 145 / 0.4);
+  --shadow-glow: 0 0 40px -8px oklch(0.72 0.19 148 / 0.35);
 }
 
-/* Veloce — Light theme: verde de marca #20b339 em superfícies neutras-verdes */
+/* Veloce — Light theme: preto + branco + UM verde de marca, sem ambiente
+   colorido nas superfícies. A sidebar fica preta mesmo no tema claro —
+   igual ao cabeçalho do site institucional — pra não parecer mais um SaaS
+   genérico de fundo cinza-claro com cor em tudo quanto é canto. */
 :root {
-  --radius: 0.625rem;
+  --radius: 0.5rem;
 
-  --background: oklch(0.975 0.008 150);
-  --foreground: oklch(0 0 0);
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
 
-  --surface: oklch(0.948 0.012 150);
-  --surface-2: oklch(0.915 0.016 150);
-  --surface-3: oklch(0.87 0.022 150);
+  --surface: oklch(0.975 0 0);
+  --surface-2: oklch(0.95 0 0);
+  --surface-3: oklch(0.91 0 0);
 
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.18 0.018 215);
+  --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.18 0.018 215);
+  --popover-foreground: oklch(0.145 0 0);
 
-  --primary: #20b339;
+  --primary: oklch(0.62 0.205 148);
   --primary-foreground: oklch(1 0 0);
 
-  --brand-deep: oklch(0.4 0.135 148);
+  --brand-deep: oklch(0.32 0.09 150);
   --brand-deep-foreground: oklch(0.98 0.01 145);
 
-  --secondary: oklch(0.93 0.016 150);
-  --secondary-foreground: oklch(0.2 0.018 210);
+  --secondary: oklch(0.955 0 0);
+  --secondary-foreground: oklch(0.18 0 0);
 
-  --muted: oklch(0.928 0.014 150);
-  --muted-foreground: oklch(0.435 0.026 205);
+  --muted: oklch(0.955 0 0);
+  --muted-foreground: oklch(0.4 0 0);
 
-  --accent: oklch(0.9 0.045 145);
-  --accent-foreground: oklch(0.2 0.03 150);
+  --accent: oklch(0.93 0.055 148);
+  --accent-foreground: oklch(0.18 0.03 150);
 
-  --destructive: oklch(0.545 0.22 25);
+  --destructive: oklch(0.545 0.21 25);
   --destructive-foreground: oklch(0.99 0.005 25);
 
-  --success: oklch(0.575 0.18 145);
+  --success: oklch(0.6 0.19 148);
   --success-foreground: oklch(1 0 0);
 
-  --warning: oklch(0.665 0.15 62);
+  --warning: oklch(0.6 0.1 65);
   --warning-foreground: oklch(1 0 0);
 
-  --info: oklch(0.545 0.15 240);
+  --info: oklch(0.4 0.01 240);
   --info-foreground: oklch(1 0 0);
 
-  --border: oklch(0.865 0.018 160);
-  --input: oklch(0.845 0.02 160);
-  --ring: oklch(0.585 0.19 145);
+  --border: oklch(0.9 0 0);
+  --input: oklch(0.87 0 0);
+  --ring: oklch(0.62 0.205 148);
 
-  --chart-1: oklch(0.585 0.19 145);
-  --chart-2: oklch(0.4 0.135 148);
-  --chart-3: oklch(0.7 0.16 125);
-  --chart-4: oklch(0.545 0.15 240);
-  --chart-5: oklch(0.735 0.1 165);
+  --chart-1: oklch(0.62 0.205 148);
+  --chart-2: oklch(0.32 0.09 150);
+  --chart-3: oklch(0.75 0.16 130);
+  --chart-4: oklch(0.55 0.04 240);
+  --chart-5: oklch(0.45 0 0);
 
-  --sidebar: oklch(0.938 0.014 150);
-  --sidebar-foreground: oklch(0.22 0.018 205);
-  --sidebar-primary: oklch(0.585 0.19 145);
-  --sidebar-primary-foreground: oklch(1 0 0);
-  --sidebar-accent: oklch(0.898 0.042 145);
-  --sidebar-accent-foreground: oklch(0.19 0.026 150);
-  --sidebar-border: oklch(0.855 0.02 160);
-  --sidebar-ring: oklch(0.585 0.19 145);
+  --sidebar: oklch(0.145 0 0);
+  --sidebar-foreground: oklch(0.96 0 0);
+  --sidebar-primary: oklch(0.68 0.19 148);
+  --sidebar-primary-foreground: oklch(0.145 0 0);
+  --sidebar-accent: oklch(0.24 0.035 150);
+  --sidebar-accent-foreground: oklch(0.98 0 0);
+  --sidebar-border: oklch(0.26 0 0);
+  --sidebar-ring: oklch(0.68 0.19 148);
 
-  --shadow-card-raw:
-    0 1px 2px 0 oklch(0.25 0.02 220 / 0.1), 0 2px 6px -1px oklch(0.25 0.02 220 / 0.1);
-  --shadow-card-hover-raw:
-    0 2px 5px 0 oklch(0.25 0.02 220 / 0.14), 0 12px 26px -10px oklch(0.25 0.02 220 / 0.24);
-  --shadow-elegant-raw:
-    0 1px 3px 0 oklch(0.25 0.02 220 / 0.12), 0 16px 38px -14px oklch(0.25 0.02 220 / 0.28);
+  --shadow-card-raw: 0 1px 2px 0 oklch(0 0 0 / 0.05);
+  --shadow-card-hover-raw: 0 1px 2px 0 oklch(0 0 0 / 0.06), 0 4px 10px -6px oklch(0 0 0 / 0.1);
+  --shadow-elegant-raw: 0 2px 8px -2px oklch(0 0 0 / 0.1), 0 12px 28px -12px oklch(0 0 0 / 0.16);
 }
 
-/* Veloce — Dark theme: carvão azul-acinzentado (#1D2125) + verde de marca */
+/* Veloce — Dark theme: preto quase absoluto + o mesmo verde de marca. */
 .dark {
-  --background: oklch(0.235 0.01 248);
-  --foreground: oklch(0.965 0.004 240);
+  --background: oklch(0.13 0 0);
+  --foreground: oklch(0.97 0 0);
 
-  --surface: oklch(0.275 0.011 248);
-  --surface-2: oklch(0.315 0.012 248);
-  --surface-3: oklch(0.36 0.013 248);
+  --surface: oklch(0.17 0 0);
+  --surface-2: oklch(0.21 0 0);
+  --surface-3: oklch(0.26 0 0);
 
-  --card: oklch(0.3 0.012 248);
-  --card-foreground: oklch(0.965 0.004 240);
-  --popover: oklch(0.3 0.012 248);
-  --popover-foreground: oklch(0.965 0.004 240);
+  --card: oklch(0.16 0 0);
+  --card-foreground: oklch(0.97 0 0);
+  --popover: oklch(0.16 0 0);
+  --popover-foreground: oklch(0.97 0 0);
 
-  --primary: oklch(0.72 0.185 145);
-  --primary-foreground: oklch(0.2 0.015 248);
+  --primary: oklch(0.72 0.185 148);
+  --primary-foreground: oklch(0.145 0.01 150);
 
   --brand-deep: oklch(0.5 0.145 148);
   --brand-deep-foreground: oklch(0.98 0.005 145);
 
-  --secondary: oklch(0.33 0.012 248);
-  --secondary-foreground: oklch(0.965 0.004 240);
+  --secondary: oklch(0.22 0 0);
+  --secondary-foreground: oklch(0.97 0 0);
 
-  --muted: oklch(0.315 0.012 248);
-  --muted-foreground: oklch(0.78 0.012 245);
+  --muted: oklch(0.21 0 0);
+  --muted-foreground: oklch(0.72 0 0);
 
-  --accent: oklch(0.36 0.016 210);
-  --accent-foreground: oklch(0.975 0.004 240);
+  --accent: oklch(0.26 0.04 150);
+  --accent-foreground: oklch(0.97 0 0);
 
   --destructive: oklch(0.66 0.2 25);
-  --destructive-foreground: oklch(0.2 0.02 25);
+  --destructive-foreground: oklch(0.15 0.02 25);
 
-  --success: oklch(0.72 0.185 145);
-  --success-foreground: oklch(0.2 0.015 248);
+  --success: oklch(0.72 0.185 148);
+  --success-foreground: oklch(0.145 0.01 150);
 
-  --warning: oklch(0.8 0.15 80);
-  --warning-foreground: oklch(0.22 0.03 80);
+  --warning: oklch(0.76 0.13 75);
+  --warning-foreground: oklch(0.18 0.03 75);
 
-  --info: oklch(0.72 0.115 235);
-  --info-foreground: oklch(0.2 0.02 235);
+  --info: oklch(0.75 0.01 240);
+  --info-foreground: oklch(0.15 0.01 240);
 
-  --border: oklch(0.375 0.013 248);
-  --input: oklch(0.375 0.013 248);
-  --ring: oklch(0.72 0.185 145);
+  --border: oklch(0.27 0 0);
+  --input: oklch(0.27 0 0);
+  --ring: oklch(0.72 0.185 148);
 
-  --chart-1: oklch(0.74 0.185 145);
+  --chart-1: oklch(0.74 0.185 148);
   --chart-2: oklch(0.58 0.15 150);
   --chart-3: oklch(0.85 0.15 130);
-  --chart-4: oklch(0.72 0.115 235);
-  --chart-5: oklch(0.5 0.09 200);
+  --chart-4: oklch(0.7 0.02 240);
+  --chart-5: oklch(0.55 0 0);
 
-  --sidebar: oklch(0.205 0.01 248);
-  --sidebar-foreground: oklch(0.885 0.008 245);
-  --sidebar-primary: oklch(0.72 0.185 145);
-  --sidebar-primary-foreground: oklch(0.2 0.015 248);
-  --sidebar-accent: oklch(0.3 0.012 248);
-  --sidebar-accent-foreground: oklch(0.975 0.004 240);
-  --sidebar-border: oklch(0.33 0.012 248);
-  --sidebar-ring: oklch(0.72 0.185 145);
+  --sidebar: oklch(0.1 0 0);
+  --sidebar-foreground: oklch(0.93 0 0);
+  --sidebar-primary: oklch(0.72 0.185 148);
+  --sidebar-primary-foreground: oklch(0.145 0.01 150);
+  --sidebar-accent: oklch(0.2 0.02 150);
+  --sidebar-accent-foreground: oklch(0.97 0 0);
+  --sidebar-border: oklch(0.22 0 0);
+  --sidebar-ring: oklch(0.72 0.185 148);
 
-  --shadow-card-raw: 0 1px 2px 0 oklch(0 0 0 / 0.45), 0 1px 4px 0 oklch(0 0 0 / 0.3);
-  --shadow-card-hover-raw: 0 2px 6px 0 oklch(0 0 0 / 0.5), 0 10px 24px -10px oklch(0 0 0 / 0.55);
-  --shadow-elegant-raw: 0 1px 2px 0 oklch(0 0 0 / 0.5), 0 14px 36px -14px oklch(0 0 0 / 0.6);
+  --shadow-card-raw: 0 1px 2px 0 oklch(0 0 0 / 0.4);
+  --shadow-card-hover-raw: 0 1px 2px 0 oklch(0 0 0 / 0.45), 0 8px 18px -10px oklch(0 0 0 / 0.5);
+  --shadow-elegant-raw: 0 1px 2px 0 oklch(0 0 0 / 0.5), 0 14px 32px -14px oklch(0 0 0 / 0.55);
 }
 
 @layer base {
@@ -218,8 +219,15 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
+  h1,
+  h2,
+  h3 {
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+
   ::selection {
-    background-color: oklch(0.67 0.2 145 / 0.32);
+    background-color: oklch(0.67 0.2 148 / 0.32);
   }
 
   ::-webkit-scrollbar {
@@ -248,19 +256,33 @@
   border-radius: var(--radius-lg);
 }
 
+/* Cards flat, sem "levantar" no hover — só a borda esverdeia de leve.
+   Antes tinha sombra forte + efeito de elevação, o que dava aquele ar de
+   "quadro de Trello". Agora fica reto, sóbrio, no clima do site. */
 @utility card-trello {
   background-color: var(--color-card);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card-raw);
-  transition:
-    box-shadow 160ms ease,
-    transform 160ms ease,
-    border-color 160ms ease;
+  transition: border-color 160ms ease;
+
   &:hover {
-    box-shadow: var(--shadow-card-hover-raw);
-    border-color: color-mix(in oklab, var(--color-primary) 35%, var(--color-border));
+    border-color: color-mix(in oklab, var(--color-primary) 45%, var(--color-border));
   }
+}
+
+/* Rótulo pequeno em caixa alta, verde — igual aos "— O MÉTODO VELOCE" do
+   site institucional. Usar em títulos de seção/categoria no lugar de texto
+   cinza apagado. */
+@utility eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-primary);
 }
 
 @utility pill-label {
@@ -281,7 +303,7 @@
 }
 
 @utility text-gradient-brand {
-  background: linear-gradient(90deg, oklch(0.88 0.17 142), oklch(0.67 0.2 145));
+  background: linear-gradient(90deg, oklch(0.88 0.17 145), oklch(0.62 0.205 148));
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;

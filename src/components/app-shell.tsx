@@ -171,7 +171,7 @@ export function AppShell({
           )}
           <button
             onClick={() => setCollapsed((c) => !c)}
-            className="ml-auto hidden rounded-md p-1 text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground md:block"
+            className="ml-auto hidden rounded-md p-1 text-sidebar-foreground/60 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground md:block"
             aria-label="Toggle sidebar"
           >
             {collapsed ? (
@@ -182,7 +182,7 @@ export function AppShell({
           </button>
           <button
             onClick={() => setMobileNavOpen(false)}
-            className="ml-auto rounded-md p-1 text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground md:hidden"
+            className="ml-auto rounded-md p-1 text-sidebar-foreground/60 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground md:hidden"
             aria-label="Fechar menu"
           >
             <X className="h-4 w-4" />
@@ -207,7 +207,7 @@ export function AppShell({
                 title={collapsed && !mobileNavOpen ? item.label : undefined}
               >
                 {active && (
-                  <span className="absolute left-0 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-r bg-brand-deep" />
+                  <span className="absolute left-0 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-r bg-primary" />
                 )}
                 <Icon
                   className={cn(
@@ -219,7 +219,7 @@ export function AppShell({
                   <>
                     <span className="min-w-0 flex-1 truncate">{item.label}</span>
                     {"badge" in item && item.badge ? (
-                      <span className="rounded bg-sidebar-accent px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
+                      <span className="rounded bg-sidebar-accent px-1.5 py-0.5 font-mono text-[10px] text-sidebar-foreground/60">
                         {item.badge}
                       </span>
                     ) : null}
@@ -242,7 +242,9 @@ export function AppShell({
               </div>
               <div className="min-w-0 flex-1 leading-tight">
                 <div className="truncate text-xs font-medium">{session.name}</div>
-                <div className="truncate text-[10px] text-muted-foreground">{session.email}</div>
+                <div className="truncate text-[10px] text-sidebar-foreground/55">
+                  {session.email}
+                </div>
               </div>
             </button>
             {userOpen && (
