@@ -429,7 +429,7 @@ interface DataStoreContextValue {
   addClientManual: (
     partial: Pick<Client, "name" | "company" | "owner" | "plan" | "monthlyValue" | "services"> &
       Partial<Client> & { dataCobranca?: string },
-  ) => Client;
+  ) => Promise<Client>;
   addComentario: (clientId: string, texto: string, autor: string) => void;
   removeComentario: (clientId: string, comentarioId: string) => void;
   addTimelineEntry: (clientId: string, text: string, user?: string) => void;
@@ -1217,7 +1217,7 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
 
   // Cadastro manual de cliente — pra quando o cliente entra sem passar pelo
   // funil comercial (ex: indicação direta, migração de outra ferramenta).
-  const addClientManual: DataStoreContextValue["addClientManual"] = (partial) => {
+  const addClientManual: DataStoreContextValue["addClientManual"] = async (partial) => {
     const hoje = new Date();
     const clientId = crypto.randomUUID();
     const dataInicioJornada = hoje.toISOString().slice(0, 10);
@@ -1259,7 +1259,7 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
           .toISOString()
           .slice(0, 10),
       contratoMeses: partial.contratoMeses ?? 12,
-      paymentDay: partial.paymentDay ?? Number(dataCobranca.slice(8, 10)),
+      paymentDay: partial.paymentDay ?? Math.min(28, Number(dataCobranca.slice(8, 10)) || 5),
       prazoJornadaDias,
       dataInicioJornada,
       dataPrevistaFimOnboarding,
@@ -1324,109 +1324,110 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
       recurring: true,
     };
 
-    // Reflete tudo na tela na hora.
+    // Reflete tudo na tela na hora (otimista) — mas só é considerado "pronto"
+    // de verdade depois que o cliente for confirmado no banco, lá embaixo.
     setClients((prev) => [newClient, ...prev]);
     if (newProjects.length > 0) setProjects((prev) => [...newProjects, ...prev]);
     setExpenses((prev) => [newFinanceEntry, ...prev]);
 
-    // Salva no Supabase em SEQUÊNCIA (cliente → timeline/projetos → checklist/
-    // cobrança) — nunca em paralelo. Checklist depende do projeto já existir,
-    // e o projeto depende do cliente já existir; mandar tudo "ao mesmo tempo"
-    // fazia o banco rejeitar em silêncio quando a ordem de chegada não
-    // batia, e os dados sumiam ao recarregar a página.
+    // O PONTO CRÍTICO: espera de verdade a confirmação do banco antes de
+    // devolver o cliente pra tela. Antes, isso rodava em segundo plano sem
+    // ninguém esperar — se a pessoa atualizasse a página rápido demais,
+    // antes do salvamento terminar, o cliente sumia ao recarregar (parecia
+    // "criado" mas nunca tinha chegado a salvar de verdade). Agora, se
+    // atualizar a página, você só consegue depois que isso aqui terminou.
+    const { error: clientError } = await supabase.from("clients").insert(clientToDb(newClient));
+    if (clientError) {
+      console.error("Erro ao salvar cliente (cadastro manual) no Supabase:", clientError.message);
+      // Desfaz da tela — não deixa um cliente "fantasma" que parece criado
+      // mas não está salvo de verdade em lugar nenhum.
+      setClients((prev) => prev.filter((c) => c.id !== clientId));
+      if (newProjects.length > 0) {
+        const idsRemover = new Set(newProjects.map((p) => p.id));
+        setProjects((prev) => prev.filter((p) => !idsRemover.has(p.id)));
+      }
+      setExpenses((prev) => prev.filter((e) => e.id !== newFinanceEntry.id));
+      toast.error(`Cliente "${newClient.company}" não foi salvo no banco.`, {
+        description: clientError.message,
+        duration: 20000,
+      });
+      throw clientError;
+    }
+
+    // A partir daqui o cliente já está garantido no banco — o resto
+    // (histórico, projeto, checklist, cobrança) continua em segundo plano.
+    // Se algo aqui falhar, o cliente em si continua salvo; só avisa o que
+    // especificamente não foi.
     supabase
-      .from("clients")
-      .insert(clientToDb(newClient))
-      .then(({ error: clientError }) => {
-        if (clientError) {
-          console.error(
-            "Erro ao salvar cliente (cadastro manual) no Supabase:",
-            clientError.message,
+      .from("client_timeline")
+      .insert({
+        id: timelineEntry.id,
+        client_id: clientId,
+        user_name: "Sistema",
+        text: timelineEntry.text,
+        created_at: hoje.toISOString(),
+      })
+      .then(({ error: timelineError }) => {
+        if (timelineError) {
+          console.error("Erro ao salvar histórico do cliente no Supabase:", timelineError.message);
+          toast.error("Histórico inicial do cliente não foi salvo.", {
+            description: timelineError.message,
+            duration: 15000,
+          });
+        }
+      });
+
+    if (newProjects.length > 0) {
+      supabase
+        .from("projects")
+        .insert(newProjects.map(projectToDb))
+        .then(({ error: projectsError }) => {
+          if (projectsError) {
+            console.error("Erro ao salvar projetos no Supabase:", projectsError.message);
+            toast.error("O projeto de implementação não foi salvo.", {
+              description: projectsError.message,
+              duration: 20000,
+            });
+            return;
+          }
+
+          const allChecklistItems = newProjects.flatMap((p) =>
+            (p.checklist ?? []).map((item, i) => ({
+              id: item.id,
+              project_id: p.id,
+              text: item.text,
+              done: item.done,
+              ordem: i,
+            })),
           );
-          toast.error(`Cliente "${newClient.company}" não foi salvo no banco.`, {
-            description: clientError.message,
+          if (allChecklistItems.length > 0) {
+            supabase
+              .from("checklist_items")
+              .insert(allChecklistItems)
+              .then(({ error: checklistError }) => {
+                if (checklistError) {
+                  console.error("Erro ao salvar checklist no Supabase:", checklistError.message);
+                  toast.error("O checklist do projeto não foi salvo.", {
+                    description: checklistError.message,
+                    duration: 20000,
+                  });
+                }
+              });
+          }
+        });
+    }
+
+    supabase
+      .from("finance_entries")
+      .insert(expenseToDb(newFinanceEntry))
+      .then(({ error: financeError }) => {
+        if (financeError) {
+          console.error("Erro ao salvar cobrança inicial no Supabase:", financeError.message);
+          toast.error("A cobrança inicial não foi salva no financeiro.", {
+            description: financeError.message,
             duration: 20000,
           });
-          return;
         }
-
-        supabase
-          .from("client_timeline")
-          .insert({
-            id: timelineEntry.id,
-            client_id: clientId,
-            user_name: "Sistema",
-            text: timelineEntry.text,
-            created_at: hoje.toISOString(),
-          })
-          .then(({ error: timelineError }) => {
-            if (timelineError) {
-              console.error(
-                "Erro ao salvar histórico do cliente no Supabase:",
-                timelineError.message,
-              );
-              toast.error("Histórico inicial do cliente não foi salvo.", {
-                description: timelineError.message,
-                duration: 15000,
-              });
-            }
-          });
-
-        if (newProjects.length > 0) {
-          supabase
-            .from("projects")
-            .insert(newProjects.map(projectToDb))
-            .then(({ error: projectsError }) => {
-              if (projectsError) {
-                console.error("Erro ao salvar projetos no Supabase:", projectsError.message);
-                toast.error("O projeto de implementação não foi salvo.", {
-                  description: projectsError.message,
-                  duration: 20000,
-                });
-                return;
-              }
-
-              const allChecklistItems = newProjects.flatMap((p) =>
-                (p.checklist ?? []).map((item, i) => ({
-                  id: item.id,
-                  project_id: p.id,
-                  text: item.text,
-                  done: item.done,
-                  ordem: i,
-                })),
-              );
-              if (allChecklistItems.length > 0) {
-                supabase
-                  .from("checklist_items")
-                  .insert(allChecklistItems)
-                  .then(({ error: checklistError }) => {
-                    if (checklistError) {
-                      console.error(
-                        "Erro ao salvar checklist no Supabase:",
-                        checklistError.message,
-                      );
-                      toast.error("O checklist do projeto não foi salvo.", {
-                        description: checklistError.message,
-                        duration: 20000,
-                      });
-                    }
-                  });
-              }
-            });
-        }
-
-        supabase
-          .from("finance_entries")
-          .insert(expenseToDb(newFinanceEntry))
-          .then(({ error: financeError }) => {
-            if (financeError) {
-              console.error("Erro ao salvar cobrança inicial no Supabase:", financeError.message);
-              toast.error("A cobrança inicial não foi salva no financeiro.", {
-                description: financeError.message,
-                duration: 20000,
-              });
-            }
-          });
       });
 
     return newClient;

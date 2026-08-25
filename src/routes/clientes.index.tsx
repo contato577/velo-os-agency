@@ -222,7 +222,7 @@ function NovoClienteModal({
   onSave: (
     partial: Pick<Client, "name" | "company" | "owner" | "plan" | "monthlyValue" | "services"> &
       Partial<Client>,
-  ) => Client;
+  ) => Promise<Client>;
 }) {
   const [name, setName] = useState("");
   const [company, setCompany] = useState("");
@@ -245,28 +245,37 @@ function NovoClienteModal({
   };
 
   const podeCadastrar = name.trim() && company.trim() && owner.trim() && services.length > 0;
+  const [salvando, setSalvando] = useState(false);
 
-  const salvar = () => {
-    if (!podeCadastrar) return;
-    onSave({
-      name,
-      company,
-      owner,
-      plan,
-      monthlyValue,
-      services,
-      contratoMeses,
-      dataCobranca,
-      email: email || undefined,
-      phone: phone || undefined,
-    });
-    onClose();
+  const salvar = async () => {
+    if (!podeCadastrar || salvando) return;
+    setSalvando(true);
+    try {
+      await onSave({
+        name,
+        company,
+        owner,
+        plan,
+        monthlyValue,
+        services,
+        contratoMeses,
+        dataCobranca,
+        email: email || undefined,
+        phone: phone || undefined,
+      });
+      onClose();
+    } catch {
+      // Erro já foi mostrado na tela pelo data-store — deixa o formulário
+      // aberto, com os dados preenchidos, pra pessoa poder tentar de novo
+      // sem ter que digitar tudo de novo do zero.
+      setSalvando(false);
+    }
   };
 
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-      onClick={onClose}
+      onClick={() => !salvando && onClose()}
     >
       <div
         onClick={(e) => e.stopPropagation()}
@@ -274,7 +283,11 @@ function NovoClienteModal({
       >
         <div className="mb-4 flex items-center justify-between">
           <h3 className="text-sm font-semibold">Novo cliente</h3>
-          <button onClick={onClose} className="rounded p-1 text-muted-foreground hover:bg-accent">
+          <button
+            onClick={onClose}
+            disabled={salvando}
+            className="rounded p-1 text-muted-foreground hover:bg-accent disabled:opacity-30"
+          >
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -377,7 +390,9 @@ function NovoClienteModal({
             <p className="mt-1 text-[10px] leading-relaxed text-muted-foreground">
               Cliente novo: deixe hoje. Cliente que já existia antes do sistema (ex: já paga todo
               dia 13): escolha essa data — o financeiro passa a cobrar sempre nesse dia, e você
-              recebe lembrete 5 dias antes de cada vencimento.
+              recebe lembrete 5 dias antes de cada vencimento. Se escolher dia 29, 30 ou 31, a
+              cobrança fica marcada pro dia 28 (todo mês tem esse dia, evita cair num mês sem o dia
+              escolhido).
             </p>
           </Field>
           <Field label="Serviços contratados">
@@ -403,10 +418,10 @@ function NovoClienteModal({
 
         <button
           onClick={salvar}
-          disabled={!podeCadastrar}
+          disabled={!podeCadastrar || salvando}
           className="mt-5 w-full rounded-md bg-primary py-2 text-[13px] font-medium text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          Cadastrar cliente
+          {salvando ? "Salvando…" : "Cadastrar cliente"}
         </button>
       </div>
     </div>
