@@ -1244,7 +1244,7 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
 
     const { dataCobranca: _omit, ...clientFields } = partial;
     const timelineEntry = {
-      id: `tl-${Date.now()}`,
+      id: crypto.randomUUID(),
       time: "Agora",
       user: "Sistema",
       text: "Cliente cadastrado manualmente",
@@ -1259,7 +1259,7 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
           .toISOString()
           .slice(0, 10),
       contratoMeses: partial.contratoMeses ?? 12,
-      paymentDay: partial.paymentDay ?? Math.min(28, Number(dataCobranca.slice(8, 10)) || 5),
+      paymentDay: partial.paymentDay ?? (Number(dataCobranca.slice(8, 10)) || 5),
       prazoJornadaDias,
       dataInicioJornada,
       dataPrevistaFimOnboarding,
@@ -1667,7 +1667,7 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
 
     // 7. Registra a primeira entrada da timeline do cliente
     const timelineEntry = {
-      id: `tl-${Date.now()}`,
+      id: crypto.randomUUID(),
       time: "Agora",
       user: lead.owner || "Sistema",
       text: `Cliente criado a partir da venda fechada no CRM (${servicos.join(", ")})`,
@@ -2004,7 +2004,7 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
           });
 
         setClients((prevClients) => {
-          const timelineId = `tl-${Date.now()}`;
+          const timelineId = crypto.randomUUID();
           supabase
             .from("client_timeline")
             .insert({

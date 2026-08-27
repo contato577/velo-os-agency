@@ -230,7 +230,7 @@ function NovoClienteModal({
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [monthlyValue, setMonthlyValue] = useState(500);
-  const [plan, setPlan] = useState<Client["plan"]>("Starter");
+  const [planoNome, setPlanoNome] = useState("");
   const [contratoMeses, setContratoMeses] = useState(12);
   const [dataCobranca, setDataCobranca] = useState(() => new Date().toISOString().slice(0, 10));
   const [services, setServices] = useState<string[]>([]);
@@ -250,12 +250,24 @@ function NovoClienteModal({
   const salvar = async () => {
     if (!podeCadastrar || salvando) return;
     setSalvando(true);
+    // A "faixa" (Starter/Growth/Scale/Enterprise) é só uma classificação
+    // interna automática pelo valor da mensalidade, usada em relatório —
+    // o que aparece de verdade na tela do cliente é o nome real do plano.
+    const faixa: Client["plan"] =
+      monthlyValue >= 5000
+        ? "Enterprise"
+        : monthlyValue >= 3000
+          ? "Scale"
+          : monthlyValue >= 1500
+            ? "Growth"
+            : "Starter";
     try {
       await onSave({
         name,
         company,
         owner,
-        plan,
+        plan: faixa,
+        plano: planoNome.trim() || undefined,
         monthlyValue,
         services,
         contratoMeses,
@@ -368,17 +380,16 @@ function NovoClienteModal({
               </select>
             </Field>
           </div>
-          <Field label="Plano contratado">
-            <select
-              value={plan}
-              onChange={(e) => setPlan(e.target.value as Client["plan"])}
+          <Field label="Nome do plano">
+            <input
+              value={planoNome}
+              onChange={(e) => setPlanoNome(e.target.value)}
+              placeholder="Ex: Gestão Completa, Pacote Tráfego Pro…"
               className={inputCls}
-            >
-              <option value="Starter">Starter</option>
-              <option value="Growth">Growth</option>
-              <option value="Scale">Scale</option>
-              <option value="Enterprise">Enterprise</option>
-            </select>
+            />
+            <p className="mt-1 text-[10px] text-muted-foreground">
+              O nome real do plano que vocês vendem — aparece assim na tela do cliente.
+            </p>
           </Field>
           <Field label="Data da mensalidade (dia de cobrança)">
             <input
@@ -390,9 +401,8 @@ function NovoClienteModal({
             <p className="mt-1 text-[10px] leading-relaxed text-muted-foreground">
               Cliente novo: deixe hoje. Cliente que já existia antes do sistema (ex: já paga todo
               dia 13): escolha essa data — o financeiro passa a cobrar sempre nesse dia, e você
-              recebe lembrete 5 dias antes de cada vencimento. Se escolher dia 29, 30 ou 31, a
-              cobrança fica marcada pro dia 28 (todo mês tem esse dia, evita cair num mês sem o dia
-              escolhido).
+              recebe lembrete 5 dias antes de cada vencimento. Se escolher dia 29, 30 ou 31, em
+              meses mais curtos (como fevereiro) a cobrança cai no último dia daquele mês.
             </p>
           </Field>
           <Field label="Serviços contratados">

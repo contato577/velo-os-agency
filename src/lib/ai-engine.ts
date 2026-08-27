@@ -167,9 +167,18 @@ export function gerarInsights(input: AIInputs): Insight[] {
   // Mensalidade — diferente da renovação de CONTRATO acima, isso é o dia do
   // mês em que o cliente paga. Avisa 5 dias antes de cada cobrança chegar,
   // pra não deixar cliente ativo passar batido sem confirmar/cobrar a tempo.
+  const ultimoDiaDoMes = (ano: number, mesIndex: number) =>
+    new Date(ano, mesIndex + 1, 0).getDate();
   const proximoVencimentoMensalidade = (paymentDay: number) => {
-    const candidato = new Date(HOJE.getFullYear(), HOJE.getMonth(), paymentDay);
-    if (candidato < HOJE) candidato.setMonth(candidato.getMonth() + 1);
+    const diaEsteMes = Math.min(paymentDay, ultimoDiaDoMes(HOJE.getFullYear(), HOJE.getMonth()));
+    const candidato = new Date(HOJE.getFullYear(), HOJE.getMonth(), diaEsteMes);
+    if (candidato < HOJE) {
+      const mesProximo = HOJE.getMonth() + 1;
+      const anoProximo = HOJE.getFullYear() + Math.floor(mesProximo / 12);
+      const mesIndexProximo = mesProximo % 12;
+      const diaProximoMes = Math.min(paymentDay, ultimoDiaDoMes(anoProximo, mesIndexProximo));
+      return new Date(anoProximo, mesIndexProximo, diaProximoMes);
+    }
     return candidato;
   };
   const clientesMensalidadeProxima = clients.filter((c) => {
