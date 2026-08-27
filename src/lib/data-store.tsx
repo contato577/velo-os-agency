@@ -926,20 +926,28 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
         if (error) console.error("Erro ao salvar lead no Supabase:", error.message);
       });
 
-    // Auto: follow-up task in 24h
+    // Auto: cria uma tarefa de follow-up pra daqui 24h — antes só ficava na
+    // memória da tela (nunca ia pro banco), por isso sempre sumia ao
+    // recarregar a página.
     const due = new Date(Date.now() + 24 * 3600 * 1000).toISOString().slice(0, 10);
-    setTasks((prev) => [
-      {
-        id: `t-auto-${Date.now()}`,
-        title: `Follow-up: ${lead.name}`,
-        owner: lead.owner,
-        priority: "alta",
-        status: "hoje",
-        dueDate: due,
-        labels: ["Follow-up", "Auto"],
-      },
-      ...prev,
-    ]);
+    const followUpTask: Task = {
+      id: crypto.randomUUID(),
+      title: `Follow-up: ${lead.name}`,
+      owner: lead.owner,
+      priority: "alta",
+      status: "hoje",
+      dueDate: due,
+      leadId: lead.id,
+      labels: ["Follow-up", "Auto"],
+    };
+    setTasks((prev) => [followUpTask, ...prev]);
+    supabase
+      .from("tasks")
+      .insert(taskToDb(followUpTask))
+      .then(({ error }) => {
+        if (error) console.error("Erro ao salvar tarefa de follow-up no Supabase:", error.message);
+      });
+
     return lead;
   };
 

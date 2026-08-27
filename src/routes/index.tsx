@@ -70,7 +70,24 @@ function Dashboard() {
   const pct = meta > 0 ? Math.min(100, (receita / meta) * 100) : 0;
   const noRitmo = projecao >= meta;
   const gap = Math.max(0, meta - receita);
-  const ticketMedio = fechados.length > 0 ? receita / fechados.length : 0;
+  const ticketMedioFechados = fechados.length > 0 ? receita / fechados.length : 0;
+  // Sem venda fechada ainda no mês, o ticket médio caía pra 0 — e como
+  // "contratos necessários → reuniões → prospecções" é tudo calculado em
+  // cima dele, ficava tudo travado em zero até a primeira venda do mês.
+  // Agora usa uma estimativa em cascata: venda real do mês → meta ÷
+  // clientes desejados (que você já configura no Ponto de Controle) →
+  // ticket médio dos clientes ativos hoje → só then 0, se não tiver nada.
+  const clientesAtivos = clients.filter((c) => c.status === "ativo");
+  const ticketMedioClientesAtivos =
+    clientesAtivos.length > 0
+      ? clientesAtivos.reduce((s, c) => s + c.monthlyValue, 0) / clientesAtivos.length
+      : 0;
+  const ticketMedio =
+    ticketMedioFechados ||
+    (pontoControleAtual?.novosClientesDesejados
+      ? meta / pontoControleAtual.novosClientesDesejados
+      : 0) ||
+    ticketMedioClientesAtivos;
   const contratosNecessarios = ticketMedio > 0 ? Math.max(0, Math.ceil(gap / ticketMedio)) : 0;
   const taxaReuniaoFech = pontoControleAtual?.taxaReuniaoFechamento || 30;
   const taxaProspReuniao = pontoControleAtual?.taxaProspeccaoReuniao || 20;
