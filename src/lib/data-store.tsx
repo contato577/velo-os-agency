@@ -344,6 +344,32 @@ function expenseToDb(entry: FinanceEntry) {
   };
 }
 
+function templateFromDb(row: Record<string, unknown>): ServiceTemplate {
+  return {
+    id: row.id as string,
+    name: row.name as string,
+    icon: (row.icon as string) ?? "briefcase",
+    color: (row.color as string) ?? "primary",
+    defaultDeadlineDays: (row.default_deadline_days as number) ?? 15,
+    checklist: (row.checklist as string[]) ?? [],
+    tasks: (row.tasks as ServiceTemplate["tasks"]) ?? [],
+    stages: (row.stages as string[]) ?? [],
+  };
+}
+
+function templateToDb(t: ServiceTemplate) {
+  return {
+    id: t.id,
+    name: t.name,
+    icon: t.icon,
+    color: t.color,
+    default_deadline_days: t.defaultDeadlineDays,
+    checklist: t.checklist,
+    tasks: t.tasks,
+    stages: t.stages,
+  };
+}
+
 function docFromDb(row: Record<string, unknown>): DocItem {
   return {
     id: row.id as string,
@@ -606,6 +632,36 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
     carregarTarefas();
     carregarFinanceiro();
     carregarPontosControle();
+
+    // Templates de serviço (Configurações > Templates Operacionais) — antes
+    // vinham sempre do arquivo de exemplo, nunca de um lugar salvo de
+    // verdade, por isso qualquer edição sumia ao recarregar a página.
+    supabase
+      .from("service_templates")
+      .select("*")
+      .then(({ data, error }) => {
+        if (error) {
+          console.error("Erro ao carregar templates de serviço do Supabase:", error.message);
+          return;
+        }
+        if (data && data.length > 0) {
+          setServiceTemplates(data.map(templateFromDb));
+        } else {
+          // Primeira vez rodando — ainda não existe nada salvo no banco.
+          // Envia os templates de exemplo pra lá, pra virarem o ponto de
+          // partida real (e as próximas edições passarem a salvar de verdade).
+          supabase
+            .from("service_templates")
+            .insert(seedTemplates.map(templateToDb))
+            .then(({ error: seedError }) => {
+              if (seedError)
+                console.error(
+                  "Erro ao gravar templates de exemplo no Supabase:",
+                  seedError.message,
+                );
+            });
+        }
+      });
 
     // Logo do sistema — se alguém já subiu uma personalizada, usa ela;
     // senão fica com o logo padrão do Veloce.
@@ -1267,7 +1323,7 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
           .toISOString()
           .slice(0, 10),
       contratoMeses: partial.contratoMeses ?? 12,
-      paymentDay: partial.paymentDay ?? (Number(dataCobranca.slice(8, 10)) || 5),
+      paymentDay: partial.paymentDay ?? Number(dataCobranca.slice(8, 10)),
       prazoJornadaDias,
       dataInicioJornada,
       dataPrevistaFimOnboarding,
@@ -1339,11 +1395,8 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
     setExpenses((prev) => [newFinanceEntry, ...prev]);
 
     // O PONTO CRÍTICO: espera de verdade a confirmação do banco antes de
-    // devolver o cliente pra tela. Antes, isso rodava em segundo plano sem
-    // ninguém esperar — se a pessoa atualizasse a página rápido demais,
-    // antes do salvamento terminar, o cliente sumia ao recarregar (parecia
-    // "criado" mas nunca tinha chegado a salvar de verdade). Agora, se
-    // atualizar a página, você só consegue depois que isso aqui terminou.
+    // devolver o cliente pra tela. Se atualizar a página antes disso
+    // terminar, agora é impossível — o botão de salvar só libera depois.
     const { error: clientError } = await supabase.from("clients").insert(clientToDb(newClient));
     if (clientError) {
       console.error("Erro ao salvar cliente (cadastro manual) no Supabase:", clientError.message);
@@ -1364,8 +1417,6 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
 
     // A partir daqui o cliente já está garantido no banco — o resto
     // (histórico, projeto, checklist, cobrança) continua em segundo plano.
-    // Se algo aqui falhar, o cliente em si continua salvo; só avisa o que
-    // especificamente não foi.
     supabase
       .from("client_timeline")
       .insert({
@@ -1635,7 +1686,25 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
   };
 
   const updateServiceTemplate: DataStoreContextValue["updateServiceTemplate"] = (id, partial) => {
-    setServiceTemplates((prev) => prev.map((t) => (t.id === id ? { ...t, ...partial } : t)));
+    setServiceTemplates((prev) => {
+      const atualizado = prev.map((t) => (t.id === id ? { ...t, ...partial } : t));
+      const templateFinal = atualizado.find((t) => t.id === id);
+      if (templateFinal) {
+        supabase
+          .from("service_templates")
+          .upsert(templateToDb(templateFinal), { onConflict: "id" })
+          .then(({ error }) => {
+            if (error) {
+              console.error("Erro ao salvar template de serviço no Supabase:", error.message);
+              toast.error("O template não foi salvo no banco.", {
+                description: error.message,
+                duration: 15000,
+              });
+            }
+          });
+      }
+      return atualizado;
+    });
   };
 
   const criarClienteDeVenda = (

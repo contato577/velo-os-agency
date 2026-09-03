@@ -314,7 +314,7 @@ function LeadDetailPanel({ lead, onClose }: { lead: Lead; onClose: () => void })
 
   return (
     <>
-      <div className="fixed inset-0 z-40 bg-background/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="fixed inset-0 z-40 bg-background/60 backdrop-blur-sm" />
       <aside className="fixed right-0 top-0 z-50 flex h-screen w-full max-w-md flex-col border-l bg-card shadow-elegant">
         <div className="flex items-center justify-between border-b p-4">
           <div className="flex items-center gap-3">
@@ -518,7 +518,7 @@ function VendaConfirmDialog({
 
   return (
     <>
-      <div className="fixed inset-0 z-50 bg-background/70 backdrop-blur-sm" onClick={onCancel} />
+      <div className="fixed inset-0 z-50 bg-background/70 backdrop-blur-sm" />
       <div className="fixed left-1/2 top-1/2 z-50 w-[92vw] max-w-md -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-xl border bg-card shadow-elegant">
         <div className="border-b px-4 py-3">
           <div className="flex items-center gap-2">
@@ -663,7 +663,7 @@ function MotivoPerdaDialog({
 
   return (
     <>
-      <div className="fixed inset-0 z-50 bg-background/70 backdrop-blur-sm" onClick={onCancel} />
+      <div className="fixed inset-0 z-50 bg-background/70 backdrop-blur-sm" />
       <div className="fixed left-1/2 top-1/2 z-50 w-[92vw] max-w-md -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-xl border bg-card shadow-elegant">
         <div className="border-b px-4 py-3">
           <div className="flex items-center gap-2">

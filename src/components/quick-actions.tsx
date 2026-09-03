@@ -238,7 +238,7 @@ function CommandPalette({ onClose }: { onClose: () => void }) {
 
   return (
     <>
-      <div className="fixed inset-0 z-50 bg-background/70 backdrop-blur-sm" onClick={onClose} />
+      <div className="fixed inset-0 z-50 bg-background/70 backdrop-blur-sm" />
       <div className="fixed left-1/2 top-24 z-50 w-[92vw] max-w-xl -translate-x-1/2 overflow-hidden rounded-xl border bg-popover shadow-elegant">
         <div className="flex items-center gap-2 border-b px-3 py-2.5">
           <Search className="h-3.5 w-3.5 text-muted-foreground" />
@@ -449,7 +449,7 @@ function QuickDialog({
 
   return (
     <>
-      <div className="fixed inset-0 z-50 bg-background/70 backdrop-blur-sm" onClick={onClose} />
+      <div className="fixed inset-0 z-50 bg-background/70 backdrop-blur-sm" />
       <div className="fixed left-1/2 top-1/2 z-50 w-[92vw] max-w-lg -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-xl border bg-card shadow-elegant">
         <div className="flex items-center justify-between border-b px-4 py-3">
           <div>

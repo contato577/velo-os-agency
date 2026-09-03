@@ -285,10 +285,7 @@ function NovoClienteModal({
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-      onClick={() => !salvando && onClose()}
-    >
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div
         onClick={(e) => e.stopPropagation()}
         className="w-full max-w-md rounded-xl border bg-card p-5 shadow-elegant"

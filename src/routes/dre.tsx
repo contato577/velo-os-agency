@@ -90,6 +90,26 @@ function DRE() {
     });
   }, [expenses, recurringConfirmations, hojeMesISO, diaHoje]);
 
+  // O aviso "faltam X dias" aparece 5 dias antes do vencimento, mas o botão
+  // de confirmar só liberava no dia exato — quem clicava no aviso caía na
+  // tela do DRE sem achar nada clicável ainda. Essa lista preenche essa
+  // lacuna: mostra o que está chegando, com a opção de já confirmar
+  // adiantado se a pessoa já souber que aconteceu (ex: pagamento automático).
+  const proximasCobrancas = useMemo(() => {
+    return expenses.filter((f) => {
+      if (!f.recurring) return false;
+      const mesOrigem = f.date.slice(0, 7);
+      if (mesOrigem >= hojeMesISO) return false;
+      const diaCobranca = Number(f.date.slice(8, 10));
+      const diasRestantes = diaCobranca - diaHoje;
+      if (diasRestantes <= 0 || diasRestantes > 5) return false;
+      const jaConfirmado = recurringConfirmations.some(
+        (c) => c.entryId === f.id && c.mes === hojeMesISO,
+      );
+      return !jaConfirmado;
+    });
+  }, [expenses, recurringConfirmations, hojeMesISO, diaHoje]);
+
   useEffect(() => {
     if (pendentesConfirmacao.length === 0) return;
     toast.warning(
@@ -403,6 +423,44 @@ function DRE() {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* Próximas cobranças — ainda não chegou o dia, mas já dá pra ver e adiantar se quiser */}
+        {proximasCobrancas.length > 0 && (
+          <div className="mb-4 rounded-xl border border-info/30 bg-info/5 p-4">
+            <div className="mb-3 flex items-center gap-2">
+              <BellRing className="h-4 w-4 text-info" />
+              <h3 className="text-sm font-semibold tracking-tight">
+                {proximasCobrancas.length} cobrança(s) chegando nos próximos dias
+              </h3>
+            </div>
+            <div className="space-y-2">
+              {proximasCobrancas.map((f) => {
+                const diaCobranca = Number(f.date.slice(8, 10));
+                const diasRestantes = diaCobranca - diaHoje;
+                return (
+                  <div
+                    key={f.id}
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-card px-3 py-2"
+                  >
+                    <div className="min-w-0">
+                      <div className="text-[13px] font-medium">{f.description}</div>
+                      <div className="text-[11px] text-muted-foreground">
+                        {f.client ?? f.category} · dia {f.date.slice(8, 10)} · {formatBRL(f.amount)}{" "}
+                        · em {diasRestantes} dia(s)
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => confirmRecurring(f.id, hojeMesISO, "confirmado")}
+                      className="inline-flex items-center gap-1 rounded-md border border-info/30 px-2.5 py-1.5 text-[11px] font-medium text-info hover:bg-info/10"
+                    >
+                      <Check className="h-3 w-3" /> Já aconteceu, confirmar agora
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
@@ -896,7 +954,7 @@ function FinIndicator({
 function NovoLancamentoDialog({ onClose }: { onClose: () => void }) {
   return (
     <>
-      <div className="fixed inset-0 z-40 bg-background/70 backdrop-blur-sm" onClick={onClose} />
+      <div className="fixed inset-0 z-40 bg-background/70 backdrop-blur-sm" />
       <div className="fixed left-1/2 top-1/2 z-50 w-[92vw] max-w-lg -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-xl border bg-card shadow-elegant">
         <div className="flex items-center justify-between border-b px-4 py-3">
           <div>

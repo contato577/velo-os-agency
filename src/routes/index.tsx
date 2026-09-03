@@ -76,7 +76,7 @@ function Dashboard() {
   // cima dele, ficava tudo travado em zero até a primeira venda do mês.
   // Agora usa uma estimativa em cascata: venda real do mês → meta ÷
   // clientes desejados (que você já configura no Ponto de Controle) →
-  // ticket médio dos clientes ativos hoje → só then 0, se não tiver nada.
+  // ticket médio dos clientes ativos hoje → só então 0, se não tiver nada.
   const clientesAtivos = clients.filter((c) => c.status === "ativo");
   const ticketMedioClientesAtivos =
     clientesAtivos.length > 0
