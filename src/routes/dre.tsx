@@ -73,22 +73,28 @@ function DRE() {
   const mesRefIdx = mesesComDados.indexOf(mesRef);
   const mesAnteriorRef = mesRefIdx > 0 ? mesesComDados[mesRefIdx - 1] : null;
 
-  // Lançamentos recorrentes que ainda não têm confirmação nenhuma pro mês atual,
-  // e cujo dia de cobrança já chegou — precisam de confirmação antes de contar
-  // de verdade no DRE (entrada/saída real, não só "deveria acontecer").
+  // Lançamentos recorrentes que ainda não têm confirmação nenhuma pro mês atual.
+  // Duas situações pedem confirmação: (1) chegou o dia normal de cobrança do
+  // mês, ou (2) o CONTRATO do cliente já venceu — nesse caso, pede confirmação
+  // na hora, não importa o dia, porque a pergunta é "renovou ou não", e isso
+  // decide se a mensalidade continua contando no caixa ou se para por aqui.
   const pendentesConfirmacao = useMemo(() => {
+    const agora = new Date();
     return expenses.filter((f) => {
       if (!f.recurring) return false;
       const mesOrigem = f.date.slice(0, 7);
       if (mesOrigem >= hojeMesISO) return false;
-      const diaCobranca = Number(f.date.slice(8, 10));
-      if (diaHoje < diaCobranca) return false;
       const jaConfirmado = recurringConfirmations.some(
         (c) => c.entryId === f.id && c.mes === hojeMesISO,
       );
-      return !jaConfirmado;
+      if (jaConfirmado) return false;
+      const clienteVinculado = clients.find((c) => c.company === f.client);
+      const contratoVencido = clienteVinculado && new Date(clienteVinculado.renewalDate) < agora;
+      if (contratoVencido) return true;
+      const diaCobranca = Number(f.date.slice(8, 10));
+      return diaHoje >= diaCobranca;
     });
-  }, [expenses, recurringConfirmations, hojeMesISO, diaHoje]);
+  }, [expenses, recurringConfirmations, hojeMesISO, diaHoje, clients]);
 
   // O aviso "faltam X dias" aparece 5 dias antes do vencimento, mas o botão
   // de confirmar só liberava no dia exato — quem clicava no aviso caía na
@@ -395,34 +401,50 @@ function DRE() {
               </h3>
             </div>
             <div className="space-y-2">
-              {pendentesConfirmacao.map((f) => (
-                <div
-                  key={f.id}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-card px-3 py-2"
-                >
-                  <div className="min-w-0">
-                    <div className="text-[13px] font-medium">{f.description}</div>
-                    <div className="text-[11px] text-muted-foreground">
-                      {f.client ?? f.category} · dia {f.date.slice(8, 10)} · {formatBRL(f.amount)}
+              {pendentesConfirmacao.map((f) => {
+                const clienteVinculado = clients.find((c) => c.company === f.client);
+                const contratoVencido =
+                  clienteVinculado && new Date(clienteVinculado.renewalDate) < new Date();
+                return (
+                  <div
+                    key={f.id}
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-card px-3 py-2"
+                  >
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <div className="text-[13px] font-medium">{f.description}</div>
+                        {contratoVencido && (
+                          <span className="rounded bg-destructive/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-destructive">
+                            Contrato vencido
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-[11px] text-muted-foreground">
+                        {f.client ?? f.category} · dia {f.date.slice(8, 10)} · {formatBRL(f.amount)}
+                        {contratoVencido && " · renovou?"}
+                      </div>
+                    </div>
+                    <div className="flex gap-1.5">
+                      <button
+                        onClick={() => confirmRecurring(f.id, hojeMesISO, "confirmado")}
+                        className="inline-flex items-center gap-1 rounded-md bg-success/15 px-2.5 py-1.5 text-[11px] font-medium text-success hover:bg-success/25"
+                      >
+                        <Check className="h-3 w-3" />{" "}
+                        {contratoVencido
+                          ? "Renovou, confirmar"
+                          : `Confirmar ${f.type === "entrada" ? "recebimento" : "pagamento"}`}
+                      </button>
+                      <button
+                        onClick={() => confirmRecurring(f.id, hojeMesISO, "nao_recebido")}
+                        className="inline-flex items-center gap-1 rounded-md bg-destructive/15 px-2.5 py-1.5 text-[11px] font-medium text-destructive hover:bg-destructive/25"
+                      >
+                        <Ban className="h-3 w-3" />{" "}
+                        {contratoVencido ? "Não renovou" : "Não aconteceu"}
+                      </button>
                     </div>
                   </div>
-                  <div className="flex gap-1.5">
-                    <button
-                      onClick={() => confirmRecurring(f.id, hojeMesISO, "confirmado")}
-                      className="inline-flex items-center gap-1 rounded-md bg-success/15 px-2.5 py-1.5 text-[11px] font-medium text-success hover:bg-success/25"
-                    >
-                      <Check className="h-3 w-3" /> Confirmar{" "}
-                      {f.type === "entrada" ? "recebimento" : "pagamento"}
-                    </button>
-                    <button
-                      onClick={() => confirmRecurring(f.id, hojeMesISO, "nao_recebido")}
-                      className="inline-flex items-center gap-1 rounded-md bg-destructive/15 px-2.5 py-1.5 text-[11px] font-medium text-destructive hover:bg-destructive/25"
-                    >
-                      <Ban className="h-3 w-3" /> Não aconteceu
-                    </button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
