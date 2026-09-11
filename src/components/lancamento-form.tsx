@@ -1,7 +1,9 @@
 import { useState, type ReactNode } from "react";
-import { ArrowUp, ArrowDown } from "lucide-react";
+import { ArrowUp, ArrowDown, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDataStore } from "@/lib/data-store";
+
+const NOVO_CLIENTE = "__novo_cliente__";
 
 export type LancamentoTipo = "entrada" | "saida" | null;
 
@@ -37,7 +39,7 @@ export function LancamentoForm({
   onSubmit?: (data: unknown) => void;
   onCancel?: () => void;
 }) {
-  const { addExpense } = useDataStore();
+  const { addExpense, clients, addClientManual, addTimelineEntry } = useDataStore();
   const [tipo, setTipo] = useState<LancamentoTipo>(null);
   const [descricao, setDescricao] = useState("");
   const [categoria, setCategoria] = useState("");
@@ -47,6 +49,31 @@ export function LancamentoForm({
   const [recorrente, setRecorrente] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+
+  // Venda avulsa pra cliente que ainda não existe na base: em vez de deixar o
+  // nome solto no texto, cadastra o cliente de verdade e já vincula o lançamento.
+  const [criandoCliente, setCriandoCliente] = useState(false);
+  const [novoNome, setNovoNome] = useState("");
+  const [novoEmpresa, setNovoEmpresa] = useState("");
+  const [criandoSalvando, setCriandoSalvando] = useState(false);
+
+  const criarClienteEVincular = async () => {
+    if (!novoEmpresa.trim()) return;
+    setCriandoSalvando(true);
+    const cliente = await addClientManual({
+      name: novoNome.trim() || novoEmpresa.trim(),
+      company: novoEmpresa.trim(),
+      owner: "Você",
+      plan: "Starter",
+      monthlyValue: Number(valor) || 0,
+      services: [categoria || "Serviço Extra"],
+    });
+    setContraparte(cliente.company);
+    setCriandoCliente(false);
+    setCriandoSalvando(false);
+    setNovoNome("");
+    setNovoEmpresa("");
+  };
 
   const categorias =
     tipo === "entrada" ? categoriasEntrada : tipo === "saida" ? categoriasSaida : [];
@@ -64,12 +91,26 @@ export function LancamentoForm({
           tipo === "entrada"
             ? "Receita"
             : ((categoria ||
-                "Operacional") as import("@/lib/mock-data").FinanceEntry["costCenter"]),
+              "Operacional") as import("@/lib/mock-data").FinanceEntry["costCenter"]),
         type: tipo,
         amount: Number(valor) || 0,
         client: contraparte || undefined,
         recurring: recorrente,
       });
+
+      // Reflete o lançamento na timeline do cliente vinculado, pra ficar tudo
+      // rastreável na carteira dele em vez de sumir só no financeiro.
+      if (tipo === "entrada" && contraparte) {
+        const clienteVinculado = clients.find((c) => c.company === contraparte);
+        if (clienteVinculado) {
+          addTimelineEntry(
+            clienteVinculado.id,
+            `Lançamento financeiro: ${descricao} — R$ ${(Number(valor) || 0).toFixed(2)}${recorrente ? " (recorrente)" : ""}`,
+            "Você",
+          );
+        }
+      }
+
       setSaving(false);
       setSaved(true);
       onSubmit?.({ tipo });
@@ -153,14 +194,68 @@ export function LancamentoForm({
             </select>
           </F>
           <F label={tipo === "entrada" ? "Cliente" : "Fornecedor"}>
-            <input
-              placeholder="Nome"
-              className={inputCls}
-              value={contraparte}
-              onChange={(e) => setContraparte(e.target.value)}
-            />
+            {tipo === "entrada" ? (
+              <select
+                className={inputCls}
+                value={criandoCliente ? NOVO_CLIENTE : contraparte}
+                onChange={(e) => {
+                  if (e.target.value === NOVO_CLIENTE) {
+                    setCriandoCliente(true);
+                    setContraparte("");
+                  } else {
+                    setCriandoCliente(false);
+                    setContraparte(e.target.value);
+                  }
+                }}
+              >
+                <option value="">Selecione…</option>
+                {clients.map((c) => (
+                  <option key={c.id} value={c.company}>
+                    {c.company}
+                  </option>
+                ))}
+                <option value={NOVO_CLIENTE}>+ Novo cliente</option>
+              </select>
+            ) : (
+              <input
+                placeholder="Nome"
+                className={inputCls}
+                value={contraparte}
+                onChange={(e) => setContraparte(e.target.value)}
+              />
+            )}
           </F>
         </div>
+
+        {criandoCliente && (
+          <div className="space-y-2 rounded-md border border-dashed bg-surface/40 p-3">
+            <div className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
+              <Plus className="h-3 w-3" /> Cadastrar cliente novo
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                placeholder="Empresa *"
+                className={inputCls}
+                value={novoEmpresa}
+                onChange={(e) => setNovoEmpresa(e.target.value)}
+              />
+              <input
+                placeholder="Contato (nome)"
+                className={inputCls}
+                value={novoNome}
+                onChange={(e) => setNovoNome(e.target.value)}
+              />
+            </div>
+            <button
+              type="button"
+              onClick={criarClienteEVincular}
+              disabled={!novoEmpresa.trim() || criandoSalvando}
+              className="w-full rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground disabled:opacity-50"
+            >
+              {criandoSalvando ? "Criando…" : "Criar e vincular"}
+            </button>
+          </div>
+        )}
         <div className="grid grid-cols-2 gap-3">
           <F label="Valor (R$)">
             <input

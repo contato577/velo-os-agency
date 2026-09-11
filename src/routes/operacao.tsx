@@ -298,8 +298,8 @@ function ProjetosPanel() {
                   const pct =
                     checklist.length > 0
                       ? Math.round(
-                          (checklist.filter((i) => i.done).length / checklist.length) * 100,
-                        )
+                        (checklist.filter((i) => i.done).length / checklist.length) * 100,
+                      )
                       : p.progress;
                   return (
                     <div key={p.id} className="rounded-md border bg-card p-3">
@@ -352,6 +352,25 @@ function getWeekDays(hojeStr: string): string[] {
 
 const weekdayLabels = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"];
 
+// Ordena por prioridade (mais urgente primeiro) — concluídas sempre vão pro final,
+// e dentro da mesma prioridade mantém a data mais próxima primeiro como desempate.
+const ordemPrioridade: Record<Task["priority"], number> = {
+  urgente: 0,
+  alta: 1,
+  media: 2,
+  baixa: 3,
+};
+
+function ordenarPorPrioridade(tasks: Task[]): Task[] {
+  return [...tasks].sort((a, b) => {
+    if (a.status === "concluida" && b.status !== "concluida") return 1;
+    if (b.status === "concluida" && a.status !== "concluida") return -1;
+    const diff = ordemPrioridade[a.priority] - ordemPrioridade[b.priority];
+    if (diff !== 0) return diff;
+    return a.dueDate.localeCompare(b.dueDate);
+  });
+}
+
 function taskLink(
   task: Task,
   clients: Client[],
@@ -365,7 +384,7 @@ function taskLink(
     const l = leads.find((l) => l.id === task.leadId);
     if (l) return { label: l.name, kind: "lead" };
   }
-  return { label: "Geral", kind: "geral" };
+  return { label: "Veloce", kind: "geral" };
 }
 
 function TaskCard({
@@ -394,10 +413,10 @@ function TaskCard({
   const dragStyle =
     draggable && transform
       ? {
-          transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
-          zIndex: 40,
-          touchAction: "none" as const,
-        }
+        transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
+        zIndex: 40,
+        touchAction: "none" as const,
+      }
       : draggable
         ? ({ touchAction: "none" as const } satisfies React.CSSProperties)
         : undefined;
@@ -449,14 +468,14 @@ function TaskCard({
         <div className="min-w-0 flex-1">
           <div
             className={cn(
-              "line-clamp-1 break-all text-[13px] font-semibold leading-snug",
+              "break-words text-[13px] font-semibold leading-snug",
               done && "line-through",
             )}
           >
             {task.title}
           </div>
           {task.description && (
-            <p className="mt-0.5 line-clamp-1 break-all text-[11px] leading-snug text-muted-foreground">
+            <p className="mt-0.5 break-words text-[11px] leading-snug text-muted-foreground">
               {task.description}
             </p>
           )}
@@ -737,7 +756,7 @@ function DayColumn({
       {isToday && atrasadas.length > 0 && <OverdueMiniList tasks={atrasadas} onToggle={onToggle} />}
 
       <div className="space-y-2">
-        {tasks.map((t) => (
+        {ordenarPorPrioridade(tasks).map((t) => (
           <TaskCard
             key={t.id}
             task={t}
@@ -783,12 +802,12 @@ function ClienteView({
       groups.set(key, { label: link.label, kind: link.kind, tasks: [], clientId: t.clientId });
     groups.get(key)!.tasks.push(t);
   }
-  for (const g of groups.values()) g.tasks.sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+  for (const g of groups.values()) g.tasks = ordenarPorPrioridade(g.tasks);
 
   const contas = Array.from(groups.values())
     .filter((g) => g.kind !== "geral")
     .sort((a, b) => a.label.localeCompare(b.label));
-  const geral = groups.get("geral-Geral");
+  const geral = groups.get("geral-Veloce");
 
   if (contas.length === 0 && !geral) {
     return <p className="text-[12px] text-muted-foreground">Nenhuma tarefa nessa semana.</p>;
@@ -797,7 +816,7 @@ function ClienteView({
   return (
     <div className="space-y-4">
       {contas.length > 0 && (
-        <div className="grid max-h-[70vh] grid-cols-1 items-start gap-3 overflow-y-auto pr-1 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid max-h-[70vh] grid-cols-1 items-start gap-2.5 overflow-y-auto pr-1 md:grid-cols-2 xl:grid-cols-3">
           {contas.map((g) => {
             const client =
               g.kind === "cliente" ? clients.find((c) => c.id === g.clientId) : undefined;
@@ -805,8 +824,6 @@ function ClienteView({
               (t) => t.dueDate < hoje && t.status !== "concluida",
             ).length;
             const concluidasCount = g.tasks.filter((t) => t.status === "concluida").length;
-            const pct =
-              g.tasks.length > 0 ? Math.round((concluidasCount / g.tasks.length) * 100) : 0;
             const iniciais = g.label
               .split(" ")
               .slice(0, 2)
@@ -820,78 +837,44 @@ function ClienteView({
                 : overdueCount > 0
                   ? { label: "Atrasado", cls: "bg-destructive/15 text-destructive" }
                   : { label: "Em dia", cls: "bg-success/15 text-success" };
-            const faseInfo =
-              client?.status === "onboarding"
-                ? { label: "Onboarding", cls: "bg-info/10 text-info" }
-                : client?.status === "ativo"
-                  ? { label: "Gestão do Cliente", cls: "bg-primary/10 text-primary" }
-                  : null;
 
             return (
               <div
                 key={g.label}
                 className={cn(
-                  "overflow-hidden rounded-xl border bg-card transition-shadow hover:shadow-elegant",
-                  overdueCount > 0 && "border-l-4 border-l-destructive",
+                  "overflow-hidden rounded-lg border bg-card",
+                  overdueCount > 0 && "border-l-2 border-l-destructive",
                 )}
               >
-                {/* Cabeçalho com avatar, nome e fase real do cliente (não mais o etapaJornada travado) */}
-                <div className="flex items-center gap-2.5 border-b bg-gradient-to-r from-primary/5 via-transparent to-transparent px-3.5 py-3">
+                {/* Cabeçalho compacto: avatar pequeno + nome + 1 status só (a fase
+                    "Onboarding/Gestão" e a barra de progresso separada foram
+                    removidas daqui — poluíam a visão em grade com vários clientes) */}
+                <div className="flex items-center gap-2 border-b px-3 py-2">
                   <div
                     className={cn(
-                      "flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[12px] font-bold",
+                      "flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold",
                       g.kind === "cliente" ? "bg-primary/15 text-primary" : "bg-info/15 text-info",
                     )}
                   >
                     {iniciais}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="truncate text-[13px] font-bold">{g.label}</div>
-                    <div className="flex flex-wrap items-center gap-1 pt-0.5">
-                      <span
-                        className={cn(
-                          "rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide",
-                          statusInfo.cls,
-                        )}
-                      >
-                        {statusInfo.label}
-                      </span>
-                      {faseInfo && (
-                        <span
-                          className={cn(
-                            "rounded px-1.5 py-0.5 text-[9px] font-medium",
-                            faseInfo.cls,
-                          )}
-                        >
-                          {faseInfo.label}
-                        </span>
-                      )}
-                    </div>
+                    <div className="truncate text-[12.5px] font-semibold">{g.label}</div>
                   </div>
-                  <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 font-mono text-[10px] font-semibold text-muted-foreground">
-                    {g.tasks.length}
+                  <span
+                    className={cn(
+                      "shrink-0 rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide",
+                      statusInfo.cls,
+                    )}
+                  >
+                    {statusInfo.label}
+                  </span>
+                  <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 font-mono text-[10px] font-semibold text-muted-foreground">
+                    {concluidasCount}/{g.tasks.length}
                   </span>
                 </div>
 
-                {/* Barra de progresso da semana desse cliente */}
-                {g.tasks.length > 0 && (
-                  <div className="px-3.5 pt-2.5">
-                    <div className="mb-1 flex items-center justify-between text-[10px] text-muted-foreground">
-                      <span>
-                        {concluidasCount}/{g.tasks.length} concluídas
-                      </span>
-                      <span className="font-mono text-primary">{pct}%</span>
-                    </div>
-                    <div className="h-1 overflow-hidden rounded-full bg-border">
-                      <div
-                        className="h-full rounded-full bg-primary transition-all"
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
-                  </div>
-                )}
-
-                <div className="space-y-2 p-3.5">
+                <div className="space-y-1.5 p-2">
                   {g.tasks.map((t) => (
                     <TaskCard
                       key={t.id}
@@ -910,11 +893,12 @@ function ClienteView({
         </div>
       )}
 
+
       {geral && (
         <div className="rounded-xl border border-dashed bg-transparent p-3.5">
           <div className="mb-3 flex items-center justify-between border-b pb-2.5">
             <span className="text-[13px] font-bold text-muted-foreground">
-              Geral · administrativo
+              Veloce · interno / administrativo
             </span>
             <span className="rounded-full bg-muted px-2 py-0.5 font-mono text-[10px] font-semibold text-muted-foreground">
               {geral.tasks.length}
@@ -965,27 +949,34 @@ function AgendaPanel() {
               {grouped[d].length} compromissos
             </span>
           </div>
-          <ul className="space-y-1">
+          <ul className="space-y-1.5">
             {grouped[d].map((e) => (
-              <li
-                key={e.id}
-                className="flex items-center gap-3 rounded-md border bg-surface/50 px-3 py-2"
-              >
-                <span className="font-mono text-[12px] text-primary">{e.time}</span>
-                <span className="min-w-0 flex-1 truncate text-[13px]">{e.title}</span>
-                {e.with && <span className="text-[10px] text-muted-foreground">com {e.with}</span>}
-                <span
-                  className={cn(
-                    "rounded px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider",
-                    e.type === "reuniao" && "bg-primary/15 text-primary",
-                    e.type === "followup" && "bg-info/15 text-info",
-                    e.type === "pagamento" && "bg-warning/15 text-warning",
-                    e.type === "renovacao" && "bg-success/15 text-success",
-                    e.type === "tarefa" && "bg-muted text-muted-foreground",
-                  )}
-                >
-                  {e.type}
-                </span>
+              <li key={e.id} className="rounded-md border bg-surface/50 px-3 py-2">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex min-w-0 items-start gap-2">
+                    <span className="mt-0.5 shrink-0 font-mono text-[12px] text-primary">
+                      {e.time}
+                    </span>
+                    <span className="text-[13px] leading-snug">{e.title}</span>
+                  </div>
+                  <span
+                    className={cn(
+                      "shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider",
+                      e.type === "reuniao" && "bg-primary/15 text-primary",
+                      e.type === "followup" && "bg-info/15 text-info",
+                      e.type === "pagamento" && "bg-warning/15 text-warning",
+                      e.type === "renovacao" && "bg-success/15 text-success",
+                      e.type === "tarefa" && "bg-muted text-muted-foreground",
+                    )}
+                  >
+                    {e.type}
+                  </span>
+                </div>
+                {e.with && (
+                  <div className="mt-0.5 pl-[52px] text-[10px] text-muted-foreground">
+                    com {e.with}
+                  </div>
+                )}
               </li>
             ))}
           </ul>

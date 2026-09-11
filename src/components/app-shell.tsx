@@ -17,6 +17,7 @@ import {
   Target,
   X,
   Menu,
+  ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDataStore } from "@/lib/data-store";
@@ -352,9 +353,12 @@ export function AppShell({
                               )}
                             />
                             <div className="min-w-0 flex-1">
-                              <div className="truncate text-[12px] font-medium">{n.title}</div>
-                              <div className="truncate text-[11px] text-muted-foreground">
+                              <div className="text-[12px] font-medium leading-snug">{n.title}</div>
+                              <div className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-muted-foreground">
                                 {n.description}
+                              </div>
+                              <div className="mt-1 flex items-center gap-0.5 text-[10px] font-medium text-primary">
+                                Ver detalhes <ChevronRight className="h-3 w-3" />
                               </div>
                             </div>
                           </button>

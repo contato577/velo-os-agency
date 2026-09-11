@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import {
   Sparkles,
   Users2,
@@ -18,6 +19,7 @@ import { formatBRL, agendaEvents } from "@/lib/mock-data";
 import { useDataStore } from "@/lib/data-store";
 import { sortByPriority } from "@/lib/ai-engine";
 import { cn } from "@/lib/utils";
+import { getSessionAsync } from "@/lib/auth";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -36,6 +38,15 @@ type PulseTone = "primary" | "warning" | "info" | "destructive" | "success";
 
 function Dashboard() {
   const { leads, tasks, clients, insights, metasMensais, pontoControleAtual } = useDataStore();
+
+  // Nome de quem está logado, pra saudação — antes vinha fixo ("Rafael") direto
+  // no texto, então mostrava o mesmo nome pra qualquer pessoa que entrasse.
+  const [primeiroNome, setPrimeiroNome] = useState("");
+  useEffect(() => {
+    getSessionAsync().then((session) => {
+      if (session?.name) setPrimeiroNome(session.name.split(" ")[0]);
+    });
+  }, []);
   const leadsNovos = leads.filter((l) => l.stage === "novo").length;
   const leadsAguardando = leads.filter((l) => l.stage === "contato").length;
   // Antes vinha de um número fixo no mock (sempre "7", nunca mudava). Agora
@@ -103,43 +114,43 @@ function Dashboard() {
     tone: PulseTone;
     to: string;
   }[] = [
-    { label: "Leads novos", value: leadsNovos, icon: Sparkles, tone: "primary", to: "/comercial" },
-    {
-      label: "Aguardando contato",
-      value: leadsAguardando,
-      icon: Users2,
-      tone: "info",
-      to: "/comercial",
-    },
-    {
-      label: "Follow-ups pendentes",
-      value: followupsPendentes,
-      icon: Clock4,
-      tone: "warning",
-      to: "/comercial",
-    },
-    {
-      label: "Reuniões hoje",
-      value: reunioesHoje,
-      icon: Calendar,
-      tone: "primary",
-      to: "/operacao",
-    },
-    {
-      label: "Tarefas atrasadas",
-      value: tarefasAtrasadas,
-      icon: AlertTriangle,
-      tone: "destructive",
-      to: "/operacao",
-    },
-    {
-      label: "Cobranças pendentes",
-      value: cobrancasPendentes,
-      icon: Wallet,
-      tone: "warning",
-      to: "/dre",
-    },
-  ];
+      { label: "Leads novos", value: leadsNovos, icon: Sparkles, tone: "primary", to: "/comercial" },
+      {
+        label: "Aguardando contato",
+        value: leadsAguardando,
+        icon: Users2,
+        tone: "info",
+        to: "/comercial",
+      },
+      {
+        label: "Follow-ups pendentes",
+        value: followupsPendentes,
+        icon: Clock4,
+        tone: "warning",
+        to: "/comercial",
+      },
+      {
+        label: "Reuniões hoje",
+        value: reunioesHoje,
+        icon: Calendar,
+        tone: "primary",
+        to: "/operacao",
+      },
+      {
+        label: "Tarefas atrasadas",
+        value: tarefasAtrasadas,
+        icon: AlertTriangle,
+        tone: "destructive",
+        to: "/operacao",
+      },
+      {
+        label: "Cobranças pendentes",
+        value: cobrancasPendentes,
+        icon: Wallet,
+        tone: "warning",
+        to: "/dre",
+      },
+    ];
 
   const proximasAcoes = sortByPriority(insights)
     .slice(0, 5)
@@ -161,7 +172,7 @@ function Dashboard() {
     <AppShell title="Dashboard" subtitle="Como está sua agência hoje">
       <div className="px-4 py-6 md:px-6">
         <PageHeader
-          title="Bom dia, Rafael"
+          title={primeiroNome ? `Bom dia, ${primeiroNome}` : "Bom dia"}
           subtitle="Aqui está o pulso da operação — atualizado agora."
         >
           <Link
