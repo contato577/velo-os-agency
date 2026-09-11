@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useParams, useNavigate } from "@tanstack/react-router";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
   Building2,
@@ -43,6 +43,7 @@ import { AppShell, PageHeader } from "@/components/app-shell";
 import { NewTaskButton } from "@/components/quick-actions";
 import { formatBRL, type Client, type DocCategory, type DocItem } from "@/lib/mock-data";
 import { useDataStore } from "@/lib/data-store";
+import { getSessionAsync } from "@/lib/auth";
 import { toast } from "sonner";
 import { gerarResumoCliente, exportarRelatorioPDF, linkWhatsApp } from "@/lib/client-report";
 import { cn } from "@/lib/utils";
@@ -164,6 +165,14 @@ function ClienteDetalhe() {
             </select>
             <ChevronDown className="pointer-events-none absolute right-1 top-1/2 h-3 w-3 -translate-y-1/2 opacity-60" />
           </div>
+
+          {/* Aparece quando uma mensalidade recorrente foi marcada como "não recebida" no
+              DRE (contrato ainda vigente) — some sozinha quando o próximo pagamento for confirmado. */}
+          {client.pagamentoPendente && (
+            <span className="inline-flex items-center gap-1 rounded bg-warning/15 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-warning">
+              Pagamento pendente
+            </span>
+          )}
 
           {/* Fluxo em 2 passos, agora que Cancelado e Arquivado são coisas diferentes:
               1) Cliente ativo → "Cancelar" (perdeu o cliente de vez, fica registrado quando)
@@ -1761,10 +1770,19 @@ function TabOperacao({ clientId }: { clientId: string }) {
   const [novoComentario, setNovoComentario] = useState("");
   const [confirmDeleteComId, setConfirmDeleteComId] = useState<string | null>(null);
 
+  // Nome de quem está logado — antes vinha fixo ("Rafael Souza"), então todo
+  // comentário aparecia assinado com o mesmo nome, não importa quem escrevesse.
+  const [autorAtual, setAutorAtual] = useState("Você");
+  useEffect(() => {
+    getSessionAsync().then((session) => {
+      if (session?.name) setAutorAtual(session.name);
+    });
+  }, []);
+
   const handleAddComentario = () => {
     const texto = novoComentario.trim();
     if (!texto) return;
-    addComentario(clientId, texto, "Rafael Souza");
+    addComentario(clientId, texto, autorAtual);
     setNovoComentario("");
   };
 

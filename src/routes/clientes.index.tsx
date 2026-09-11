@@ -122,7 +122,15 @@ function ClientesList() {
                           .slice(0, 2)}
                       </div>
                       <div className="min-w-0">
-                        <div className="truncate text-[13px] font-medium">{c.company}</div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="truncate text-[13px] font-medium">{c.company}</span>
+                          {c.pagamentoPendente && (
+                            <span
+                              title="Pagamento pendente"
+                              className="h-1.5 w-1.5 shrink-0 rounded-full bg-warning"
+                            />
+                          )}
+                        </div>
                         <div className="truncate text-[11px] text-muted-foreground">{c.name}</div>
                       </div>
                     </Link>

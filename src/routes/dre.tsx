@@ -54,6 +54,8 @@ function DRE() {
     deleteExpense,
     recurringConfirmations,
     confirmRecurring,
+    updateClientStatus,
+    updateClientInfo,
   } = useDataStore();
   const [openNew, setOpenNew] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
@@ -125,6 +127,31 @@ function DRE() {
     // Só na primeira renderização com pendências — não fica repetindo o aviso a cada re-render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Antes, confirmar/negar um lançamento recorrente só marcava a confirmação em si —
+  // não mexia em nada do cliente. Resultado: o churn no topo da tela nunca mudava
+  // sozinho, e a página do cliente não avisava que o pagamento estava pendente.
+  // Agora essa função conecta as duas pontas:
+  // - Contrato vencido + "não renovou" => cliente vira "cancelado" de verdade (entra no churn).
+  // - Mensalidade normal + "não aconteceu" => cliente fica marcado com pagamento pendente.
+  // - Confirmar (em qualquer caso) limpa a marca de pendência, se houver.
+  const resolverConfirmacao = (
+    entry: (typeof expenses)[number],
+    status: "confirmado" | "nao_recebido",
+    contratoVencido: boolean,
+  ) => {
+    confirmRecurring(entry.id, hojeMesISO, status);
+    const clienteVinculado = clients.find((c) => c.company === entry.client);
+    if (!clienteVinculado) return;
+
+    if (status === "nao_recebido" && contratoVencido) {
+      updateClientStatus(clienteVinculado.id, "cancelado");
+    } else if (status === "nao_recebido") {
+      updateClientInfo(clienteVinculado.id, { pagamentoPendente: true });
+    } else if (status === "confirmado" && clienteVinculado.pagamentoPendente) {
+      updateClientInfo(clienteVinculado.id, { pagamentoPendente: false });
+    }
+  };
 
   // Lançamentos recorrentes contam em TODOS os meses a partir do mês em que foram criados —
   // mas só depois de confirmados (ou se já passaram, sem marcação de "não recebido").
@@ -426,7 +453,9 @@ function DRE() {
                     </div>
                     <div className="flex gap-1.5">
                       <button
-                        onClick={() => confirmRecurring(f.id, hojeMesISO, "confirmado")}
+                        onClick={() =>
+                          resolverConfirmacao(f, "confirmado", Boolean(contratoVencido))
+                        }
                         className="inline-flex items-center gap-1 rounded-md bg-success/15 px-2.5 py-1.5 text-[11px] font-medium text-success hover:bg-success/25"
                       >
                         <Check className="h-3 w-3" />{" "}
@@ -435,7 +464,9 @@ function DRE() {
                           : `Confirmar ${f.type === "entrada" ? "recebimento" : "pagamento"}`}
                       </button>
                       <button
-                        onClick={() => confirmRecurring(f.id, hojeMesISO, "nao_recebido")}
+                        onClick={() =>
+                          resolverConfirmacao(f, "nao_recebido", Boolean(contratoVencido))
+                        }
                         className="inline-flex items-center gap-1 rounded-md bg-destructive/15 px-2.5 py-1.5 text-[11px] font-medium text-destructive hover:bg-destructive/25"
                       >
                         <Ban className="h-3 w-3" />{" "}

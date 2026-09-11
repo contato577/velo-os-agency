@@ -218,6 +218,7 @@ function clientFromDb(row: Record<string, unknown>): Client {
     dataPrevistaFimOnboarding: (row.data_prevista_fim_onboarding as string) ?? undefined,
     etapaJornada: (row.etapa_jornada as string) ?? undefined,
     contratoArquivo: (row.contrato_arquivo as Client["contratoArquivo"]) ?? undefined,
+    pagamentoPendente: (row.pagamento_pendente as boolean) ?? false,
     // timeline e comentários ainda são só locais nesta etapa — ficam sem persistir
     // ao recarregar a página até migrarmos essas 2 tabelas (client_timeline, client_comments).
     timeline: [],
@@ -248,6 +249,7 @@ function clientToDb(client: Client) {
     data_prevista_fim_onboarding: client.dataPrevistaFimOnboarding,
     etapa_jornada: client.etapaJornada,
     contrato_arquivo: client.contratoArquivo,
+    pagamento_pendente: client.pagamentoPendente ?? false,
   };
 }
 
@@ -450,7 +452,9 @@ interface DataStoreContextValue {
   deleteClient: (clientId: string) => void;
   updateClientInfo: (
     clientId: string,
-    partial: Partial<Pick<Client, "name" | "company" | "email" | "phone" | "contratoArquivo">>,
+    partial: Partial<
+      Pick<Client, "name" | "company" | "email" | "phone" | "contratoArquivo" | "pagamentoPendente">
+    >,
   ) => void;
   addClientManual: (
     partial: Pick<Client, "name" | "company" | "owner" | "plan" | "monthlyValue" | "services"> &
@@ -1530,12 +1534,12 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
       prev.map((c) =>
         c.id === clientId
           ? {
-              ...c,
-              timeline: [
-                { id, time: agora.toLocaleString("pt-BR"), user, text },
-                ...(c.timeline ?? []),
-              ],
-            }
+            ...c,
+            timeline: [
+              { id, time: agora.toLocaleString("pt-BR"), user, text },
+              ...(c.timeline ?? []),
+            ],
+          }
           : c,
       ),
     );
@@ -2098,18 +2102,18 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
           return prevClients.map((c) =>
             c.id === affectedClientId
               ? {
-                  ...c,
-                  status: "ativo" as const,
-                  timeline: [
-                    {
-                      id: timelineId,
-                      time: "Agora",
-                      user: "Sistema",
-                      text: "Implementação concluída — cliente entrou na Gestão do Cliente",
-                    },
-                    ...(c.timeline ?? []),
-                  ],
-                }
+                ...c,
+                status: "ativo" as const,
+                timeline: [
+                  {
+                    id: timelineId,
+                    time: "Agora",
+                    user: "Sistema",
+                    text: "Implementação concluída — cliente entrou na Gestão do Cliente",
+                  },
+                  ...(c.timeline ?? []),
+                ],
+              }
               : c,
           );
         });

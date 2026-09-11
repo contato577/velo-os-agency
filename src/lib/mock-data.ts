@@ -189,6 +189,9 @@ export interface Client {
   timeline?: { id: string; time: string; user: string; text: string }[];
   contratoArquivo?: { nome: string; url: string };
   comentarios?: ClientComentario[];
+  // Marcado quando uma mensalidade recorrente é confirmada como "não recebida" no DRE
+  // (contrato ainda vigente — se o contrato tiver vencido, o cliente vira "cancelado" direto).
+  pagamentoPendente?: boolean;
 }
 
 export const clients: Client[] = [
@@ -580,14 +583,14 @@ export interface FinanceEntry {
   description: string;
   category: string;
   costCenter:
-    | "Marketing"
-    | "Ferramentas"
-    | "Equipe"
-    | "Impostos"
-    | "Operacional"
-    | "Administrativo"
-    | "Investimentos"
-    | "Receita";
+  | "Marketing"
+  | "Ferramentas"
+  | "Equipe"
+  | "Impostos"
+  | "Operacional"
+  | "Administrativo"
+  | "Investimentos"
+  | "Receita";
   type: "entrada" | "saida";
   amount: number;
   client?: string;
