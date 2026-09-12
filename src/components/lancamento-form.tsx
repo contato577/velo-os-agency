@@ -67,6 +67,11 @@ export function LancamentoForm({
       plan: "Starter",
       monthlyValue: Number(valor) || 0,
       services: [categoria || "Serviço Extra"],
+      // Essa venda avulsa já vai virar um lançamento no financeiro logo abaixo
+      // (com a descrição/valor/data que a pessoa está preenchendo agora) — sem
+      // isso, o cadastro do cliente criava seu próprio lançamento automático
+      // E o formulário criava outro, duplicando a venda no DRE.
+      skipFinanceEntry: true,
     });
     setContraparte(cliente.company);
     setCriandoCliente(false);

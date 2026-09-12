@@ -333,8 +333,17 @@ function DRE() {
   const ltv = churnMensal && churnMensal > 0 ? ticketMedio / churnMensal : null;
 
   const gastoMarketingMes = despesas.Marketing;
-  const novosClientesMes = clients.filter((c) => c.since.startsWith(mesRef)).length;
+  const novosClientesMesLista = clients.filter((c) => c.since.startsWith(mesRef));
+  const novosClientesMes = novosClientesMesLista.length;
   const cac = novosClientesMes > 0 ? gastoMarketingMes / novosClientesMes : null;
+
+  // Evolução da base: quantos clientes entraram/saíram este mês e quanto valor
+  // (em mensalidade) isso representa — pra responder "a base cresceu ou encolheu de verdade?"
+  // sem precisar ir calcular na mão cruzando Clientes com o DRE.
+  const valorGanhoMes = novosClientesMesLista.reduce((s, c) => s + c.monthlyValue, 0);
+  const valorPerdidoMes = clientesCanceladosMes.reduce((s, c) => s + c.monthlyValue, 0);
+  const variacaoClientesMes = novosClientesMes - clientesCanceladosMes.length;
+  const variacaoValorMes = valorGanhoMes - valorPerdidoMes;
 
   const ltvCac = ltv && cac ? ltv / cac : null;
 
@@ -740,6 +749,85 @@ function DRE() {
                   />
                 </LineChart>
               </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+
+        {/* Evolução da base de clientes: responde "cresceu ou encolheu de verdade
+            este mês?" sem precisar cruzar a tela de Clientes com o financeiro na mão. */}
+        <div className="mt-4 rounded-lg border bg-card p-4">
+          <div className="mb-3">
+            <h3 className="text-sm font-semibold tracking-tight">Evolução da base de clientes</h3>
+            <p className="text-[11px] text-muted-foreground">
+              Entradas e saídas de {new Date(`${mesRef}-01T00:00:00`).toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="rounded-md bg-surface/60 p-3">
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                Clientes na base
+              </div>
+              <div className="mt-1 text-xl font-bold">{clientesAtivos.length}</div>
+              <div
+                className={cn(
+                  "mt-0.5 text-[11px] font-medium",
+                  variacaoClientesMes > 0
+                    ? "text-success"
+                    : variacaoClientesMes < 0
+                      ? "text-destructive"
+                      : "text-muted-foreground",
+                )}
+              >
+                {variacaoClientesMes > 0 ? "+" : ""}
+                {variacaoClientesMes} este mês
+              </div>
+            </div>
+            <div className="rounded-md bg-success/10 p-3">
+              <div className="text-[10px] uppercase tracking-wider text-success/80">
+                Novos clientes
+              </div>
+              <div className="mt-1 text-xl font-bold text-success">{novosClientesMes}</div>
+              <div className="mt-0.5 text-[11px] text-success/80">
+                +{formatBRL(valorGanhoMes)}/mês
+              </div>
+            </div>
+            <div className="rounded-md bg-destructive/10 p-3">
+              <div className="text-[10px] uppercase tracking-wider text-destructive/80">
+                Cancelados
+              </div>
+              <div className="mt-1 text-xl font-bold text-destructive">
+                {clientesCanceladosMes.length}
+              </div>
+              <div className="mt-0.5 text-[11px] text-destructive/80">
+                -{formatBRL(valorPerdidoMes)}/mês
+              </div>
+            </div>
+            <div
+              className={cn(
+                "rounded-md p-3",
+                variacaoValorMes >= 0 ? "bg-primary/10" : "bg-warning/10",
+              )}
+            >
+              <div
+                className={cn(
+                  "text-[10px] uppercase tracking-wider",
+                  variacaoValorMes >= 0 ? "text-primary/80" : "text-warning/80",
+                )}
+              >
+                Saldo do mês
+              </div>
+              <div
+                className={cn(
+                  "mt-1 text-xl font-bold",
+                  variacaoValorMes >= 0 ? "text-primary" : "text-warning",
+                )}
+              >
+                {variacaoValorMes >= 0 ? "+" : ""}
+                {formatBRL(variacaoValorMes)}
+              </div>
+              <div className="mt-0.5 text-[11px] text-muted-foreground">
+                {variacaoValorMes >= 0 ? "Base melhorou" : "Base piorou"} em MRR
+              </div>
             </div>
           </div>
         </div>

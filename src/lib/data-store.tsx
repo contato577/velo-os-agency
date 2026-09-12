@@ -458,7 +458,7 @@ interface DataStoreContextValue {
   ) => void;
   addClientManual: (
     partial: Pick<Client, "name" | "company" | "owner" | "plan" | "monthlyValue" | "services"> &
-      Partial<Client> & { dataCobranca?: string },
+      Partial<Client> & { dataCobranca?: string; skipFinanceEntry?: boolean },
   ) => Promise<Client>;
   addComentario: (clientId: string, texto: string, autor: string) => void;
   removeComentario: (clientId: string, comentarioId: string) => void;
@@ -1310,7 +1310,7 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
       .slice(0, 10);
     const etapaJornada = matchedTemplates[0]?.stages?.[0] ?? "Briefing";
 
-    const { dataCobranca: _omit, ...clientFields } = partial;
+    const { dataCobranca: _omit, skipFinanceEntry, ...clientFields } = partial;
     const timelineEntry = {
       id: crypto.randomUUID(),
       time: "Agora",
@@ -1371,32 +1371,40 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
         progress: 0,
         deadline: projDeadline,
         owner: newClient.owner,
-        checklist: tpl?.checklist
-          ? tpl.checklist.map((item) => ({ id: crypto.randomUUID(), text: item, done: false }))
-          : [],
+        // Se o serviço não bate com nenhum modelo cadastrado, entra com 1 item
+        // genérico — sem isso, o checklist ficava vazio e o cliente nunca saía
+        // sozinho do "onboarding" (não tinha nada pra marcar como concluído).
+        checklist: (
+          tpl?.checklist?.length ? tpl.checklist : ["Configurar e iniciar atendimento"]
+        ).map((item) => ({ id: crypto.randomUUID(), text: item, done: false })),
       });
     });
 
     // A ideia é que cadastrar o cliente aqui já seja suficiente pra contar no
     // financeiro — sem precisar passar por uma "venda" separada no CRM. Data
     // usada é a de cobrança escolhida (ou hoje, se não escolher nada).
-    const newFinanceEntry: FinanceEntry = {
-      id: crypto.randomUUID(),
-      date: dataCobranca,
-      description: `Mensalidade — ${newClient.company}`,
-      category: "Mensalidade",
-      costCenter: "Receita",
-      type: "entrada",
-      amount: newClient.monthlyValue,
-      client: newClient.company,
-      recurring: true,
-    };
+    // Pulado quando skipFinanceEntry=true: quem chamou (ex: venda avulsa no
+    // formulário de Novo Lançamento do DRE) já vai registrar o próprio
+    // lançamento logo em seguida — sem isso, a venda entrava 2x no DRE.
+    const newFinanceEntry: FinanceEntry | null = skipFinanceEntry
+      ? null
+      : {
+        id: crypto.randomUUID(),
+        date: dataCobranca,
+        description: `Mensalidade — ${newClient.company}`,
+        category: "Mensalidade",
+        costCenter: "Receita",
+        type: "entrada",
+        amount: newClient.monthlyValue,
+        client: newClient.company,
+        recurring: true,
+      };
 
     // Reflete tudo na tela na hora (otimista) — mas só é considerado "pronto"
     // de verdade depois que o cliente for confirmado no banco, lá embaixo.
     setClients((prev) => [newClient, ...prev]);
     if (newProjects.length > 0) setProjects((prev) => [...newProjects, ...prev]);
-    setExpenses((prev) => [newFinanceEntry, ...prev]);
+    if (newFinanceEntry) setExpenses((prev) => [newFinanceEntry, ...prev]);
 
     // O PONTO CRÍTICO: espera de verdade a confirmação do banco antes de
     // devolver o cliente pra tela. Se atualizar a página antes disso
@@ -1411,7 +1419,7 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
         const idsRemover = new Set(newProjects.map((p) => p.id));
         setProjects((prev) => prev.filter((p) => !idsRemover.has(p.id)));
       }
-      setExpenses((prev) => prev.filter((e) => e.id !== newFinanceEntry.id));
+      setExpenses((prev) => (newFinanceEntry ? prev.filter((e) => e.id !== newFinanceEntry.id) : prev));
       toast.error(`Cliente "${newClient.company}" não foi salvo no banco.`, {
         description: clientError.message,
         duration: 20000,
@@ -1480,18 +1488,20 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
         });
     }
 
-    supabase
-      .from("finance_entries")
-      .insert(expenseToDb(newFinanceEntry))
-      .then(({ error: financeError }) => {
-        if (financeError) {
-          console.error("Erro ao salvar cobrança inicial no Supabase:", financeError.message);
-          toast.error("A cobrança inicial não foi salva no financeiro.", {
-            description: financeError.message,
-            duration: 20000,
-          });
-        }
-      });
+    if (newFinanceEntry) {
+      supabase
+        .from("finance_entries")
+        .insert(expenseToDb(newFinanceEntry))
+        .then(({ error: financeError }) => {
+          if (financeError) {
+            console.error("Erro ao salvar cobrança inicial no Supabase:", financeError.message);
+            toast.error("A cobrança inicial não foi salva no financeiro.", {
+              description: financeError.message,
+              duration: 20000,
+            });
+          }
+        });
+    }
 
     return newClient;
   };
@@ -1808,9 +1818,10 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
         progress: 0,
         deadline: projDeadline,
         owner: lead.owner,
-        checklist: tpl?.checklist
-          ? tpl.checklist.map((item) => ({ id: crypto.randomUUID(), text: item, done: false }))
-          : [],
+        // Mesma correção do cadastro manual: nunca deixa o checklist vazio.
+        checklist: (
+          tpl?.checklist?.length ? tpl.checklist : ["Configurar e iniciar atendimento"]
+        ).map((item) => ({ id: crypto.randomUUID(), text: item, done: false })),
       });
 
       if (tpl?.tasks) {

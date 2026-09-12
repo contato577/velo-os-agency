@@ -107,6 +107,16 @@ function Dashboard() {
   const prospeccoesNecessarias =
     taxaProspReuniao > 0 ? Math.ceil(reunioesNecessarias / (taxaProspReuniao / 100)) : 0;
 
+  // O card dizia "recomendo executar HOJE" mas mostrava o total necessário pro
+  // MÊS INTEIRO (ex: 25 prospecções, quando na real são ~25 até o fim do mês,
+  // não pra hoje). Isso fazia a recomendação parecer completamente fora da
+  // realidade do dia a dia. Agora divide pelos dias restantes pra virar uma
+  // meta diária de verdade, condizente com o texto.
+  const diasParaDividir = Math.max(1, diasRestantes);
+  const contratosHoje = Math.ceil(contratosNecessarios / diasParaDividir);
+  const reunioesHojeMeta = Math.ceil(reunioesNecessarias / diasParaDividir);
+  const prospeccoesHoje = Math.ceil(prospeccoesNecessarias / diasParaDividir);
+
   const pulse: {
     label: string;
     value: number | string;
@@ -208,9 +218,9 @@ function Dashboard() {
             diasRestantes={diasRestantes}
             taxaReuniaoFech={taxaReuniaoFech}
             taxaProspReuniao={taxaProspReuniao}
-            prospeccoes={prospeccoesNecessarias}
-            reunioes={reunioesNecessarias}
-            fechamentos={contratosNecessarios}
+            prospeccoes={prospeccoesHoje}
+            reunioes={reunioesHojeMeta}
+            fechamentos={contratosHoje}
           />
         </div>
 
@@ -499,6 +509,9 @@ function IAExecutivaCard({
           <Recommendation label="Reuniões" value={reunioes} />
           <Recommendation label="Fechamentos" value={fechamentos} highlight />
         </div>
+        <p className="mt-2 text-[10.5px] text-muted-foreground">
+          Meta diária pra bater {formatBRL(meta)} em {diasRestantes} dia(s) restante(s).
+        </p>
       </div>
     </div>
   );

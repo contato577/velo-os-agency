@@ -32,6 +32,11 @@ export function sortByPriority(list: Insight[]): Insight[] {
 }
 
 const HOJE = new Date();
+// Comparações de "está atrasado?" precisam ser por DIA, não por hora exata —
+// senão uma tarefa/onboarding com prazo pra HOJE MESMO já contava como atrasado
+// a partir da meia-noite, sem esperar o dia terminar. Isso fazia esse número
+// divergir do resto do sistema (que já comparava certo, por data).
+const HOJE_ISO = HOJE.toISOString().slice(0, 10);
 const RENEWAL_ALERT_DAYS = 5; // dias de antecedência para alerta crítico de renovação
 const BRL = (n: number) =>
   n.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
@@ -86,7 +91,7 @@ export function gerarInsights(input: AIInputs): Insight[] {
   }
 
   const tarefasAtrasadas = tasks.filter(
-    (t) => t.status !== "concluida" && new Date(t.dueDate) < HOJE,
+    (t) => t.status !== "concluida" && t.dueDate < HOJE_ISO,
   ).length;
   if (tarefasAtrasadas > 0) {
     insights.push({
@@ -124,7 +129,7 @@ export function gerarInsights(input: AIInputs): Insight[] {
     (c) =>
       c.status === "onboarding" &&
       c.dataPrevistaFimOnboarding &&
-      new Date(c.dataPrevistaFimOnboarding) < HOJE,
+      c.dataPrevistaFimOnboarding < HOJE_ISO,
   );
   clientesOnboardingAtrasado.forEach((c) => {
     const diasAtraso = Math.floor(
