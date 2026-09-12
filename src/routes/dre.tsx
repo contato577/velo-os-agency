@@ -4,8 +4,9 @@ import {
   Area,
   AreaChart,
   Bar,
-  BarChart,
   CartesianGrid,
+  ComposedChart,
+  Legend,
   Line,
   LineChart,
   ResponsiveContainer,
@@ -295,7 +296,12 @@ function DRE() {
     const entrada = doMes.filter((f) => f.type === "entrada").reduce((s, f) => s + f.amount, 0);
     const saida = doMes.filter((f) => f.type === "saida").reduce((s, f) => s + f.amount, 0);
     const [ano, mesNum] = m.split("-").map(Number);
-    const label = new Date(ano, mesNum - 1, 1).toLocaleDateString("pt-BR", { month: "short" });
+    // Antes mostrava só "Ago"/"Set" sem ano — em anos diferentes o mesmo mês
+    // apareceria duas vezes no gráfico sem dar pra distinguir qual é qual.
+    const label = new Date(ano, mesNum - 1, 1).toLocaleDateString("pt-BR", {
+      month: "short",
+      year: "2-digit",
+    });
     return {
       mes: label.charAt(0).toUpperCase() + label.slice(1).replace(".", ""),
       entrada,
@@ -313,9 +319,23 @@ function DRE() {
     margem: f.entrada > 0 ? ((f.entrada - f.saida) / f.entrada) * 100 : 0,
   }));
 
+  // Quantidade de clientes ativos até o fim de cada mês (pra desenhar junto da
+  // receita no mesmo gráfico) — um cliente conta no mês m se já tinha entrado
+  // (since) e ainda não tinha cancelado (canceledAt) naquele mês.
+  const clientesAtivosAteOMes = (m: string) =>
+    clients.filter((c) => c.since.slice(0, 7) <= m && (!c.canceledAt || c.canceledAt.slice(0, 7) > m))
+      .length;
+
   // Evolução de receita — mesma fonte real do fluxo de caixa, sem meta fictícia
   // (antes vinha de mock-data estático, sempre os mesmos 7 meses de exemplo).
-  const evolucaoReceita = fluxoReal.map((f) => ({ month: f.mes, receita: f.entrada }));
+  // Agora também carrega a quantidade de clientes daquele mês, pra montar o
+  // histórico de crescimento da base junto com a receita — sem precisar de
+  // outra seção separada na tela.
+  const evolucaoReceita = fluxoReal.map((f, i) => ({
+    month: f.mes,
+    receita: f.entrada,
+    clientes: clientesAtivosAteOMes(mesesComDados[i]),
+  }));
 
   // Insights de IA vindos da mesma engine central, filtrados por Financeiro
   // ── Churn, CAC e LTV — calculados com dados reais, no MESMO mês de referência do resto da tela ──
@@ -337,45 +357,109 @@ function DRE() {
   const novosClientesMes = novosClientesMesLista.length;
   const cac = novosClientesMes > 0 ? gastoMarketingMes / novosClientesMes : null;
 
-  // Evolução da base: quantos clientes entraram/saíram este mês e quanto valor
-  // (em mensalidade) isso representa — pra responder "a base cresceu ou encolheu de verdade?"
-  // sem precisar ir calcular na mão cruzando Clientes com o DRE.
-  const valorGanhoMes = novosClientesMesLista.reduce((s, c) => s + c.monthlyValue, 0);
-  const valorPerdidoMes = clientesCanceladosMes.reduce((s, c) => s + c.monthlyValue, 0);
-  const variacaoClientesMes = novosClientesMes - clientesCanceladosMes.length;
-  const variacaoValorMes = valorGanhoMes - valorPerdidoMes;
-
   const ltvCac = ltv && cac ? ltv / cac : null;
 
   const insights = useMemo(() => {
     const financeiros = aiInsights.filter((i) => i.area === "Financeiro");
-    // Complementos: só entram quando dão pra sustentar com dado real do mês anterior.
-    // Antes eram 2 frases fixas ("MRR cresceu 8%", "lucro acima da média de 6 meses") que apareciam sempre, mesmo sem base real.
-    const complementos: { id: string; titulo: string; descricao: string; prioridade: "baixa" }[] =
-      [];
+    // Complementos: só entram quando dão pra sustentar com dado real do mês anterior,
+    // OU quando revelam um risco/incoerência real nos números (não só "tudo cresceu!").
+    // Antes eram só 2 frases fixas de crescimento, sempre positivas — mesmo quando a
+    // base de comparação era pequena demais pra o % dizer alguma coisa de fato.
+    const complementos: {
+      id: string;
+      titulo: string;
+      descricao: string;
+      prioridade: "critica" | "alta" | "media" | "baixa";
+    }[] = [];
+
+    // Uma base de comparação muito pequena (ex: R$50 → R$200) gera "+300%" que soa
+    // dramático mas não significa nada de verdade — por isso só mostra o % de
+    // crescimento quando o mês anterior já tinha um valor minimamente relevante.
+    const BASE_MINIMA_PARA_PERCENTUAL = 200;
+
     if (temMesAnterior) {
       const mensalidadeAnterior = anteriorEntries
         .filter((f) => f.category === "Mensalidade")
         .reduce((s, f) => s + f.amount, 0);
-      if (mensalidadeAnterior > 0 && receitaRecorrente > mensalidadeAnterior) {
+      if (
+        mensalidadeAnterior >= BASE_MINIMA_PARA_PERCENTUAL &&
+        receitaRecorrente > mensalidadeAnterior
+      ) {
         const crescimentoMrr =
           ((receitaRecorrente - mensalidadeAnterior) / mensalidadeAnterior) * 100;
         complementos.push({
-          id: "loc-1",
+          id: "loc-mrr-cresceu",
           titulo: "Receita recorrente cresceu",
           descricao: `O MRR cresceu ${crescimentoMrr.toFixed(1)}% em relação ao mês anterior (${formatBRL(mensalidadeAnterior)} → ${formatBRL(receitaRecorrente)}).`,
           prioridade: "baixa",
         });
-      }
-      if (lucroAnterior > 0 && lucroLiquido > lucroAnterior) {
+      } else if (receitaRecorrente < mensalidadeAnterior) {
         complementos.push({
-          id: "loc-2",
-          titulo: "Lucro líquido melhorou",
-          descricao: `Seu lucro líquido de ${formatBRL(lucroLiquido)} é maior que o do mês anterior (${formatBRL(lucroAnterior)}).`,
-          prioridade: "baixa",
+          id: "loc-mrr-caiu",
+          titulo: "Receita recorrente caiu",
+          descricao: `O MRR foi de ${formatBRL(mensalidadeAnterior)} para ${formatBRL(receitaRecorrente)} em relação ao mês anterior. Vale conferir se algum cliente cancelou ou não teve o pagamento confirmado.`,
+          prioridade: "alta",
         });
       }
     }
+
+    // Custo operacional zerado com receita entrando é o sinal mais comum de que
+    // alguém esqueceu de lançar despesas do mês — não que a agência não tem custo
+    // nenhum. Sem esse alerta, a margem líquida de "100%" passava despercebida
+    // como se fosse uma boa notícia.
+    if (receitaBruta > 0 && totalDespesas === 0) {
+      complementos.push({
+        id: "loc-sem-despesa",
+        titulo: "Nenhuma despesa lançada este mês",
+        descricao: `Há ${formatBRL(receitaBruta)} de receita mas R$ 0 em custos — isso deixa a margem de ${margem.toFixed(1)}% artificialmente alta. Confira se ferramentas, freelancers ou impostos do mês ainda não foram lançados.`,
+        prioridade: "media",
+      });
+    }
+
+    // Concentração de receita: se um único cliente sustenta boa parte do MRR,
+    // perder esse contrato tem um impacto desproporcional no caixa da agência —
+    // um risco que nenhum indicador isolado (MRR, churn) mostra sozinho.
+    if (receitaRecorrente > 0 && clientesAtivos.length > 1) {
+      const maiorCliente = [...clientesAtivos].sort((a, b) => b.monthlyValue - a.monthlyValue)[0];
+      const participacao = (maiorCliente.monthlyValue / receitaRecorrente) * 100;
+      if (participacao >= 40) {
+        complementos.push({
+          id: "loc-concentracao",
+          titulo: "Receita concentrada em um cliente",
+          descricao: `${maiorCliente.company} responde por ${participacao.toFixed(0)}% do MRR (${formatBRL(maiorCliente.monthlyValue)} de ${formatBRL(receitaRecorrente)}). Perder esse contrato pesaria bastante no caixa — vale ter um plano de retenção específico pra ele.`,
+          prioridade: participacao >= 60 ? "alta" : "media",
+        });
+      }
+    }
+
+    // CAC maior que o ticket médio mensal significa que o cliente ainda não pagou
+    // de volta o que custou pra adquirir ele nem no primeiro mês — sinal direto de
+    // que o marketing/comercial está custando mais caro do que a operação suporta.
+    if (cac !== null && ticketMedio > 0 && cac > ticketMedio) {
+      complementos.push({
+        id: "loc-cac-alto",
+        titulo: "CAC acima do ticket médio",
+        descricao: `Cada cliente novo custou em média ${formatBRL(cac)} pra adquirir, mas o ticket médio mensal é ${formatBRL(ticketMedio)}. Sem reter esse cliente por vários meses, o CAC não se paga.`,
+        prioridade: "alta",
+      });
+    }
+
+    if (lucroAnterior > 0 && lucroLiquido > lucroAnterior) {
+      complementos.push({
+        id: "loc-lucro-melhorou",
+        titulo: "Lucro líquido melhorou",
+        descricao: `Seu lucro líquido de ${formatBRL(lucroLiquido)} é maior que o do mês anterior (${formatBRL(lucroAnterior)}).`,
+        prioridade: "baixa",
+      });
+    } else if (lucroAnterior > 0 && lucroLiquido < 0 && lucroAnterior >= 0) {
+      complementos.push({
+        id: "loc-lucro-negativo",
+        titulo: "O mês fechou no negativo",
+        descricao: `O lucro líquido de ${formatBRL(lucroLiquido)} está abaixo do mês anterior (${formatBRL(lucroAnterior)}). Vale revisar as despesas do período antes de fechar o mês.`,
+        prioridade: "critica",
+      });
+    }
+
     return [
       ...financeiros.map((i) => ({
         id: i.id,
@@ -385,7 +469,20 @@ function DRE() {
       })),
       ...complementos,
     ];
-  }, [aiInsights, lucroLiquido, temMesAnterior, anteriorEntries, receitaRecorrente, lucroAnterior]);
+  }, [
+    aiInsights,
+    lucroLiquido,
+    temMesAnterior,
+    anteriorEntries,
+    receitaRecorrente,
+    receitaBruta,
+    totalDespesas,
+    margem,
+    clientesAtivos,
+    cac,
+    ticketMedio,
+    lucroAnterior,
+  ]);
 
   return (
     <AppShell title="DRE Inteligente" subtitle="Análise gerencial automática">
@@ -677,7 +774,7 @@ function DRE() {
             </div>
             <div className="h-[240px]">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={evolucaoReceita}>
+                <ComposedChart data={evolucaoReceita}>
                   <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.22 0.010 155)" />
                   <XAxis
                     dataKey="month"
@@ -687,11 +784,21 @@ function DRE() {
                     axisLine={false}
                   />
                   <YAxis
+                    yAxisId="receita"
                     stroke="oklch(0.68 0.02 155)"
                     fontSize={11}
                     tickLine={false}
                     axisLine={false}
                     tickFormatter={(v) => `${v / 1000}k`}
+                  />
+                  <YAxis
+                    yAxisId="clientes"
+                    orientation="right"
+                    stroke="oklch(0.66 0.15 150)"
+                    fontSize={11}
+                    tickLine={false}
+                    axisLine={false}
+                    allowDecimals={false}
                   />
                   <Tooltip
                     contentStyle={{
@@ -700,10 +807,28 @@ function DRE() {
                       borderRadius: 8,
                       fontSize: 12,
                     }}
-                    formatter={(v: unknown) => formatBRL(Number(v))}
+                    formatter={(v: unknown, name: string) =>
+                      name === "Clientes na base" ? `${v}` : formatBRL(Number(v))
+                    }
                   />
-                  <Bar dataKey="receita" fill="oklch(0.66 0.15 150)" radius={[6, 6, 0, 0]} />
-                </BarChart>
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                  <Bar
+                    yAxisId="receita"
+                    dataKey="receita"
+                    name="Receita"
+                    fill="oklch(0.66 0.15 150 / 0.55)"
+                    radius={[6, 6, 0, 0]}
+                  />
+                  <Line
+                    yAxisId="clientes"
+                    type="monotone"
+                    dataKey="clientes"
+                    name="Clientes na base"
+                    stroke="oklch(0.75 0.16 85)"
+                    strokeWidth={2}
+                    dot={{ r: 3, fill: "oklch(0.75 0.16 85)" }}
+                  />
+                </ComposedChart>
               </ResponsiveContainer>
             </div>
           </div>
@@ -749,85 +874,6 @@ function DRE() {
                   />
                 </LineChart>
               </ResponsiveContainer>
-            </div>
-          </div>
-        </div>
-
-        {/* Evolução da base de clientes: responde "cresceu ou encolheu de verdade
-            este mês?" sem precisar cruzar a tela de Clientes com o financeiro na mão. */}
-        <div className="mt-4 rounded-lg border bg-card p-4">
-          <div className="mb-3">
-            <h3 className="text-sm font-semibold tracking-tight">Evolução da base de clientes</h3>
-            <p className="text-[11px] text-muted-foreground">
-              Entradas e saídas de {new Date(`${mesRef}-01T00:00:00`).toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}
-            </p>
-          </div>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <div className="rounded-md bg-surface/60 p-3">
-              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                Clientes na base
-              </div>
-              <div className="mt-1 text-xl font-bold">{clientesAtivos.length}</div>
-              <div
-                className={cn(
-                  "mt-0.5 text-[11px] font-medium",
-                  variacaoClientesMes > 0
-                    ? "text-success"
-                    : variacaoClientesMes < 0
-                      ? "text-destructive"
-                      : "text-muted-foreground",
-                )}
-              >
-                {variacaoClientesMes > 0 ? "+" : ""}
-                {variacaoClientesMes} este mês
-              </div>
-            </div>
-            <div className="rounded-md bg-success/10 p-3">
-              <div className="text-[10px] uppercase tracking-wider text-success/80">
-                Novos clientes
-              </div>
-              <div className="mt-1 text-xl font-bold text-success">{novosClientesMes}</div>
-              <div className="mt-0.5 text-[11px] text-success/80">
-                +{formatBRL(valorGanhoMes)}/mês
-              </div>
-            </div>
-            <div className="rounded-md bg-destructive/10 p-3">
-              <div className="text-[10px] uppercase tracking-wider text-destructive/80">
-                Cancelados
-              </div>
-              <div className="mt-1 text-xl font-bold text-destructive">
-                {clientesCanceladosMes.length}
-              </div>
-              <div className="mt-0.5 text-[11px] text-destructive/80">
-                -{formatBRL(valorPerdidoMes)}/mês
-              </div>
-            </div>
-            <div
-              className={cn(
-                "rounded-md p-3",
-                variacaoValorMes >= 0 ? "bg-primary/10" : "bg-warning/10",
-              )}
-            >
-              <div
-                className={cn(
-                  "text-[10px] uppercase tracking-wider",
-                  variacaoValorMes >= 0 ? "text-primary/80" : "text-warning/80",
-                )}
-              >
-                Saldo do mês
-              </div>
-              <div
-                className={cn(
-                  "mt-1 text-xl font-bold",
-                  variacaoValorMes >= 0 ? "text-primary" : "text-warning",
-                )}
-              >
-                {variacaoValorMes >= 0 ? "+" : ""}
-                {formatBRL(variacaoValorMes)}
-              </div>
-              <div className="mt-0.5 text-[11px] text-muted-foreground">
-                {variacaoValorMes >= 0 ? "Base melhorou" : "Base piorou"} em MRR
-              </div>
             </div>
           </div>
         </div>
