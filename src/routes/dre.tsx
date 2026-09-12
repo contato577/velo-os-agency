@@ -99,6 +99,35 @@ function DRE() {
     });
   }, [expenses, recurringConfirmations, hojeMesISO, diaHoje, clients]);
 
+  // Renovação de CONTRATO vencida — independente de existir ou não um lançamento
+  // recorrente linkado no financeiro. Antes, se o cliente não tivesse uma
+  // mensalidade cadastrada certinho como recorrente, o vencimento do contrato
+  // dele nunca aparecia em lugar nenhum pra confirmar (ficava só no campo,
+  // sem nenhum aviso ou botão).
+  const hojeISO = new Date().toISOString().slice(0, 10);
+  const contratosRenovacaoPendente = useMemo(
+    () =>
+      clients.filter(
+        (c) => (c.status === "ativo" || c.status === "onboarding") && c.renewalDate <= hojeISO,
+      ),
+    [clients, hojeISO],
+  );
+
+  const resolverRenovacaoContrato = (client: (typeof clients)[number], renovou: boolean) => {
+    if (renovou) {
+      const meses = client.contratoMeses || 12;
+      const base = new Date(`${client.renewalDate}T00:00:00`);
+      base.setMonth(base.getMonth() + meses);
+      updateClientInfo(client.id, {
+        renewalDate: base.toISOString().slice(0, 10),
+        ...(client.pagamentoPendente ? { pagamentoPendente: false } : {}),
+      });
+    } else {
+      updateClientStatus(client.id, "cancelado");
+    }
+  };
+
+
   // O aviso "faltam X dias" aparece 5 dias antes do vencimento, mas o botão
   // de confirmar só liberava no dia exato — quem clicava no aviso caía na
   // tela do DRE sem achar nada clicável ainda. Essa lista preenche essa
@@ -319,12 +348,18 @@ function DRE() {
     margem: f.entrada > 0 ? ((f.entrada - f.saida) / f.entrada) * 100 : 0,
   }));
 
-  // Quantidade de clientes ativos até o fim de cada mês (pra desenhar junto da
-  // receita no mesmo gráfico) — um cliente conta no mês m se já tinha entrado
-  // (since) e ainda não tinha cancelado (canceledAt) naquele mês.
+  // Quantidade de clientes ATIVOS (não conta onboarding/pausado/cancelado/arquivado)
+  // até o fim de cada mês — um cliente conta no mês m se já tinha entrado (since),
+  // ainda não tinha cancelado (canceledAt) naquele mês, E o status atual dele é
+  // "ativo" (pedido explícito: essa contagem é só de quem já é cliente de verdade,
+  // não de quem ainda está em implementação).
   const clientesAtivosAteOMes = (m: string) =>
-    clients.filter((c) => c.since.slice(0, 7) <= m && (!c.canceledAt || c.canceledAt.slice(0, 7) > m))
-      .length;
+    clients.filter(
+      (c) =>
+        c.status === "ativo" &&
+        c.since.slice(0, 7) <= m &&
+        (!c.canceledAt || c.canceledAt.slice(0, 7) > m),
+    ).length;
 
   // Evolução de receita — mesma fonte real do fluxo de caixa, sem meta fictícia
   // (antes vinha de mock-data estático, sempre os mesmos 7 meses de exemplo).
@@ -523,6 +558,48 @@ function DRE() {
         </PageHeader>
 
         {openNew && <NovoLancamentoDialog onClose={() => setOpenNew(false)} />}
+
+        {/* Renovação de contrato vencida — independente de ter lançamento recorrente linkado */}
+        {contratosRenovacaoPendente.length > 0 && (
+          <div className="mb-4 rounded-xl border border-destructive/40 bg-destructive/5 p-4">
+            <div className="mb-3 flex items-center gap-2">
+              <BellRing className="h-4 w-4 text-destructive" />
+              <h3 className="text-sm font-semibold tracking-tight">
+                {contratosRenovacaoPendente.length} contrato(s) vencido(s) — renovou ou não?
+              </h3>
+            </div>
+            <div className="space-y-2">
+              {contratosRenovacaoPendente.map((c) => (
+                <div
+                  key={c.id}
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-card px-3 py-2"
+                >
+                  <div className="min-w-0">
+                    <div className="text-[13px] font-medium">{c.company}</div>
+                    <div className="text-[11px] text-muted-foreground">
+                      Venceu em {new Date(`${c.renewalDate}T00:00:00`).toLocaleDateString("pt-BR")}{" "}
+                      · {formatBRL(c.monthlyValue)}/mês
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <button
+                      onClick={() => resolverRenovacaoContrato(c, true)}
+                      className="inline-flex items-center gap-1 rounded-md bg-success/15 px-2.5 py-1.5 text-[11px] font-medium text-success hover:bg-success/25"
+                    >
+                      <Check className="h-3 w-3" /> Renovou, confirmar
+                    </button>
+                    <button
+                      onClick={() => resolverRenovacaoContrato(c, false)}
+                      className="inline-flex items-center gap-1 rounded-md bg-destructive/15 px-2.5 py-1.5 text-[11px] font-medium text-destructive hover:bg-destructive/25"
+                    >
+                      <Ban className="h-3 w-3" /> Não renovou
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Confirmações pendentes de lançamentos recorrentes */}
         {pendentesConfirmacao.length > 0 && (
@@ -772,64 +849,72 @@ function DRE() {
                 </span>
               )}
             </div>
-            <div className="h-[240px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={evolucaoReceita}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.22 0.010 155)" />
-                  <XAxis
-                    dataKey="month"
-                    stroke="oklch(0.68 0.02 155)"
-                    fontSize={11}
-                    tickLine={false}
-                    axisLine={false}
-                  />
-                  <YAxis
-                    yAxisId="receita"
-                    stroke="oklch(0.68 0.02 155)"
-                    fontSize={11}
-                    tickLine={false}
-                    axisLine={false}
-                    tickFormatter={(v) => `${v / 1000}k`}
-                  />
-                  <YAxis
-                    yAxisId="clientes"
-                    orientation="right"
-                    stroke="oklch(0.66 0.15 150)"
-                    fontSize={11}
-                    tickLine={false}
-                    axisLine={false}
-                    allowDecimals={false}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      background: "oklch(0.14 0.008 155)",
-                      border: "1px solid oklch(0.22 0.010 155)",
-                      borderRadius: 8,
-                      fontSize: 12,
-                    }}
-                    formatter={(v: unknown, name: string) =>
-                      name === "Clientes na base" ? `${v}` : formatBRL(Number(v))
-                    }
-                  />
-                  <Legend wrapperStyle={{ fontSize: 11 }} />
-                  <Bar
-                    yAxisId="receita"
-                    dataKey="receita"
-                    name="Receita"
-                    fill="oklch(0.66 0.15 150 / 0.55)"
-                    radius={[6, 6, 0, 0]}
-                  />
-                  <Line
-                    yAxisId="clientes"
-                    type="monotone"
-                    dataKey="clientes"
-                    name="Clientes na base"
-                    stroke="oklch(0.75 0.16 85)"
-                    strokeWidth={2}
-                    dot={{ r: 3, fill: "oklch(0.75 0.16 85)" }}
-                  />
-                </ComposedChart>
-              </ResponsiveContainer>
+            {/* Com poucos meses, o gráfico ocupa a largura normal. Conforme o
+                histórico for crescendo (mês a mês), passa a rolar de lado em
+                vez de espremer tudo — cada mês sempre com o mesmo tamanho. */}
+            <div className="h-[240px] overflow-x-auto">
+              <div
+                className="h-full"
+                style={{ minWidth: Math.max(100, evolucaoReceita.length * 11) + "%" }}
+              >
+                <ResponsiveContainer width="100%" height="100%">
+                  <ComposedChart data={evolucaoReceita}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.22 0.010 155)" />
+                    <XAxis
+                      dataKey="month"
+                      stroke="oklch(0.68 0.02 155)"
+                      fontSize={11}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <YAxis
+                      yAxisId="receita"
+                      stroke="oklch(0.68 0.02 155)"
+                      fontSize={11}
+                      tickLine={false}
+                      axisLine={false}
+                      tickFormatter={(v) => `${v / 1000}k`}
+                    />
+                    <YAxis
+                      yAxisId="clientes"
+                      orientation="right"
+                      stroke="oklch(0.66 0.15 150)"
+                      fontSize={11}
+                      tickLine={false}
+                      axisLine={false}
+                      allowDecimals={false}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        background: "oklch(0.14 0.008 155)",
+                        border: "1px solid oklch(0.22 0.010 155)",
+                        borderRadius: 8,
+                        fontSize: 12,
+                      }}
+                      formatter={(v: unknown, name: string) =>
+                        name === "Clientes na base" ? `${v}` : formatBRL(Number(v))
+                      }
+                    />
+                    <Legend wrapperStyle={{ fontSize: 11 }} />
+                    <Bar
+                      yAxisId="receita"
+                      dataKey="receita"
+                      name="Receita"
+                      fill="oklch(0.66 0.15 150 / 0.55)"
+                      radius={[6, 6, 0, 0]}
+                    />
+                    <Line
+                      yAxisId="clientes"
+                      type="monotone"
+                      dataKey="clientes"
+                      name="Clientes na base"
+                      stroke="oklch(0.75 0.16 85)"
+                      strokeWidth={2}
+                      dot={{ r: 3, fill: "oklch(0.75 0.16 85)" }}
+                    />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </div>
             </div>
           </div>
 

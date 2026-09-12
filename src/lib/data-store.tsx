@@ -453,7 +453,10 @@ interface DataStoreContextValue {
   updateClientInfo: (
     clientId: string,
     partial: Partial<
-      Pick<Client, "name" | "company" | "email" | "phone" | "contratoArquivo" | "pagamentoPendente">
+      Pick<
+        Client,
+        "name" | "company" | "email" | "phone" | "contratoArquivo" | "pagamentoPendente" | "renewalDate"
+      >
     >,
   ) => void;
   addClientManual: (

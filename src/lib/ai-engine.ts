@@ -107,16 +107,39 @@ export function gerarInsights(input: AIInputs): Insight[] {
     });
   }
 
+  // Contratos vencendo — antes comparava a data de renovação (meia-noite) com o
+  // horário exato de agora, então um contrato vencendo HOJE MESMO já contava
+  // como "no passado" a partir da meia-noite e desaparecia da lista inteira
+  // (não entrava nem como "vencendo em breve" nem como "vencido"). Agora usa
+  // data-only e separa em 2 baldes: o que ainda vai vencer (informativo) e o
+  // que já venceu e está esperando confirmação (isso é ação, não aviso).
+  const clientesRenovacaoPendente = clients.filter(
+    (c) =>
+      (c.status === "ativo" || c.status === "onboarding") && c.renewalDate <= HOJE_ISO,
+  );
   const clientesVencendoLista = clients.filter((c) => {
-    const d = new Date(c.renewalDate);
-    const diff = (d.getTime() - HOJE.getTime()) / 86400000;
-    return diff >= 0 && diff <= 30;
+    if (c.status !== "ativo" && c.status !== "onboarding") return false;
+    const diff = (new Date(c.renewalDate).getTime() - new Date(HOJE_ISO).getTime()) / 86400000;
+    return diff > 0 && diff <= 30;
   });
+
+  if (clientesRenovacaoPendente.length > 0) {
+    insights.push({
+      id: "d-renovacao-pendente",
+      area: "Financeiro",
+      titulo: `${clientesRenovacaoPendente.length} contrato(s) vencido(s) sem confirmação`,
+      descricao: `${clientesRenovacaoPendente.map((c) => c.company).join(", ")}. Confirme no DRE se renovou ou se o cliente vai sair da base.`,
+      prioridade: "critica",
+      impacto: `MRR em risco: ${BRL(clientesRenovacaoPendente.reduce((s, c) => s + c.monthlyValue, 0))}`,
+      acaoLabel: "Abrir DRE",
+      to: "/dre",
+    });
+  }
   if (clientesVencendoLista.length > 0) {
     insights.push({
       id: "d-renovacoes",
       area: "Clientes",
-      titulo: `${clientesVencendoLista.length} contratos vencendo em 30 dias`,
+      titulo: `${clientesVencendoLista.length} contrato(s) vencendo nos próximos 30 dias`,
       descricao: "Prepare pauta de renovação, resultados alcançados e proposta de upsell.",
       prioridade: "media",
       impacto: `MRR em jogo: ${BRL(clientesVencendoLista.reduce((s, c) => s + c.monthlyValue, 0))}`,
