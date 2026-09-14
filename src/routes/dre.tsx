@@ -105,10 +105,17 @@ function DRE() {
   // dele nunca aparecia em lugar nenhum pra confirmar (ficava só no campo,
   // sem nenhum aviso ou botão).
   const hojeISO = new Date().toISOString().slice(0, 10);
+  // Protege contra renewalDate vindo com hora junto (ex: com timestamp completo
+  // em vez de só "YYYY-MM-DD") — sem isso a comparação de string podia dar
+  // "não venceu" mesmo pra contratos vencidos há dias.
+  const diaISO = (v: string | undefined | null): string => (v ? v.slice(0, 10) : "");
   const contratosRenovacaoPendente = useMemo(
     () =>
       clients.filter(
-        (c) => (c.status === "ativo" || c.status === "onboarding") && c.renewalDate <= hojeISO,
+        (c) =>
+          (c.status === "ativo" || c.status === "onboarding") &&
+          !!c.renewalDate &&
+          diaISO(c.renewalDate) <= hojeISO,
       ),
     [clients, hojeISO],
   );

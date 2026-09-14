@@ -37,6 +37,10 @@ const HOJE = new Date();
 // a partir da meia-noite, sem esperar o dia terminar. Isso fazia esse número
 // divergir do resto do sistema (que já comparava certo, por data).
 const HOJE_ISO = HOJE.toISOString().slice(0, 10);
+// Normaliza qualquer valor de data pra "YYYY-MM-DD" antes de comparar — protege
+// contra campos que às vezes vêm com hora junto (ex: "2026-09-11T00:00:00.000Z"),
+// o que quebrava a comparação de string sem dar nenhum erro visível.
+const diaISO = (valor: string | undefined | null): string => (valor ? valor.slice(0, 10) : "");
 const RENEWAL_ALERT_DAYS = 5; // dias de antecedência para alerta crítico de renovação
 const BRL = (n: number) =>
   n.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
@@ -91,7 +95,7 @@ export function gerarInsights(input: AIInputs): Insight[] {
   }
 
   const tarefasAtrasadas = tasks.filter(
-    (t) => t.status !== "concluida" && t.dueDate < HOJE_ISO,
+    (t) => t.status !== "concluida" && diaISO(t.dueDate) < HOJE_ISO,
   ).length;
   if (tarefasAtrasadas > 0) {
     insights.push({
@@ -115,11 +119,14 @@ export function gerarInsights(input: AIInputs): Insight[] {
   // que já venceu e está esperando confirmação (isso é ação, não aviso).
   const clientesRenovacaoPendente = clients.filter(
     (c) =>
-      (c.status === "ativo" || c.status === "onboarding") && c.renewalDate <= HOJE_ISO,
+      (c.status === "ativo" || c.status === "onboarding") &&
+      !!c.renewalDate &&
+      diaISO(c.renewalDate) <= HOJE_ISO,
   );
   const clientesVencendoLista = clients.filter((c) => {
     if (c.status !== "ativo" && c.status !== "onboarding") return false;
-    const diff = (new Date(c.renewalDate).getTime() - new Date(HOJE_ISO).getTime()) / 86400000;
+    if (!c.renewalDate) return false;
+    const diff = (new Date(diaISO(c.renewalDate)).getTime() - new Date(HOJE_ISO).getTime()) / 86400000;
     return diff > 0 && diff <= 30;
   });
 
@@ -152,7 +159,7 @@ export function gerarInsights(input: AIInputs): Insight[] {
     (c) =>
       c.status === "onboarding" &&
       c.dataPrevistaFimOnboarding &&
-      c.dataPrevistaFimOnboarding < HOJE_ISO,
+      diaISO(c.dataPrevistaFimOnboarding) < HOJE_ISO,
   );
   clientesOnboardingAtrasado.forEach((c) => {
     const diasAtraso = Math.floor(

@@ -74,7 +74,7 @@ const tabsList: { key: Tab; label: string; icon: typeof User }[] = [
 ];
 
 function ClienteDetalhe() {
-  const { clients, updateClientStatus, deleteClient } = useDataStore();
+  const { clients, updateClientStatus, updateClientInfo, deleteClient } = useDataStore();
   const { clientId } = useParams({ from: "/clientes/$clientId" });
   const navigate = useNavigate();
   const client = clients.find((c) => c.id === clientId);
@@ -122,6 +122,39 @@ function ClienteDetalhe() {
       ? [{ value: "arquivado" as const, label: "Arquivado" }]
       : []),
   ];
+
+  // Mesma regra de "contrato vencido" usada no DRE — repetida aqui pra não
+  // depender de ir até outra tela só pra ver/confirmar isso. Data normalizada
+  // pros primeiros 10 caracteres pra não quebrar se vier com hora junto.
+  const hojeISO = new Date().toISOString().slice(0, 10);
+  const renewalISO = client.renewalDate ? client.renewalDate.slice(0, 10) : "";
+  const contratoVencido =
+    (client.status === "ativo" || client.status === "onboarding") &&
+    !!renewalISO &&
+    renewalISO <= hojeISO;
+  const diasVencido = contratoVencido
+    ? Math.max(
+      0,
+      Math.round(
+        (new Date(`${hojeISO}T00:00:00`).getTime() - new Date(`${renewalISO}T00:00:00`).getTime()) /
+        86400000,
+      ),
+    )
+    : 0;
+
+  const resolverRenovacao = (renovou: boolean) => {
+    if (renovou) {
+      const meses = client.contratoMeses || 12;
+      const base = new Date(`${renewalISO}T00:00:00`);
+      base.setMonth(base.getMonth() + meses);
+      updateClientInfo(client.id, {
+        renewalDate: base.toISOString().slice(0, 10),
+        ...(client.pagamentoPendente ? { pagamentoPendente: false } : {}),
+      });
+    } else {
+      updateClientStatus(client.id, "cancelado");
+    }
+  };
 
   return (
     <AppShell
@@ -172,6 +205,28 @@ function ClienteDetalhe() {
             <span className="inline-flex items-center gap-1 rounded bg-warning/15 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-warning">
               Pagamento pendente
             </span>
+          )}
+
+          {/* Contrato vencido (data de renovação já passou) — mesma lógica do DRE,
+              com ação de resolver direto aqui, sem precisar trocar de tela. */}
+          {contratoVencido && (
+            <div className="flex items-center gap-1.5 rounded-md border border-destructive/30 bg-destructive/5 px-2 py-1">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-destructive">
+                Contrato vencido{diasVencido > 0 ? ` há ${diasVencido}d` : ""}
+              </span>
+              <button
+                onClick={() => resolverRenovacao(true)}
+                className="rounded bg-success/15 px-1.5 py-0.5 text-[11px] font-medium text-success hover:bg-success/25"
+              >
+                Renovou
+              </button>
+              <button
+                onClick={() => resolverRenovacao(false)}
+                className="rounded bg-destructive/15 px-1.5 py-0.5 text-[11px] font-medium text-destructive hover:bg-destructive/25"
+              >
+                Não renovou
+              </button>
+            </div>
           )}
 
           {/* Fluxo em 2 passos, agora que Cancelado e Arquivado são coisas diferentes:
